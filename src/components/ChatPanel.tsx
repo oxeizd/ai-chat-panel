@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { PanelProps } from '@grafana/data';
 import { PanelOptions, AgentConfig } from 'types';
-import { PanelDataErrorView } from '@grafana/runtime';
 import { InlineChat } from './InlineChat';
 import { FloatingChatPanel } from './FloatingChatPanel';
 import { useChatMessages } from './hooks/useChatMessages';
@@ -39,17 +38,6 @@ export const ChatPanel: React.FC<Props> = ({ options, data, fieldConfig, id }) =
   };
 
   const openSettings = () => console.log('Открыть настройки чата');
-
-  if (data.series.length === 0) {
-    return (
-      <PanelDataErrorView
-        fieldConfig={fieldConfig}
-        panelId={id}
-        data={data}
-        needsStringField
-      />
-    );
-  }
 
   const commonProps = {
     messages,
