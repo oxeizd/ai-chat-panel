@@ -1,0 +1,67 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 19,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "<div style=\"max-width: 1300px; margin: 0 auto; padding: 20px;\">\n    <h2 style=\"margin-bottom: 10px;\">Заголовок 1</h2>\n    <div style=\"display: flex; justify-content: space-between; margin-bottom: 30px;\">\n        <a href=\"https://example.com/link1\" style=\"text-decoration: none; color: white; width: 48%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h3 style=\"margin: 0;\">Плашка 1</h3>\n            <p style=\"margin: 0;\">Текст ниже плашки 1</p>\n        </a>\n        <a href=\"https://example.com/link2\" style=\"text-decoration: none; color: white; width: 48%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h3 style=\"margin: 0;\">Плашка 2</h3>\n            <p style=\"margin: 0;\">Текст ниже плашки 2</p>\n        </a>\n    </div>\n\n    <h2 style=\"margin-bottom: 10px\">Заголовок 2</h2>\n    <div style=\"display: flex; justify-content: space-between; flex-wrap: wrap; margin-bottom: 30px;\">\n        <a href=\"https://example.com/link3\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">1</h4>\n        </a>\n        <a href=\"https://example.com/link3\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">2</h4>\n        </a>\n        <a href=\"https://example.com/link3\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">3</h4>\n        </a>\n        <a href=\"https://example.com/link4\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">4</h4>\n        </a>\n        <a href=\"https://example.com/link5\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">5</h4>\n        </a>\n        <a href=\"https://example.com/link6\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">6</h4>\n        </a>\n        <a href=\"https://example.com/link6\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">7</h4>\n        </a>\n    </div>\n\n    <h2 style=\"margin-bottom: 10px;\">Заголовок 3</h2>\n    <div style=\"display: flex; justify-content: space-between; flex-wrap: wrap; margin-bottom: 30px;\">\n        <a href=\"https://example.com/link7\" style=\"text-decoration: none; color: white; width: 24%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">1</h4>\n            <p style=\"margin: 0;\">Текст для плашки</p>\n        </a>\n        <a href=\"https://example.com/link8\" style=\"text-decoration: none; color: white; width: 24%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">2</h4>\n            <p style=\"margin: 0;\">Текст для плашки</p>\n        </a>\n        <a href=\"https://example.com/link9\" style=\"text-decoration: none; color: white; width: 24%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">3</h4>\n            <p style=\"margin: 0;\">Текст для плашки </p>\n        </a>\n        <a href=\"https://example.com/link10\" style=\"text-decoration: none; color: white; width: 24%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">4</h4>\n            <p style=\"margin: 0;\">Текст для плашки</p>\n        </a>\n    </div>\n\n    <h2 style=\"margin-bottom: 10px;\">Заголовок 4</h2>\n    <div style=\"display: flex; justify-content: space-between; flex-wrap: wrap;\">\n        <a href=\"https://example.com/link11\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 11</h4>\n            <p style=\"margin: 0;\">Текст для плашки 11</p>\n        </a>\n        <a href=\"https://example.com/link12\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 12</h4>\n            <p style=\"margin: 0;\">Текст для плашки 12</p>\n        </a>\n        <a href=\"https://example.com/link13\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 13</h4>\n            <p style=\"margin: 0;\">Текст для плашки 13</p>\n        </a>\n        <a href=\"https://example.com/link14\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 14</h4>\n            <p style=\"margin: 0;\">Текст для плашки 14</p>\n        </a>\n        <a href=\"https://example.com/link14\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 14</h4>\n            <p style=\"margin: 0;\">Текст для плашки 14</p>\n        </a>\n        <a href=\"https://example.com/link14\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 14</h4>\n            <p style=\"margin: 0;\">Текст для плашки 14</p>\n        </a>\n        <a href=\"https://example.com/link14\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 14</h4>\n            <p style=\"margin: 0;\">Текст для плашки 14</p>\n        </a>\n    </div>\n</div>",
+        "mode": "html"
+      },
+      "pluginVersion": "12.4.0",
+      "title": "",
+      "type": "text"
+    }
+  ],
+  "preload": false,
+  "schemaVersion": 42,
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true
+  },
+  "timezone": "browser",
+  "title": "home",
+  "uid": "gkvxx4",
+  "version": 1,
+  "weekStart": ""
+}

@@ -1,0 +1,163 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 15,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "",
+        "mode": "markdown"
+      },
+      "pluginVersion": "12.4.0",
+      "title": "Sample Panel Title",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 9,
+        "x": 15,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "seriesCountSize": "sm",
+        "showSeriesCount": false,
+        "text": "Default value of text input option"
+      },
+      "pluginVersion": "1.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "db84e60d-b92a-4089-82cb-34842fb1754b"
+          },
+          "rawFrameContent": "[\n  {\n    \"columns\": [\n      {\n        \"text\": \"Time\",\n        \"type\": \"time\"\n      },\n      {\n        \"text\": \"Label\",\n        \"type\": \"string\"\n      },\n      {\n        \"text\": \"Value\",\n        \"type\": \"number\"\n      }\n    ],\n    \"rows\": [\n      [1609459200000, \"A\", 10],\n      [1609462800000, \"B\", 20],\n      [1609466400000, \"C\", 15],\n      [1609470000000, \"D\", 25],\n      [1609473600000, \"E\", 30]\n    ]\n  },\n{\n    \"columns\": [\n      {\n        \"text\": \"Time\",\n        \"type\": \"time\"\n      },\n      {\n        \"text\": \"Label\",\n        \"type\": \"string\"\n      },\n      {\n        \"text\": \"Value\",\n        \"type\": \"number\"\n      }\n    ],\n    \"rows\": [\n      [1609459200000, \"A\", 40],\n      [1609462800000, \"B\", 50],\n      [1609466400000, \"C\", 45],\n      [1609470000000, \"D\", 55],\n      [1609473600000, \"E\", 60]\n    ]\n  }\n]",
+          "refId": "A",
+          "scenarioId": "raw_frame"
+        }
+      ],
+      "title": "",
+      "type": "oxd-aichat-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 2
+      },
+      "id": 3,
+      "options": {
+        "seriesCountSize": "sm",
+        "showSeriesCount": false,
+        "text": "Default value of text input option"
+      },
+      "pluginVersion": "1.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "db84e60d-b92a-4089-82cb-34842fb1754b"
+          },
+          "rawFrameContent": "[\n  {\n    \"columns\": [\n      {\n        \"text\": \"Time\",\n        \"type\": \"time\"\n      },\n      {\n        \"text\": \"Label\",\n        \"type\": \"string\"\n      },\n      {\n        \"text\": \"Value\",\n        \"type\": \"number\"\n      }\n    ],\n    \"rows\": [\n      [1609459200000, \"A\", 10],\n      [1609462800000, \"B\", 20],\n      [1609466400000, \"C\", 15],\n      [1609470000000, \"D\", 25],\n      [1609473600000, \"E\", 30]\n    ]\n  },\n{\n    \"columns\": [\n      {\n        \"text\": \"Time\",\n        \"type\": \"time\"\n      },\n      {\n        \"text\": \"Label\",\n        \"type\": \"string\"\n      },\n      {\n        \"text\": \"Value\",\n        \"type\": \"number\"\n      }\n    ],\n    \"rows\": [\n      [1609459200000, \"A\", 40],\n      [1609462800000, \"B\", 50],\n      [1609466400000, \"C\", 45],\n      [1609470000000, \"D\", 55],\n      [1609473600000, \"E\", 60]\n    ]\n  }\n]",
+          "refId": "A",
+          "scenarioId": "raw_frame"
+        }
+      ],
+      "title": "",
+      "type": "oxd-aichat-panel"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 15,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "id": 4,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "<div style=\"max-width: 1300px; margin: 0 auto; padding: 20px;\">\n    <h2 style=\"margin-bottom: 10px;\">Заголовок 1</h2>\n    <div style=\"display: flex; justify-content: space-between; margin-bottom: 30px;\">\n        <a href=\"https://example.com/link1\" style=\"text-decoration: none; color: white; width: 48%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h3 style=\"margin: 0;\">Плашка 1</h3>\n            <p style=\"margin: 0;\">Текст ниже плашки 1</p>\n        </a>\n        <a href=\"https://example.com/link2\" style=\"text-decoration: none; color: white; width: 48%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h3 style=\"margin: 0;\">Плашка 2</h3>\n            <p style=\"margin: 0;\">Текст ниже плашки 2</p>\n        </a>\n    </div>\n\n    <h2 style=\"margin-bottom: 10px\">Заголовок 2</h2>\n    <div style=\"display: flex; justify-content: space-between; flex-wrap: wrap; margin-bottom: 30px;\">\n        <a href=\"https://example.com/link3\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">1</h4>\n        </a>\n        <a href=\"https://example.com/link3\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">2</h4>\n        </a>\n        <a href=\"https://example.com/link3\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">3</h4>\n        </a>\n        <a href=\"https://example.com/link4\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">4</h4>\n        </a>\n        <a href=\"https://example.com/link5\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">5</h4>\n        </a>\n        <a href=\"https://example.com/link6\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">6</h4>\n        </a>\n        <a href=\"https://example.com/link6\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">7</h4>\n        </a>\n    </div>\n\n    <h2 style=\"margin-bottom: 10px;\">Заголовок 3</h2>\n    <div style=\"display: flex; justify-content: space-between; flex-wrap: wrap; margin-bottom: 30px;\">\n        <a href=\"https://example.com/link7\" style=\"text-decoration: none; color: white; width: 24%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">1</h4>\n            <p style=\"margin: 0;\">Текст для плашки</p>\n        </a>\n        <a href=\"https://example.com/link8\" style=\"text-decoration: none; color: white; width: 24%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">2</h4>\n            <p style=\"margin: 0;\">Текст для плашки</p>\n        </a>\n        <a href=\"https://example.com/link9\" style=\"text-decoration: none; color: white; width: 24%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">3</h4>\n            <p style=\"margin: 0;\">Текст для плашки </p>\n        </a>\n        <a href=\"https://example.com/link10\" style=\"text-decoration: none; color: white; width: 24%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">4</h4>\n            <p style=\"margin: 0;\">Текст для плашки</p>\n        </a>\n    </div>\n\n    <h2 style=\"margin-bottom: 10px;\">Заголовок 4</h2>\n    <div style=\"display: flex; justify-content: space-between; flex-wrap: wrap;\">\n        <a href=\"https://example.com/link11\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 11</h4>\n            <p style=\"margin: 0;\">Текст для плашки 11</p>\n        </a>\n        <a href=\"https://example.com/link12\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 12</h4>\n            <p style=\"margin: 0;\">Текст для плашки 12</p>\n        </a>\n        <a href=\"https://example.com/link13\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 13</h4>\n            <p style=\"margin: 0;\">Текст для плашки 13</p>\n        </a>\n        <a href=\"https://example.com/link14\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 14</h4>\n            <p style=\"margin: 0;\">Текст для плашки 14</p>\n        </a>\n        <a href=\"https://example.com/link14\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 14</h4>\n            <p style=\"margin: 0;\">Текст для плашки 14</p>\n        </a>\n        <a href=\"https://example.com/link14\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 14</h4>\n            <p style=\"margin: 0;\">Текст для плашки 14</p>\n        </a>\n        <a href=\"https://example.com/link14\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 14</h4>\n            <p style=\"margin: 0;\">Текст для плашки 14</p>\n        </a>\n    </div>\n</div>",
+        "mode": "html"
+      },
+      "pluginVersion": "12.4.0",
+      "title": "",
+      "type": "text"
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 42,
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Provisioned AI Chat dashboard",
+  "uid": "a538aeff-5a8a-42a5-901c-938d896fdd6f",
+  "version": 1,
+  "weekStart": ""
+}
