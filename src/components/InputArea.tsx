@@ -1,14 +1,13 @@
 import React, { forwardRef } from 'react';
-import { Input, Button, Dropdown, Menu } from '@grafana/ui';
+import { Input, Button, Dropdown, Menu, useTheme2 } from '@grafana/ui';
 import { cx } from '@emotion/css';
-import { useTheme2 } from '@grafana/ui';
 import { getStyles } from './ChatPanel.styles';
 import { AgentConfig } from 'types';
 
 interface InputAreaProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onSend: () => void;
   isLoading: boolean;
   onClearChat: () => void;
@@ -50,7 +49,7 @@ export const InputArea = forwardRef<HTMLDivElement, InputAreaProps>((props, ref)
         className={styles.inputBox}
         value={props.value}
         onChange={props.onChange}
-        onKeyPress={props.onKeyPress}
+        onKeyDown={props.onKeyDown}
         placeholder={props.placeholderText}
         suffix={
           <Button
@@ -75,3 +74,5 @@ export const InputArea = forwardRef<HTMLDivElement, InputAreaProps>((props, ref)
     </div>
   );
 });
+
+InputArea.displayName = 'InputArea';

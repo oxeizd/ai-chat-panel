@@ -1,8 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { cx } from '@emotion/css';
-import { Button, Dropdown, Menu, Spinner } from '@grafana/ui';
-import { useTheme2 } from '@grafana/ui';
+import { Button, Dropdown, Menu, Spinner, useTheme2 } from '@grafana/ui';
 import { getStyles } from './ChatPanel.styles';
 import { Message, AgentConfig } from 'types';
 

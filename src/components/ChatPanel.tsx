@@ -4,7 +4,7 @@ import { PanelOptions, AgentConfig } from 'types';
 import { InlineChat } from './InlineChat';
 import { FloatingChatPanel } from './FloatingChatPanel';
 import { useChatMessages } from './hooks/useChatMessages';
-import { DEFAULT_AGENT, DEFAULT_PLACEHOLDER_TEXT } from './ChatPanel.config';
+import { DEFAULT_PLACEHOLDER_TEXT } from './ChatPanel.config';
 
 interface Props extends PanelProps<PanelOptions> {}
 
@@ -12,9 +12,17 @@ export const ChatPanel: React.FC<Props> = ({ options, data, fieldConfig, id }) =
   const inlineMode = options.inlineMode ?? false;
   const placeholderText = options.placeholderText?.trim() || DEFAULT_PLACEHOLDER_TEXT;
 
-  const agents: AgentConfig[] = options.agents?.length ? options.agents : [DEFAULT_AGENT];
+  const agents: AgentConfig[] = options.agents?.length
+    ? options.agents
+    : [{
+        name: 'Агент по умолчанию',
+        api: 'YOUR_AI_AGENT_API_ENDPOINT',
+        config: '',
+        default: true,
+      }];
 
-  const [selectedAgent, setSelectedAgent] = useState<AgentConfig>(agents[0]);
+  const defaultAgent = agents.find(a => a.default) || agents[0];
+  const [selectedAgent, setSelectedAgent] = useState<AgentConfig>(defaultAgent);
 
   const {
     messages,

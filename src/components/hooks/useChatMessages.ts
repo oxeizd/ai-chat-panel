@@ -8,7 +8,9 @@ export const useChatMessages = (currentAgent: AgentConfig | null) => {
   const [inputValue, setInputValue] = useState('');
 
   const sendMessage = async () => {
-    if (!inputValue.trim() || isLoading || !currentAgent) return;
+    if (!inputValue.trim() || isLoading || !currentAgent) {
+      return;
+    }
 
     const userMessage: Message = {
       text: inputValue,
@@ -20,15 +22,26 @@ export const useChatMessages = (currentAgent: AgentConfig | null) => {
     setIsLoading(true);
 
     try {
+      let requestBody: any = { message: userMessage.text };
+      if (currentAgent.config && currentAgent.config.trim()) {
+        try {
+          const config = JSON.parse(currentAgent.config);
+          requestBody = { ...requestBody, ...config };
+        } catch (e) {
+          console.warn('Invalid agent config JSON, ignoring');
+        }
+      }
+
       const response = await fetch(currentAgent.api, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMessage.text,
-          config: currentAgent.config ? JSON.parse(currentAgent.config) : undefined,
-        }),
+        body: JSON.stringify(requestBody),
       });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       const aiMessage: Message = {
         text: data.reply || 'Ответ не получен',

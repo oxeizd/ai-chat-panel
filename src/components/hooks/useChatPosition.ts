@@ -1,5 +1,4 @@
-// hooks/useChatPosition.ts
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChatStyle } from '../ChatPanel.types';
 import { CHAT_SETTINGS } from '../ChatPanel.config';
 
@@ -15,8 +14,8 @@ export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
     width: 0,
   });
 
-  const updateChatPosition = () => {
-    if (!inputContainerRef.current || !isChatOpen) return;
+  const updateChatPosition = useCallback(() => {
+    if (!inputContainerRef.current || !isChatOpen) {return;}
 
     const rect = inputContainerRef.current.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
@@ -47,6 +46,7 @@ export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
     let bottom: number | undefined;
     let maxHeight: number;
 
+    // Используем актуальный chatStyle из замыкания (он будет обновляться при изменении зависимости)
     const isCurrentlyDown = chatStyle.top !== undefined;
     const shouldSwitch = (isCurrentlyDown && !canFitMinBelow && canFitMinAbove) ||
                          (!isCurrentlyDown && !canFitMinAbove && canFitMinBelow);
@@ -97,10 +97,10 @@ export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
       maxHeight: Math.max(minHeight, maxHeight),
       width: rect.width,
     });
-  };
+  }, [isChatOpen, chatStyle]); // chatStyle добавлен в зависимости
 
   useEffect(() => {
-    if (!isChatOpen) return;
+    if (!isChatOpen) {return;}
     updateChatPosition();
 
     const handleResizeOrScroll = () => requestAnimationFrame(updateChatPosition);
@@ -125,7 +125,7 @@ export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
       resizeObserver?.disconnect();
       chatResizeObserver?.disconnect();
     };
-  }, [isChatOpen, messages]);
+  }, [isChatOpen, messages, updateChatPosition]);
 
   return {
     inputContainerRef,

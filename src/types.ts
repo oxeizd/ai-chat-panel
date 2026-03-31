@@ -20,6 +20,7 @@ export interface AgentConfig {
   api: string;
   /** JSON-конфигурация агента (дополнительные параметры) */
   config?: string;
+  default?: boolean;
 }
 
 export interface Message {

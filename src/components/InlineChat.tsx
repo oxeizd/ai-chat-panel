@@ -1,7 +1,6 @@
 import React, { useRef, useLayoutEffect } from 'react';
 import { cx } from '@emotion/css';
-import { Button, Spinner, Dropdown, Menu } from '@grafana/ui';
-import { useTheme2 } from '@grafana/ui';
+import { Button, Spinner, Dropdown, Menu, useTheme2 } from '@grafana/ui';
 import { getStyles } from './ChatPanel.styles';
 import { Message, AgentConfig } from 'types';
 

@@ -1,43 +1,13 @@
 import React, { useState } from 'react';
-import { Button, Input, TextArea, useStyles2 } from '@grafana/ui';
-import { css } from '@emotion/css';
-import { GrafanaTheme2 } from '@grafana/data';
-import { AgentConfig } from 'types';
+import { Button, Input, TextArea, Checkbox } from '@grafana/ui';
+import { AgentConfig } from '../types';
 
-interface Props {
+interface AgentsEditorProps {
   value?: AgentConfig[];
   onChange: (value: AgentConfig[]) => void;
 }
 
-const getStyles = (theme: GrafanaTheme2) => ({
-  container: css`
-    background: ${theme.colors.background.secondary};
-    padding: ${theme.spacing(2)};
-    border-radius: ${theme.shape.borderRadius(1)};
-    margin-top: ${theme.spacing(1)};
-  `,
-  row: css`
-    margin-bottom: ${theme.spacing(2)};
-    border-bottom: 1px solid ${theme.colors.border.weak};
-    padding-bottom: ${theme.spacing(2)};
-    &:last-child {
-      border-bottom: none;
-      margin-bottom: 0;
-      padding-bottom: 0;
-    }
-  `,
-  field: css`
-    margin-bottom: ${theme.spacing(1)};
-  `,
-  buttonRow: css`
-    display: flex;
-    gap: ${theme.spacing(1)};
-    margin-top: ${theme.spacing(1)};
-  `,
-});
-
-export const AgentsEditor: React.FC<Props> = ({ value = [], onChange }) => {
-  const styles = useStyles2(getStyles);
+export const AgentsEditor: React.FC<AgentsEditorProps> = ({ value = [], onChange }) => {
   const [agents, setAgents] = useState<AgentConfig[]>(value);
 
   const updateAgents = (newAgents: AgentConfig[]) => {
@@ -46,70 +16,95 @@ export const AgentsEditor: React.FC<Props> = ({ value = [], onChange }) => {
   };
 
   const addAgent = () => {
-    const newAgent: AgentConfig = { name: '', api: '', config: '' };
+    const newAgent: AgentConfig = {
+      name: 'Новый агент',
+      api: '',
+      config: '',
+      default: agents.length === 0,
+    };
     updateAgents([...agents, newAgent]);
   };
 
   const removeAgent = (index: number) => {
-    const newAgents = [...agents];
-    newAgents.splice(index, 1);
+    const newAgents = agents.filter((_, i) => i !== index);
+    if (agents[index].default && newAgents.length > 0) {
+      newAgents[0].default = true;
+    }
     updateAgents(newAgents);
   };
 
-  const updateAgent = (index: number, field: keyof AgentConfig, fieldValue: string) => {
+  const updateAgent = (index: number, field: keyof AgentConfig, fieldValue: any) => {
     const newAgents = [...agents];
     newAgents[index] = { ...newAgents[index], [field]: fieldValue };
+
+    if (field === 'default' && fieldValue === true) {
+      newAgents.forEach((agent, i) => {
+        if (i !== index) {
+          agent.default = false;
+        }
+      });
+    }
+
     updateAgents(newAgents);
   };
 
-  if (!agents.length) {
-    return (
-      <div>
-        <Button variant="secondary" onClick={addAgent} size="sm" icon="plus">
-          Add agent
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div className={styles.container}>
+    <div style={{ marginTop: '8px' }}>
       {agents.map((agent, idx) => (
-        <div key={idx} className={styles.row}>
-          <div className={styles.field}>
+        <div
+          key={idx}
+          style={{
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            padding: '12px',
+            marginBottom: '12px',
+            position: 'relative',
+          }}
+        >
+          <Button
+            variant="destructive"
+            size="sm"
+            icon="trash-alt"
+            onClick={() => removeAgent(idx)}
+            style={{ position: 'absolute', top: '8px', right: '8px' }}
+            aria-label="Удалить агента"
+          />
+          <div style={{ marginBottom: '8px' }}>
             <Input
+              label="Имя агента"
               value={agent.name}
               onChange={(e) => updateAgent(idx, 'name', e.currentTarget.value)}
-              placeholder="Agent name"
-              label="Name"
+              placeholder="Например: GPT-4"
             />
           </div>
-          <div className={styles.field}>
+          <div style={{ marginBottom: '8px' }}>
             <Input
+              label="API эндпоинт"
               value={agent.api}
               onChange={(e) => updateAgent(idx, 'api', e.currentTarget.value)}
-              placeholder="https://api.example.com/chat"
-              label="API endpoint"
+              placeholder="https://..."
             />
           </div>
-          <div className={styles.field}>
+          <div style={{ marginBottom: '8px' }}>
             <TextArea
-              value={agent.config}
+              label="Дополнительная конфигурация (JSON)"
+              value={agent.config || ''}
               onChange={(e) => updateAgent(idx, 'config', e.currentTarget.value)}
               placeholder='{"temperature": 0.7, "model": "gpt-4"}'
-              label="Config (JSON, optional)"
-              rows={2}
+              rows={3}
             />
           </div>
-          <div className={styles.buttonRow}>
-            <Button variant="destructive" size="sm" onClick={() => removeAgent(idx)} icon="trash-alt">
-              Remove
-            </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Checkbox
+              label="Агент по умолчанию"
+              value={agent.default}
+              onChange={(e) => updateAgent(idx, 'default', e.currentTarget.checked)}
+            />
           </div>
         </div>
       ))}
-      <Button variant="secondary" onClick={addAgent} size="sm" icon="plus">
-        Add agent
+      <Button icon="plus" onClick={addAgent} variant="secondary">
+        Добавить агента
       </Button>
     </div>
   );

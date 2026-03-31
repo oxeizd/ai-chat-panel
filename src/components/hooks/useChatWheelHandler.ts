@@ -7,11 +7,13 @@ export const useChatWheelHandler = (
   chatRef: React.RefObject<HTMLElement>
 ) => {
   useEffect(() => {
-    if (!isChatOpen) return;
+    if (!isChatOpen) {return;}
 
     const handleWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement;
-      if (!isElementInsideChat(target, chatRef)) return;
+      if (!isElementInsideChat(target, chatRef)) {
+        return;
+      }
 
       // Находим скроллируемый элемент внутри чата
       let scrollable = target;
@@ -21,7 +23,9 @@ export const useChatWheelHandler = (
         if (canScroll && scrollable.scrollHeight > scrollable.clientHeight) {
           const atTop = scrollable.scrollTop === 0;
           const atBottom = scrollable.scrollTop + scrollable.clientHeight >= scrollable.scrollHeight;
-          if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) return;
+          if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) {
+            return;
+          }
           break;
         }
         scrollable = scrollable.parentElement as HTMLElement;
@@ -31,7 +35,10 @@ export const useChatWheelHandler = (
         const { scrollTop, clientHeight, scrollHeight } = chatRef.current;
         const atTop = scrollTop === 0;
         const atBottom = scrollTop + clientHeight >= scrollHeight;
-        if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) return;
+        
+        if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) {
+          return;
+        }
       }
 
       e.preventDefault();

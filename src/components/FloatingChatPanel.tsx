@@ -1,4 +1,3 @@
-// components/FloatingChatPanel.tsx
 import React, { useLayoutEffect } from 'react';
 import { useTheme2 } from '@grafana/ui';
 import { cx } from '@emotion/css';
@@ -48,24 +47,24 @@ export const FloatingChatPanel: React.FC<FloatingChatPanelProps> = ({
   const { inputContainerRef, chatMessagesRef, floatingChatRef, chatStyle } = useChatPosition(isChatOpen, messages);
   useChatWheelHandler(isChatOpen, floatingChatRef);
 
+  // Обработчики событий для InputArea (input) – используем onKeyDown
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => setInputValue(e.currentTarget.value);
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => setInputValue(e.target.value);
-
-  const handleInputKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
-      if (!isChatOpen) openChat();
+      if (!isChatOpen) {openChat();}
     }
   };
 
+  // Обработчики для textarea в FloatingChat
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => setInputValue(e.target.value);
   const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
   };
-
   const handleTextareaWheel = (e: React.WheelEvent<HTMLTextAreaElement>) => {
     const target = e.currentTarget;
     const { scrollTop, scrollHeight, clientHeight } = target;
@@ -89,10 +88,10 @@ export const FloatingChatPanel: React.FC<FloatingChatPanelProps> = ({
           ref={inputContainerRef}
           value={inputValue}
           onChange={handleInputChange}
-          onKeyPress={handleInputKeyPress}
+          onKeyDown={handleInputKeyDown}  // ← исправлено: onKeyDown
           onSend={() => {
             sendMessage();
-            if (!isChatOpen) openChat();
+            if (!isChatOpen) {openChat();}
           }}
           isLoading={isLoading}
           onClearChat={clearChat}
