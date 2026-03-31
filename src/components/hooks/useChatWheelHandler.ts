@@ -2,12 +2,11 @@
 import { useEffect } from 'react';
 import { isElementInsideChat } from '../utils/domUtils';
 
-export const useChatWheelHandler = (
-  isChatOpen: boolean,
-  chatRef: React.RefObject<HTMLElement>
-) => {
+export const useChatWheelHandler = (isChatOpen: boolean, chatRef: React.RefObject<HTMLElement>) => {
   useEffect(() => {
-    if (!isChatOpen) {return;}
+    if (!isChatOpen) {
+      return;
+    }
 
     const handleWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement;
@@ -35,7 +34,7 @@ export const useChatWheelHandler = (
         const { scrollTop, clientHeight, scrollHeight } = chatRef.current;
         const atTop = scrollTop === 0;
         const atBottom = scrollTop + clientHeight >= scrollHeight;
-        
+
         if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) {
           return;
         }

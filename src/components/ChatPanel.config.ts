@@ -1,9 +1,9 @@
-import { AgentConfig } from "types";
+import { AgentConfig } from 'types';
 
 export const CHAT_SETTINGS = {
-  targetHeight: 650,    // желаемая высота
-  minHeight: 500,       // минимальная высота
-  viewportLimit: 0.95,  // максимальная доля от высоты экрана
+  targetHeight: 650, // желаемая высота
+  minHeight: 500, // минимальная высота
+  viewportLimit: 0.95, // максимальная доля от высоты экрана
   margin: 8,
   positionOffset: 65,
   inputWrapperHeight: 150, // примерная высота области ввода + шапка + кнопки

@@ -147,7 +147,8 @@ export const getStyles = (theme: GrafanaTheme2) => {
       &:hover {
         background: ${theme.colors.action.hover};
       }
-      i, svg {
+      i,
+      svg {
         font-size: 18px;
         font-weight: 600;
       }
@@ -161,7 +162,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
       overscroll-behavior: contain;
       border: 1px solid ${theme.colors.border.weak};
       border-radius: ${theme.shape.radius.default};
-      [class*="menu-item"] {
+      [class*='menu-item'] {
         padding: 1px 12px;
         text-align: left;
         font-size: 0.7rem;
@@ -182,7 +183,8 @@ export const getStyles = (theme: GrafanaTheme2) => {
       &:hover {
         background: ${theme.colors.action.hover};
       }
-      i, svg {
+      i,
+      svg {
         font-size: 18px;
         font-weight: 600;
       }

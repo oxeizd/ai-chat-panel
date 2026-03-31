@@ -1,7 +1,7 @@
 import { AgentConfig } from 'types';
 
 export const useAgentApi = (agents: AgentConfig[] | undefined, selectedAgent: string) => {
-  const currentAgent = agents?.find(agent => agent.name === selectedAgent) || agents?.[0];
+  const currentAgent = agents?.find((agent) => agent.name === selectedAgent) || agents?.[0];
 
   const sendMessage = async (message: string): Promise<string> => {
     if (!currentAgent) {
@@ -14,7 +14,7 @@ export const useAgentApi = (agents: AgentConfig[] | undefined, selectedAgent: st
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message, config: currentAgent.config ? JSON.parse(currentAgent.config) : {} }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

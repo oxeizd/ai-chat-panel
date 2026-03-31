@@ -14,25 +14,20 @@ export const ChatPanel: React.FC<Props> = ({ options, data, fieldConfig, id }) =
 
   const agents: AgentConfig[] = options.agents?.length
     ? options.agents
-    : [{
-        name: 'Агент по умолчанию',
-        api: 'YOUR_AI_AGENT_API_ENDPOINT',
-        config: '',
-        default: true,
-      }];
+    : [
+        {
+          name: 'Агент по умолчанию',
+          api: 'YOUR_AI_AGENT_API_ENDPOINT',
+          config: '',
+          default: true,
+        },
+      ];
 
-  const defaultAgent = agents.find(a => a.default) || agents[0];
+  const defaultAgent = agents.find((a) => a.default) || agents[0];
   const [selectedAgent, setSelectedAgent] = useState<AgentConfig>(defaultAgent);
 
-  const {
-    messages,
-    isLoading,
-    inputValue,
-    setInputValue,
-    sendMessage,
-    clearChat,
-    newChat,
-  } = useChatMessages(selectedAgent);
+  const { messages, isLoading, inputValue, setInputValue, sendMessage, clearChat, newChat } =
+    useChatMessages(selectedAgent);
 
   const exportChat = () => {
     const dataStr = JSON.stringify(messages, null, 2);

@@ -45,11 +45,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = (props) => {
       <Menu.Divider />
       <Menu.Item label="Выбрать агента" disabled />
       {props.agents.map((agent) => (
-        <Menu.Item
-          key={agent.name}
-          label={agent.name}
-          onClick={() => props.setSelectedAgent(agent)}
-        />
+        <Menu.Item key={agent.name} label={agent.name} onClick={() => props.setSelectedAgent(agent)} />
       ))}
       <Menu.Divider />
       <Menu.Item label="Настройки" onClick={props.onOpenSettings} />
@@ -59,11 +55,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = (props) => {
   const agentMenu = (
     <Menu className={styles.customMenu}>
       {props.agents.map((agent) => (
-        <Menu.Item
-          key={agent.name}
-          label={agent.name}
-          onClick={() => props.setSelectedAgent(agent)}
-        />
+        <Menu.Item key={agent.name} label={agent.name} onClick={() => props.setSelectedAgent(agent)} />
       ))}
     </Menu>
   );
@@ -90,21 +82,13 @@ export const FloatingChat: React.FC<FloatingChatProps> = (props) => {
           aria-label="Назад"
         />
         <Dropdown overlay={menu} placement="bottom-end">
-          <Button
-            variant="secondary"
-            size="sm"
-            icon="bars"
-            className={styles.iconButton}
-            aria-label="Меню"
-          />
+          <Button variant="secondary" size="sm" icon="bars" className={styles.iconButton} aria-label="Меню" />
         </Dropdown>
       </div>
 
       <div className={styles.chatMessagesContainer} ref={props.chatMessagesRef}>
         {props.messages.length === 0 && props.placeholderText && (
-          <div style={{ textAlign: 'center', opacity: 0.7, padding: '20px' }}>
-            {props.placeholderText}
-          </div>
+          <div style={{ textAlign: 'center', opacity: 0.7, padding: '20px' }}>{props.placeholderText}</div>
         )}
         {props.messages.map((msg, idx) => (
           <div
@@ -156,13 +140,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = (props) => {
 
       <div className={styles.bottomButtons}>
         <Dropdown overlay={agentMenu} placement="top-start">
-          <Button
-            variant="secondary"
-            size="sm"
-            className={styles.agentButton}
-            icon="user"
-            aria-label="Выбор агента"
-          >
+          <Button variant="secondary" size="sm" className={styles.agentButton} icon="user" aria-label="Выбор агента">
             {props.selectedAgent.name}
           </Button>
         </Dropdown>

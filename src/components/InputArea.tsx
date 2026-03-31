@@ -32,11 +32,7 @@ export const InputArea = forwardRef<HTMLDivElement, InputAreaProps>((props, ref)
       <Menu.Divider />
       <Menu.Item label="Выбрать агента" disabled />
       {props.agents.map((agent) => (
-        <Menu.Item
-          key={agent.name}
-          label={agent.name}
-          onClick={() => props.setSelectedAgent(agent)}
-        />
+        <Menu.Item key={agent.name} label={agent.name} onClick={() => props.setSelectedAgent(agent)} />
       ))}
       <Menu.Divider />
       <Menu.Item label="Настройки" onClick={props.onOpenSettings} />
@@ -63,13 +59,7 @@ export const InputArea = forwardRef<HTMLDivElement, InputAreaProps>((props, ref)
         }
       />
       <Dropdown overlay={menu} placement="bottom-end">
-        <Button
-          variant="secondary"
-          size="sm"
-          icon="bars"
-          className={styles.iconButton}
-          aria-label="Меню"
-        />
+        <Button variant="secondary" size="sm" icon="bars" className={styles.iconButton} aria-label="Меню" />
       </Dropdown>
     </div>
   );

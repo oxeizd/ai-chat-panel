@@ -1,13 +1,13 @@
 export interface PanelOptions {
   /** Режим отображения: плавающий чат поверх панели или внутри */
   inlineMode?: boolean;
-  
+
   /** Текст-заглушка, когда чат пуст */
   placeholderText?: string;
-  
+
   /** Загружать рекомендуемые вопросы при инициализации панели */
   fetchRecommendedQuestions?: boolean;
-  
+
   /** Список агентов с их конфигурацией */
   agents: AgentConfig[];
   agentsJson?: string;

@@ -56,11 +56,7 @@ export const InlineChat: React.FC<InlineChatProps> = (props) => {
       <Menu.Divider />
       <Menu.Item label="Выбрать агента" disabled />
       {props.agents.map((agent) => (
-        <Menu.Item
-          key={agent.name}
-          label={agent.name}
-          onClick={() => props.setSelectedAgent(agent)}
-        />
+        <Menu.Item key={agent.name} label={agent.name} onClick={() => props.setSelectedAgent(agent)} />
       ))}
       <Menu.Divider />
       <Menu.Item label="Настройки" onClick={props.openSettings} />
@@ -70,11 +66,7 @@ export const InlineChat: React.FC<InlineChatProps> = (props) => {
   const agentMenu = (
     <Menu className={styles.customMenu}>
       {props.agents.map((agent) => (
-        <Menu.Item
-          key={agent.name}
-          label={agent.name}
-          onClick={() => props.setSelectedAgent(agent)}
-        />
+        <Menu.Item key={agent.name} label={agent.name} onClick={() => props.setSelectedAgent(agent)} />
       ))}
     </Menu>
   );
@@ -83,25 +75,13 @@ export const InlineChat: React.FC<InlineChatProps> = (props) => {
     <div className={styles.normalWrapper} style={{ height: '100%' }}>
       <div className={styles.chatHeader}>
         <Dropdown overlay={menu} placement="bottom-end">
-          <Button
-            variant="secondary"
-            size="sm"
-            icon="bars"
-            className={styles.iconButton}
-            aria-label="Меню"
-          />
+          <Button variant="secondary" size="sm" icon="bars" className={styles.iconButton} aria-label="Меню" />
         </Dropdown>
       </div>
 
-      <div
-        ref={messagesContainerRef}
-        className={styles.chatMessagesContainer}
-        onWheel={handleWheel}
-      >
+      <div ref={messagesContainerRef} className={styles.chatMessagesContainer} onWheel={handleWheel}>
         {props.messages.length === 0 && props.placeholderText && (
-          <div style={{ textAlign: 'center', opacity: 0.7, padding: '20px' }}>
-            {props.placeholderText}
-          </div>
+          <div style={{ textAlign: 'center', opacity: 0.7, padding: '20px' }}>{props.placeholderText}</div>
         )}
         {props.messages.map((msg, idx) => (
           <div
@@ -153,13 +133,7 @@ export const InlineChat: React.FC<InlineChatProps> = (props) => {
 
       <div className={styles.bottomButtons}>
         <Dropdown overlay={agentMenu} placement="top-start">
-          <Button
-            variant="secondary"
-            size="sm"
-            className={styles.agentButton}
-            icon="user"
-            aria-label="Выбор агента"
-          >
+          <Button variant="secondary" size="sm" className={styles.agentButton} icon="user" aria-label="Выбор агента">
             {props.selectedAgent.name}
           </Button>
         </Dropdown>

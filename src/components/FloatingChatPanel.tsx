@@ -53,7 +53,9 @@ export const FloatingChatPanel: React.FC<FloatingChatPanelProps> = ({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
-      if (!isChatOpen) {openChat();}
+      if (!isChatOpen) {
+        openChat();
+      }
     }
   };
 
@@ -88,10 +90,12 @@ export const FloatingChatPanel: React.FC<FloatingChatPanelProps> = ({
           ref={inputContainerRef}
           value={inputValue}
           onChange={handleInputChange}
-          onKeyDown={handleInputKeyDown}  // ← исправлено: onKeyDown
+          onKeyDown={handleInputKeyDown} // ← исправлено: onKeyDown
           onSend={() => {
             sendMessage();
-            if (!isChatOpen) {openChat();}
+            if (!isChatOpen) {
+              openChat();
+            }
           }}
           isLoading={isLoading}
           onClearChat={clearChat}

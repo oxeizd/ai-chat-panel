@@ -17,7 +17,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null) => {
       sender: 'user',
       timestamp: Date.now(),
     };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
 
@@ -41,17 +41,17 @@ export const useChatMessages = (currentAgent: AgentConfig | null) => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       const aiMessage: Message = {
         text: data.reply || 'Ответ не получен',
         sender: 'ai',
         timestamp: Date.now(),
       };
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages((prev) => [...prev, aiMessage]);
     } catch (error) {
       console.error('Ошибка при отправке сообщения:', error);
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         { text: '❌ Не удалось получить ответ. Проверьте соединение.', sender: 'ai', timestamp: Date.now() },
       ]);
