@@ -1,18 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { PanelProps } from '@grafana/data';
 import { PanelOptions, AgentConfig } from 'types';
 import { InlineChat } from './InlineChat';
 import { FloatingChatPanel } from './FloatingChatPanel';
 import { useChatMessages } from './hooks/useChatMessages';
+import { useGrafanaUser } from './hooks/useGrafanaUser';
 import { DEFAULT_PLACEHOLDER_TEXT } from './ChatPanel.config';
 
 interface Props extends PanelProps<PanelOptions> {}
 
-export const ChatPanel: React.FC<Props> = ({ options, data, fieldConfig, id }) => {
+export const ChatPanel: React.FC<Props> = ({ options }) => {
   const inlineMode = options.inlineMode ?? false;
   const placeholderText = options.placeholderText?.trim() || DEFAULT_PLACEHOLDER_TEXT;
 
-  const agents: AgentConfig[] = options.agents?.length
+  const { user } = useGrafanaUser();
+
+  const agents = options.agents?.length
     ? options.agents
     : [
         {
@@ -26,10 +29,12 @@ export const ChatPanel: React.FC<Props> = ({ options, data, fieldConfig, id }) =
   const defaultAgent = agents.find((a) => a.default) || agents[0];
   const [selectedAgent, setSelectedAgent] = useState<AgentConfig>(defaultAgent);
 
-  const { messages, isLoading, inputValue, setInputValue, sendMessage, clearChat, newChat } =
-    useChatMessages(selectedAgent);
+  const { messages, isLoading, inputValue, setInputValue, sendMessage, clearChat, newChat } = useChatMessages(
+    selectedAgent,
+    user
+  );
 
-  const exportChat = () => {
+  const exportChat = useCallback(() => {
     const dataStr = JSON.stringify(messages, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -38,9 +43,11 @@ export const ChatPanel: React.FC<Props> = ({ options, data, fieldConfig, id }) =
     a.download = 'chat_export.json';
     a.click();
     URL.revokeObjectURL(url);
-  };
+  }, [messages]);
 
-  const openSettings = () => console.log('Открыть настройки чата');
+  const openSettings = useCallback(() => {
+    console.log('Открыть настройки чата');
+  }, []);
 
   const commonProps = {
     messages,
