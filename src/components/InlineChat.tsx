@@ -1,7 +1,7 @@
-import React, { useRef, useLayoutEffect } from 'react';
+import React, { useRef, useLayoutEffect, useState } from 'react';
 import { cx } from '@emotion/css';
 import { Button, Spinner, Dropdown, Menu, useTheme2 } from '@grafana/ui';
-import { getStyles } from './ChatPanel.styles';
+import { useStyles } from './styles';
 import { Message, AgentConfig } from 'types';
 
 interface InlineChatProps {
@@ -18,13 +18,20 @@ interface InlineChatProps {
   openSettings: () => void;
   placeholderText: string;
   agents: AgentConfig[];
+  maxWidth?: number;
+  centerInput?: boolean;
+  welcomeMessage?: string;
+  showWelcomeMessage?: boolean;
+  suggestions?: string[];
+  suggestionsPlacement?: 'always' | 'onFocus';
 }
 
 export const InlineChat: React.FC<InlineChatProps> = (props) => {
   const theme = useTheme2();
-  const styles = getStyles(theme);
+  const styles = useStyles(theme);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [inputFocused, setInputFocused] = useState(false);
 
   useLayoutEffect(() => {
     if (messagesContainerRef.current) {
@@ -46,6 +53,11 @@ export const InlineChat: React.FC<InlineChatProps> = (props) => {
     if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)) {
       e.preventDefault();
     }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    props.setInputValue(suggestion);
+    props.sendMessage();
   };
 
   const menu = (
@@ -71,21 +83,41 @@ export const InlineChat: React.FC<InlineChatProps> = (props) => {
     </Menu>
   );
 
+  const showSuggestions = props.suggestions && props.suggestions.length > 0 && (
+    (props.suggestionsPlacement === 'always') ||
+    (props.suggestionsPlacement === 'onFocus' && inputFocused)
+  );
+
+  const wrapperStyle = cx(
+    styles.normalWrapper,
+    props.maxWidth && props.maxWidth > 0 ? styles.withMaxWidth(props.maxWidth) : undefined,
+    props.centerInput && styles.verticalCentered
+  );
+
+  const inputWrapperStyle = cx(
+    styles.chatInputWrapper,
+    props.centerInput && styles.centeredInputWrapper
+  );
+
   return (
-    <div className={styles.normalWrapper} style={{ height: '100%' }}>
+    <div className={wrapperStyle} style={{ height: '100%' }}>
       <div className={styles.chatHeader}>
         <Dropdown overlay={menu} placement="bottom-end">
           <Button variant="secondary" size="sm" icon="bars" className={styles.iconButton} aria-label="Меню" />
         </Dropdown>
       </div>
 
+      {props.showWelcomeMessage && props.welcomeMessage && (
+        <div className={styles.welcomeMessage}>{props.welcomeMessage}</div>
+      )}
+
       <div ref={messagesContainerRef} className={styles.chatMessagesContainer} onWheel={handleWheel}>
-        {props.messages.length === 0 && props.placeholderText && (
+        {props.messages.length === 0 && props.placeholderText && !props.welcomeMessage && (
           <div style={{ textAlign: 'center', opacity: 0.7, padding: '20px' }}>{props.placeholderText}</div>
         )}
-        {props.messages.map((msg, idx) => (
+        {props.messages.map((msg) => (
           <div
-            key={idx}
+            key={msg.id}
             className={cx(
               styles.messageWrapper,
               msg.sender === 'user' ? styles.userMessageWrapper : styles.aiMessageWrapper
@@ -110,13 +142,15 @@ export const InlineChat: React.FC<InlineChatProps> = (props) => {
         )}
       </div>
 
-      <div className={styles.chatInputWrapper}>
+      <div className={inputWrapperStyle}>
         <textarea
           ref={textareaRef}
           className={styles.chatTextarea}
           value={props.inputValue}
           onChange={(e) => props.setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setInputFocused(false)}
           placeholder={props.placeholderText}
           rows={3}
         />
@@ -130,6 +164,20 @@ export const InlineChat: React.FC<InlineChatProps> = (props) => {
           aria-label="Отправить сообщение"
         />
       </div>
+
+      {showSuggestions && (
+        <div className={styles.suggestionsContainer}>
+          {props.suggestions!.map((suggestion, idx) => (
+            <div
+              key={idx}
+              className={styles.suggestionItem}
+              onClick={() => handleSuggestionClick(suggestion)}
+            >
+              {suggestion}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className={styles.bottomButtons}>
         <Dropdown overlay={agentMenu} placement="top-start">

@@ -1,6 +1,6 @@
-// ChatPanel.styles.ts
 import { css } from '@emotion/css';
 import { GrafanaTheme2 } from '@grafana/data';
+import { useMemo } from 'react';
 
 const toRgba = (color: string, alpha: number) => {
   if (color.startsWith('#')) {
@@ -22,11 +22,67 @@ export const getStyles = (theme: GrafanaTheme2) => {
       width: 100%;
       height: 100%;
     `,
+    withMaxWidth: (maxWidth: number) => css`
+      max-width: ${maxWidth}px;
+      margin: 0 auto;
+    `,
+    verticalCentered: css`
+      justify-content: center;
+    `,
+    centeredInputWrapper: css`
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    `,
+    welcomeMessage: css`
+      padding: ${theme.spacing(2)};
+      text-align: center;
+      font-size: 1rem;
+      color: ${theme.colors.text.secondary};
+      border-bottom: 1px solid ${theme.colors.border.weak};
+      margin-bottom: ${theme.spacing(1)};
+    `,
+    suggestionsContainer: css`
+      display: flex;
+      flex-wrap: wrap;
+      gap: ${theme.spacing(1)};
+      padding: ${theme.spacing(1)} ${theme.spacing(2)};
+      margin-top: ${theme.spacing(1)};
+      justify-content: center;
+    `,
+    suggestionItem: css`
+      background: ${theme.colors.background.secondary};
+      border: 1px solid ${theme.colors.border.weak};
+      border-radius: ${theme.shape.radius.default};
+      padding: ${theme.spacing(0.5)} ${theme.spacing(1)};
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      &:hover {
+        background: ${theme.colors.action.hover};
+        border-color: ${theme.colors.primary.main};
+      }
+    `,
+    suggestionsPopup: css`
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 100%;
+      margin-top: 4px;
+      background: ${theme.colors.background.primary};
+      border: 1px solid ${theme.colors.border.weak};
+      border-radius: ${theme.shape.radius.default};
+      box-shadow: ${theme.shadows.z2};
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+    `,
     inputContainer: css`
       display: flex;
       align-items: center;
       gap: ${theme.spacing(0.5)};
       padding: ${theme.spacing(0.75)};
+      flex-direction: column;
     `,
     inputBox: css`
       flex: 1;
@@ -132,7 +188,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
     `,
     sendButton: css`
       position: absolute;
-      right: ${theme.spacing(1)};
+      right: ${theme.spacing(2)};
       bottom: ${theme.spacing(2)};
       width: 32px;
       height: 32px;
@@ -207,4 +263,8 @@ export const getStyles = (theme: GrafanaTheme2) => {
       border: 1px solid ${theme.colors.border.weak};
     `,
   };
+};
+
+export const useStyles = (theme: GrafanaTheme2) => {
+  return useMemo(() => getStyles(theme), [theme]);
 };

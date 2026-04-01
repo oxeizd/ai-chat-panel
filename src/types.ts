@@ -11,25 +11,54 @@ export interface PanelOptions {
   /** Список агентов с их конфигурацией */
   agents: AgentConfig[];
   agentsJson?: string;
+  maxWidth?: number;          // максимальная ширина чата в пикселях
+  centerInput?: boolean;      // центрировать поле ввода по горизонтали
+  welcomeMessage?: string;    // текст приветствия
+  showWelcomeMessage?: boolean; // показывать приветствие
+  suggestions?: string;     // массив рекомендаций
+  suggestionsPlacement?: 'always' | 'onFocus'; // как показывать рекомендации
+}
+
+export interface PollingConfig {
+  enabled: boolean;
+  intervalMs?: number;
+  maxAttempts?: number;
+  statusField?: string;
+  successValue?: string;
+  resultField?: string;
+}
+
+export interface EndpointConfig {
+  operation: string;
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  path: string;
+  body?: string;
+  saveToContext?: string[];
+  polling?: PollingConfig;
+  headers?: Record<string, string>;
 }
 
 export interface AgentConfig {
-  /** Отображаемое имя агента */
   name: string;
-  /** URL эндпоинта API для этого агента */
   api: string;
-  /** JSON-конфигурация агента (дополнительные параметры) */
+  default: boolean;
   config?: string;
-  default?: boolean;
+  endpoints?: EndpointConfig[];
+  workflow?: string[];
+  startupOperation?: string;
 }
 
 export interface Message {
+  id: string; 
   text: string;
   sender: 'user' | 'ai';
   timestamp: number;
 }
 
-export interface RecommendedQuestion {
-  id: number;
-  json?: string;
+export interface ChatStyle {
+  left: number;
+  top?: number;
+  bottom?: number;
+  maxHeight: number;
+  width: number;
 }

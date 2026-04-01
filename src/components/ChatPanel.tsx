@@ -5,7 +5,7 @@ import { InlineChat } from './InlineChat';
 import { FloatingChatPanel } from './FloatingChatPanel';
 import { useChatMessages } from './hooks/useChatMessages';
 import { useGrafanaUser } from './hooks/useGrafanaUser';
-import { DEFAULT_PLACEHOLDER_TEXT } from './ChatPanel.config';
+import { DEFAULT_PLACEHOLDER_TEXT } from './config';
 
 interface Props extends PanelProps<PanelOptions> {}
 
@@ -49,6 +49,11 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
     console.log('Открыть настройки чата');
   }, []);
 
+  // Преобразуем строку с запятыми в массив
+  const suggestionsArray = options.suggestions
+    ? options.suggestions.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+
   const commonProps = {
     messages,
     isLoading,
@@ -63,6 +68,12 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
     openSettings,
     placeholderText,
     agents,
+    maxWidth: options.maxWidth,
+    centerInput: options.centerInput,
+    welcomeMessage: options.welcomeMessage,
+    showWelcomeMessage: options.showWelcomeMessage,
+    suggestions: suggestionsArray,
+    suggestionsPlacement: options.suggestionsPlacement || 'always',
   };
 
   if (inlineMode) {

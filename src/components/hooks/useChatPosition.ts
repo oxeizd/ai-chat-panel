@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ChatStyle } from '../ChatPanel.types';
-import { CHAT_SETTINGS } from '../ChatPanel.config';
+import { ChatStyle } from 'types';
+import { CHAT_SETTINGS } from '../config';
 
 export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
   const inputContainerRef = useRef<HTMLDivElement>(null);

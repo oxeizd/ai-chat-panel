@@ -1,4 +1,3 @@
-// hooks/useChatOpen.ts
 import { useState, useEffect } from 'react';
 
 export const useChatOpen = () => {

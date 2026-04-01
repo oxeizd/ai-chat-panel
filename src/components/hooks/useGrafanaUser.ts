@@ -24,3 +24,4 @@ export const useGrafanaUser = () => {
 
   return { user, loading };
 };
+// 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 api key

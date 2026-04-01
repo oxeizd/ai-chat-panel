@@ -14,6 +14,7 @@ export const DEFAULT_PLACEHOLDER_TEXT = 'Введите сообщение...';
 export const DEFAULT_AGENT: AgentConfig = {
   name: 'Агент по умолчанию',
   api: 'YOUR_AI_AGENT_API_ENDPOINT',
+  default: true
 };
 
 export const MESSAGES = {

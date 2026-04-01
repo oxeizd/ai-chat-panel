@@ -26,10 +26,32 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 19,
+        "h": 4,
         "w": 24,
         "x": 0,
         "y": 0
+      },
+      "id": 2,
+      "options": {
+        "agents": [],
+        "inlineMode": false,
+        "placeholderText": ""
+      },
+      "pluginVersion": "1.0.0",
+      "title": "",
+      "transparent": true,
+      "type": "oxd-aichat-panel"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 4
       },
       "id": 1,
       "options": {
@@ -43,6 +65,7 @@
       },
       "pluginVersion": "12.4.0",
       "title": "",
+      "transparent": true,
       "type": "text"
     }
   ],
@@ -62,6 +85,6 @@
   "timezone": "browser",
   "title": "home",
   "uid": "gkvxx4",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
