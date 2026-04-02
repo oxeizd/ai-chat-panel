@@ -23,4 +23,5 @@ export const MESSAGES = {
   sendPlaceholderMultiline: 'Введите сообщение... (Shift+Enter для отправки)',
   errorResponse: '❌ Не удалось получить ответ. Проверьте соединение.',
   defaultPlaceholder: 'Чат пуст. Начните диалог!',
+  noAgentSelected: '❌ Агент не выбран. Необходимо настроить агент.',
 };

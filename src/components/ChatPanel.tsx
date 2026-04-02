@@ -6,7 +6,7 @@ import { InlineChat } from './ui/InlineChat';
 import { FloatingChatPanel } from './ui/FloatingChatPanel';
 import { useChatMessages } from './ui/hooks/useChatMessages';
 import { useGrafanaUser } from './ui/hooks/useGrafanaUser';
-import { DEFAULT_PLACEHOLDER_TEXT, DEFAULT_AGENT } from './ui/config';
+import { DEFAULT_PLACEHOLDER_TEXT } from './ui/config';
 import { ChatProvider, ChatConfig } from './ui/shared/ChatContext';
 
 interface Props extends PanelProps<PanelOptions> {}
@@ -17,15 +17,13 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
 
   const { user } = useGrafanaUser();
 
-  const agents: AgentConfig[] = options.agents?.length ? options.agents : [DEFAULT_AGENT];
+  const agents: AgentConfig[] = options.agents?.length ? options.agents : [];
 
-  const defaultAgent = agents.find((a) => a.default) || agents[0];
-  const [selectedAgent, setSelectedAgent] = useState<AgentConfig>(defaultAgent);
+  const defaultAgent = agents.find((a) => a.default) || null;
+  const [selectedAgent, setSelectedAgent] = useState<AgentConfig | null>(defaultAgent);
 
-  const { messages, isLoading, inputValue, setInputValue, sendMessage, clearChat, newChat } = useChatMessages(
-    selectedAgent,
-    user
-  );
+  const { messages, isLoading, inputValue, setInputValue, sendMessage, clearChat, newChat, retryMessage } =
+    useChatMessages(selectedAgent, user);
 
   const exportChat = useCallback(() => {
     const dataStr = JSON.stringify(messages, null, 2);
@@ -38,7 +36,9 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
     URL.revokeObjectURL(url);
   }, [messages]);
 
-  const openSettings = useCallback(() => {}, []);
+  const openSettings = useCallback(() => {
+    // TODO: implement settings
+  }, []);
 
   const suggestionsArray = options.suggestions
     ? options.suggestions
@@ -68,6 +68,7 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
     suggestions: suggestionsArray,
     suggestionsPlacement: options.suggestionsPlacement,
     showSuggestions: options.showSuggestions,
+    retryMessage,
   };
 
   return <ChatProvider value={chatConfig}>{inlineMode ? <InlineChat /> : <FloatingChatPanel />}</ChatProvider>;

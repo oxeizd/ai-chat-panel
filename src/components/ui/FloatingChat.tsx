@@ -1,3 +1,4 @@
+// components/FloatingChat.tsx
 import React, { forwardRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useTheme2 } from '@grafana/ui';
@@ -13,12 +14,12 @@ interface FloatingChatProps {
   onClose: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
-  maxWidth?: number;
   messagesContainerRef?: React.RefObject<HTMLDivElement>;
+  maxWidth?: number;
 }
 
 export const FloatingChat = forwardRef<HTMLDivElement, FloatingChatProps>(
-  ({ chatStyle, onClose, isFullscreen, onToggleFullscreen, maxWidth, messagesContainerRef }, ref) => {
+  ({ chatStyle, onClose, isFullscreen, onToggleFullscreen, messagesContainerRef, maxWidth: propMaxWidth }, ref) => {
     const props = useChat();
     const theme = useTheme2();
     const styles = useStyles(theme);
@@ -34,7 +35,7 @@ export const FloatingChat = forwardRef<HTMLDivElement, FloatingChatProps>(
           maxHeight: '100vh',
           padding: '16px',
           borderRadius: 0,
-          zIndex: 1000,
+          zIndex: 9999,
         }
       : {
           left: chatStyle.left,
@@ -45,32 +46,21 @@ export const FloatingChat = forwardRef<HTMLDivElement, FloatingChatProps>(
           padding: '16px',
         };
 
-    if (maxWidth && maxWidth > 0 && !isFullscreen) {
-      floatingStyle.maxWidth = maxWidth;
+    const effectiveMaxWidth = propMaxWidth ?? props.maxWidth;
+    if (effectiveMaxWidth && effectiveMaxWidth > 0 && !isFullscreen) {
+      floatingStyle.maxWidth = effectiveMaxWidth;
     }
 
     return ReactDOM.createPortal(
       <div ref={ref} className={styles.floating.chat} style={floatingStyle}>
         <ChatHeader
           onBack={isFullscreen ? undefined : onClose}
-          agents={props.agents}
-          onClearChat={props.clearChat}
-          onExportChat={props.exportChat}
-          onOpenSettings={props.openSettings}
-          onSelectAgent={props.setSelectedAgent}
-          menuClassName={styles.menu.customMenu}
-          iconButtonClassName={styles.header.iconButton}
-          welcomeMessage={props.showWelcomeMessage ? props.welcomeMessage : undefined}
           isFullscreen={isFullscreen}
           onFullscreen={onToggleFullscreen}
+          welcomeMessage={props.showWelcomeMessage ? props.welcomeMessage : undefined}
         />
         <div ref={messagesContainerRef} className={styles.messages.container}>
-          <MessageList
-            messages={props.messages}
-            isLoading={props.isLoading}
-            placeholderText={props.placeholderText}
-            styles={getMessageListStyles(styles)}
-          />
+          <MessageList styles={getMessageListStyles(styles)} />
         </div>
         <ChatTextarea />
         <BottomButtons />

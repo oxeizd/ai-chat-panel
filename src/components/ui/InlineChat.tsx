@@ -20,8 +20,7 @@ export const InlineChat: React.FC = () => {
   useAutoScroll(messagesContainerRef, [props.messages]);
 
   const handleSuggestionClick = (suggestion: string) => {
-    props.setInputValue(suggestion);
-    props.sendMessage();
+    props.sendMessage(suggestion);
   };
 
   const showSuggestions =
@@ -41,26 +40,12 @@ export const InlineChat: React.FC = () => {
     <>
       <div className={wrapperStyle} style={{ height: '100%' }}>
         <ChatHeader
-          agents={props.agents}
-          onClearChat={props.clearChat}
-          onExportChat={props.exportChat}
-          onOpenSettings={props.openSettings}
-          onSelectAgent={props.setSelectedAgent}
-          menuClassName={styles.menu.customMenu}
-          iconButtonClassName={styles.header.iconButton}
-          welcomeMessage={props.showWelcomeMessage ? props.welcomeMessage : undefined}
           onFullscreen={() => setIsFullscreenOpen(true)}
           isFullscreen={false}
+          welcomeMessage={props.showWelcomeMessage ? props.welcomeMessage : undefined}
         />
-
         <div ref={messagesContainerRef} className={styles.messages.container}>
-          <MessageList
-            messages={props.messages}
-            isLoading={props.isLoading}
-            placeholderText={props.placeholderText}
-            showPlaceholder={!props.welcomeMessage}
-            styles={getMessageListStyles(styles)}
-          />
+          <MessageList styles={getMessageListStyles(styles)} showPlaceholder={!props.welcomeMessage} />
         </div>
 
         {showSuggestions && (
@@ -76,12 +61,7 @@ export const InlineChat: React.FC = () => {
         <ChatTextarea />
         <BottomButtons />
       </div>
-
-      <FullscreenChatPortal
-        isOpen={isFullscreenOpen}
-        onClose={() => setIsFullscreenOpen(false)}
-        messagesContainerRef={messagesContainerRef} // добавить
-      />
+      <FullscreenChatPortal isOpen={isFullscreenOpen} onClose={() => setIsFullscreenOpen(false)} />
     </>
   );
 };

@@ -32,6 +32,7 @@ dist/
 artifacts/
 work/
 ci/
+provisioning/
 
 # e2e test directories
 /test-results/

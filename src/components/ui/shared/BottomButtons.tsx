@@ -16,7 +16,14 @@ export const BottomButtons: React.FC = () => {
   return (
     <div style={{ display: 'flex', gap: '8px' }}>
       <Dropdown
-        overlay={<AgentMenu agents={agents} onSelectAgent={setSelectedAgent} className={styles.menu.customMenu} />}
+        overlay={
+          <AgentMenu
+            agents={agents}
+            selectedAgent={selectedAgent}
+            onSelectAgent={setSelectedAgent}
+            className={styles.menu.customMenu}
+          />
+        }
         placement="top-start"
       >
         <Button
@@ -26,7 +33,7 @@ export const BottomButtons: React.FC = () => {
           icon="user"
           onClick={blurButton}
         >
-          {selectedAgent.name}
+          {selectedAgent ? selectedAgent.name : 'Агент не выбран'}
         </Button>
       </Dropdown>
       <Button

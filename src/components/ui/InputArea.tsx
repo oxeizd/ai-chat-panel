@@ -3,50 +3,48 @@ import ReactDOM from 'react-dom';
 import { Input, Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { cx } from '@emotion/css';
 import { useStyles } from './styles';
-import { AgentConfig } from 'types';
 import { ChatMenu } from './shared/ChatMenu';
 import { useSuggestions } from './hooks/useSuggestions';
+import { useChat } from './shared/ChatContext';
 
 interface InputAreaProps {
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  onSend: () => void;
-  isLoading: boolean;
-  onClearChat: () => void;
-  onExportChat: () => void;
-  onOpenSettings: () => void;
-  selectedAgent: AgentConfig;
-  setSelectedAgent: (agent: AgentConfig) => void;
   className?: string;
-  placeholderText: string;
-  agents: AgentConfig[];
-  onFocus?: () => void;
-  onBlur?: () => void;
-  centerInput?: boolean;
-  suggestions?: string[];
-  suggestionsPlacement?: 'always' | 'onFocus';
-  inputFocused?: boolean;
-  welcomeMessage?: string;
-  showWelcomeMessage?: boolean;
-  onSuggestionClick: (suggestion: string) => void;
-  hideSuggestions?: boolean;
-  showSuggestions?: boolean;
+  onSend?: () => void; // для обычной отправки (когда не continueMode)
+  onContinue?: () => void;
+  continueMode?: boolean;
+  onSendText?: (text: string) => void; // для отправки конкретного текста (подсказки)
 }
-
-const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {
-  e.currentTarget.blur();
-};
 
 export const InputArea = memo(
   forwardRef<HTMLDivElement, InputAreaProps>((props, ref) => {
     const theme = useTheme2();
     const styles = useStyles(theme);
+    const chat = useChat();
+    const {
+      inputValue,
+      setInputValue,
+      sendMessage,
+      isLoading,
+      clearChat,
+      exportChat,
+      openSettings,
+      newChat,
+      selectedAgent,
+      setSelectedAgent,
+      agents,
+      placeholderText,
+      centerInput,
+      suggestions,
+      suggestionsPlacement,
+      showSuggestions,
+      welcomeMessage,
+      showWelcomeMessage,
+    } = chat;
 
     const { showPopup, popupRef, inputRef, onFocus, onBlur } = useSuggestions({
-      suggestions: props.suggestions || [],
-      placement: props.suggestionsPlacement || 'always',
-      hideWhen: props.hideSuggestions || !props.showSuggestions,
+      suggestions: suggestions || [],
+      placement: suggestionsPlacement || 'always',
+      hideWhen: !showSuggestions,
     });
 
     const [popupPosition, setPopupPosition] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -74,35 +72,87 @@ export const InputArea = memo(
     }, [showPopup, updatePopupPosition]);
 
     const handleSuggestionClick = (suggestion: string) => {
-      props.onSuggestionClick(suggestion);
+      if (props.onSendText) {
+        props.onSendText(suggestion);
+      } else {
+        setInputValue(suggestion);
+        if (props.onSend) {
+          props.onSend();
+        } else {
+          sendMessage();
+        }
+      }
       inputRef.current?.blur();
     };
 
     const menu = (
       <ChatMenu
-        agents={props.agents}
-        onClearChat={props.onClearChat}
-        onExportChat={props.onExportChat}
-        onOpenSettings={props.onOpenSettings}
-        onSelectAgent={props.setSelectedAgent}
+        agents={agents}
+        onClearChat={clearChat}
+        onExportChat={exportChat}
+        onOpenSettings={openSettings}
+        onSelectAgent={setSelectedAgent}
+        selectedAgent={selectedAgent}
+        onNewChat={newChat}
         className={styles.menu.customMenu}
       />
     );
 
     const showSuggestionsAlways =
-      !props.hideSuggestions &&
-      props.showSuggestions &&
-      props.suggestionsPlacement === 'always' &&
-      props.suggestions &&
-      props.suggestions.length > 0;
+      showSuggestions && suggestionsPlacement === 'always' && suggestions && suggestions.length > 0;
 
-    const containerStyle = cx(
-      styles.input.container,
-      props.className,
-      props.centerInput && styles.base.centeredInputWrapper
+    const containerStyle = cx(styles.input.container, props.className, centerInput && styles.base.centeredInputWrapper);
+
+    const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.currentTarget.blur();
+    };
+
+    const handleAction = () => {
+      if (props.continueMode) {
+        props.onContinue?.();
+      } else {
+        if (props.onSend) {
+          props.onSend();
+        } else {
+          sendMessage();
+        }
+      }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleAction();
+      }
+    };
+
+    const actionButton = props.continueMode ? (
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={(e) => {
+          blurButton(e);
+          handleAction();
+        }}
+        aria-label="Продолжить диалог"
+      >
+        Продолжить...
+      </Button>
+    ) : (
+      <Button
+        variant="secondary"
+        size="sm"
+        icon="arrow-right"
+        onClick={(e) => {
+          blurButton(e);
+          handleAction();
+        }}
+        disabled={isLoading || !inputValue.trim()}
+        aria-label="Отправить сообщение"
+      />
     );
 
-    const popupContent = showPopup && props.suggestions && popupPosition && (
+    const popupContent = showPopup && suggestions && popupPosition && (
       <div
         ref={popupRef}
         className={styles.suggestions.popupPortal}
@@ -110,14 +160,14 @@ export const InputArea = memo(
       >
         <div className={styles.suggestions.popupHeader}>Можно спросить:</div>
         <div className={styles.suggestions.popupList}>
-          {props.suggestions.map((suggestion, idx) => (
+          {suggestions.map((suggestion, idx) => (
             <div key={idx} className={styles.suggestions.popupItem} onClick={() => handleSuggestionClick(suggestion)}>
               {suggestion}
             </div>
           ))}
         </div>
         <div className={styles.suggestions.popupFooter}>
-          Ответит: <strong>{props.selectedAgent.name}</strong>
+          Ответит: <strong>{selectedAgent?.name || 'Агент не выбран'}</strong>
         </div>
       </div>
     );
@@ -125,39 +175,19 @@ export const InputArea = memo(
     return (
       <>
         <div ref={ref} className={containerStyle}>
-          {props.showWelcomeMessage && props.welcomeMessage && (
-            <div className={styles.welcome.message}>{props.welcomeMessage}</div>
-          )}
+          {showWelcomeMessage && welcomeMessage && <div className={styles.welcome.message}>{welcomeMessage}</div>}
           <div style={{ position: 'relative', width: '100%' }}>
             <div className={styles.input.inlineWrapper}>
               <Input
                 ref={inputRef}
                 className={styles.input.box}
-                value={props.value}
-                onChange={props.onChange}
-                onKeyDown={props.onKeyDown}
-                onFocus={() => {
-                  onFocus();
-                  props.onFocus?.();
-                }}
-                onBlur={() => {
-                  onBlur();
-                  props.onBlur?.();
-                }}
-                placeholder={props.placeholderText}
-                suffix={
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon="arrow-right"
-                    onClick={(e) => {
-                      blurButton(e);
-                      props.onSend();
-                    }}
-                    disabled={props.isLoading || !props.value.trim()}
-                    aria-label="Отправить сообщение"
-                  />
-                }
+                value={inputValue}
+                onChange={(e) => setInputValue(e.currentTarget.value)}
+                onKeyDown={handleKeyDown}
+                onFocus={onFocus}
+                onBlur={onBlur}
+                placeholder={placeholderText}
+                suffix={actionButton}
               />
               <Dropdown overlay={menu} placement="bottom-end">
                 <Button
@@ -165,8 +195,8 @@ export const InputArea = memo(
                   size="sm"
                   icon="bars"
                   className={styles.header.iconButton}
-                  aria-label="Меню"
                   onClick={blurButton}
+                  aria-label="Меню"
                 />
               </Dropdown>
             </div>
@@ -174,7 +204,7 @@ export const InputArea = memo(
 
           {showSuggestionsAlways && (
             <div className={styles.suggestions.container}>
-              {props.suggestions!.map((suggestion, idx) => (
+              {suggestions!.map((suggestion, idx) => (
                 <div key={idx} className={styles.suggestions.item} onClick={() => handleSuggestionClick(suggestion)}>
                   {suggestion}
                 </div>

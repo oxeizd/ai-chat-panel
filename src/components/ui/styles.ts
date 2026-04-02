@@ -170,7 +170,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
       sendButton: css`
         position: absolute;
         right: ${theme.spacing(2.4)};
-        bottom: ${theme.spacing(3.5)};
+        bottom: ${theme.spacing(2.5)};
         width: 32px;
         height: 32px;
         padding: 0;
@@ -330,17 +330,17 @@ export const getStyles = (theme: GrafanaTheme2) => {
       customMenu: css`
         z-index: 3000 !important;
         background: ${theme.colors.background.primary};
-        min-width: 200px;
+        min-width: 240px;
         max-height: 300px;
         overflow-y: auto;
         overscroll-behavior: contain;
         border: 1px solid ${theme.colors.border.weak};
         border-radius: ${theme.shape.radius.default};
         [class*='menu-item'] {
-          padding: 1px 12px;
+          padding: 1px 8px;
           text-align: left;
           font-size: 0.7rem;
-          line-height: 1.2;
+          line-height: 1;
         }
       `,
     },

@@ -13,30 +13,9 @@ import { useChat } from './shared/ChatContext';
 
 export const FloatingChatPanel: React.FC = () => {
   const props = useChat();
+  const { sendMessage, messages, maxWidth, centerInput } = props;
   const theme = useTheme2();
   const styles = useStyles(theme);
-
-  const {
-    messages,
-    isLoading,
-    inputValue,
-    setInputValue,
-    sendMessage,
-    clearChat,
-    exportChat,
-    openSettings,
-    selectedAgent,
-    setSelectedAgent,
-    placeholderText,
-    agents,
-    maxWidth,
-    centerInput,
-    welcomeMessage,
-    showWelcomeMessage,
-    suggestions,
-    suggestionsPlacement,
-    showSuggestions,
-  } = props;
 
   const { isChatOpen, openChat, closeChat } = useChatOpen();
   const { inputContainerRef, chatMessagesRef, floatingChatRef, chatStyle } = useChatPosition(isChatOpen, messages);
@@ -44,7 +23,6 @@ export const FloatingChatPanel: React.FC = () => {
   const [chatDomElement, setChatDomElement] = useState<HTMLElement | null>(null);
   const setFloatingChatRefCallback = useCallback(
     (node: HTMLDivElement | null) => {
-      // Синхронизируем ref из useChatPosition с реальным DOM-элементом
       if (floatingChatRef && 'current' in floatingChatRef) {
         // eslint-disable-next-line react-hooks/immutability
         (floatingChatRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
@@ -57,7 +35,6 @@ export const FloatingChatPanel: React.FC = () => {
   useChatWheelHandler(isChatOpen, chatDomElement);
   useAutoScroll(chatMessagesRef, [messages, isChatOpen]);
 
-  const [inputFocused, setInputFocused] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -91,24 +68,6 @@ export const FloatingChatPanel: React.FC = () => {
 
   const toggleFullscreen = useCallback(() => setIsFullscreen((prev) => !prev), []);
 
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => setInputValue(e.currentTarget.value),
-    [setInputValue]
-  );
-
-  const handleInputKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-        if (!isChatOpen) {
-          openChat();
-        }
-      }
-    },
-    [sendMessage, isChatOpen, openChat]
-  );
-
   const handleSendWithOpen = useCallback(() => {
     sendMessage();
     if (!isChatOpen) {
@@ -116,15 +75,24 @@ export const FloatingChatPanel: React.FC = () => {
     }
   }, [sendMessage, isChatOpen, openChat]);
 
-  const handleSuggestionClick = useCallback(
-    (suggestion: string) => {
-      setInputValue(suggestion);
-      sendMessage();
+  const handleSendText = useCallback(
+    (text: string) => {
+      sendMessage(text);
+      if (!isChatOpen) {
+        openChat();
+      }
     },
-    [setInputValue, sendMessage]
+    [sendMessage, isChatOpen, openChat]
   );
 
-  const hideSuggestions = isChatOpen || messages.length > 0;
+  const handleContinue = useCallback(() => {
+    if (!isChatOpen) {
+      openChat();
+    }
+  }, [isChatOpen, openChat]);
+
+  const hasHistory = messages.length > 0;
+  const continueMode = !isChatOpen && hasHistory;
 
   const wrapperStyle = cx(
     styles.base.normalWrapper,
@@ -136,30 +104,11 @@ export const FloatingChatPanel: React.FC = () => {
     <div className={wrapperStyle}>
       <InputArea
         ref={inputContainerRef}
-        value={inputValue}
-        onChange={handleInputChange}
-        onKeyDown={handleInputKeyDown}
         onSend={handleSendWithOpen}
-        isLoading={isLoading}
-        onClearChat={clearChat}
-        onExportChat={exportChat}
-        onOpenSettings={openSettings}
-        selectedAgent={selectedAgent}
-        setSelectedAgent={setSelectedAgent}
+        onContinue={handleContinue}
+        continueMode={continueMode}
+        onSendText={handleSendText}
         className={cx(isChatOpen && styles.input.containerHidden)}
-        placeholderText={placeholderText}
-        agents={agents}
-        onFocus={() => setInputFocused(true)}
-        onBlur={() => setInputFocused(false)}
-        centerInput={centerInput}
-        suggestions={suggestions}
-        suggestionsPlacement={suggestionsPlacement}
-        inputFocused={inputFocused}
-        welcomeMessage={welcomeMessage}
-        showWelcomeMessage={showWelcomeMessage}
-        onSuggestionClick={handleSuggestionClick}
-        hideSuggestions={hideSuggestions}
-        showSuggestions={showSuggestions}
       />
       {isChatOpen && (
         <FloatingChat
@@ -169,7 +118,6 @@ export const FloatingChatPanel: React.FC = () => {
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
           onClose={closeChat}
-          maxWidth={maxWidth}
         />
       )}
     </div>

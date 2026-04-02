@@ -1,22 +1,14 @@
-// shared/ChatHeader.tsx
 import React from 'react';
-import { Button, Dropdown } from '@grafana/ui';
+import { Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { ChatMenu } from './ChatMenu';
-import { AgentConfig } from 'types';
+import { useChat } from './ChatContext';
+import { useStyles } from '../styles';
 
 interface ChatHeaderProps {
   onBack?: () => void;
-  agents: AgentConfig[];
-  onClearChat: () => void;
-  onExportChat: () => void;
-  onOpenSettings: () => void;
-  onSelectAgent: (agent: AgentConfig) => void;
-  menuClassName: string;
-  iconButtonClassName: string;
-  welcomeMessage?: string;
-  menuPosition?: 'left' | 'right';
   isFullscreen?: boolean;
   onFullscreen?: () => void;
+  welcomeMessage?: string;
 }
 
 const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -25,28 +17,37 @@ const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
   onBack,
-  agents,
-  onClearChat,
-  onExportChat,
-  onOpenSettings,
-  onSelectAgent,
-  menuClassName,
-  iconButtonClassName,
-  welcomeMessage,
-  menuPosition = 'right',
-  isFullscreen = false,
+  isFullscreen,
   onFullscreen,
+  welcomeMessage: propWelcomeMessage,
 }) => {
+  const {
+    agents,
+    clearChat,
+    exportChat,
+    openSettings,
+    setSelectedAgent,
+    selectedAgent,
+    newChat,
+    welcomeMessage: contextWelcomeMessage,
+  } = useChat();
+
+  const theme = useTheme2();
+  const styles = useStyles(theme);
+  const displayWelcome = propWelcomeMessage ?? contextWelcomeMessage;
+
   const menuButton = (
     <Dropdown
       overlay={
         <ChatMenu
           agents={agents}
-          onClearChat={onClearChat}
-          onExportChat={onExportChat}
-          onOpenSettings={onOpenSettings}
-          onSelectAgent={onSelectAgent}
-          className={menuClassName}
+          onClearChat={clearChat}
+          onExportChat={exportChat}
+          onOpenSettings={openSettings}
+          onSelectAgent={setSelectedAgent}
+          selectedAgent={selectedAgent}
+          onNewChat={newChat}
+          className={styles.menu.customMenu}
         />
       }
       placement="bottom-end"
@@ -55,9 +56,9 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         variant="secondary"
         size="sm"
         icon="bars"
-        className={iconButtonClassName}
-        aria-label="Меню"
+        className={styles.header.iconButton}
         onClick={blurButton}
+        aria-label="Меню"
       />
     </Dropdown>
   );
@@ -71,7 +72,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         blurButton(e);
         onFullscreen();
       }}
-      className={iconButtonClassName}
+      className={styles.header.iconButton}
       aria-label={isFullscreen ? 'Выйти из полноэкранного режима' : 'Полноэкранный режим'}
     />
   );
@@ -87,23 +88,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             blurButton(e);
             onBack();
           }}
-          className={iconButtonClassName}
+          className={styles.header.iconButton}
           aria-label="Назад"
         />
       )}
-      {!onBack && welcomeMessage && <span style={{ fontSize: '0.9rem' }}>{welcomeMessage}</span>}
+      {!onBack && displayWelcome && <span style={{ fontSize: '0.9rem' }}>{displayWelcome}</span>}
     </div>
   );
-
-  if (menuPosition === 'left') {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px 0 16px' }}>
-        {menuButton}
-        <div style={{ flex: 1 }}>{leftSection}</div>
-        {fullscreenButton}
-      </div>
-    );
-  }
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px 0 16px' }}>

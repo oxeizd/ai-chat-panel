@@ -6,10 +6,10 @@ export interface ChatConfig {
   isLoading: boolean;
   inputValue: string;
   setInputValue: (value: string) => void;
-  sendMessage: () => void;
+  sendMessage: (customText?: string) => void;
   clearChat: () => void;
   newChat: () => void;
-  selectedAgent: AgentConfig;
+  selectedAgent: AgentConfig | null;
   setSelectedAgent: (agent: AgentConfig) => void;
   exportChat: () => void;
   openSettings: () => void;
@@ -22,6 +22,7 @@ export interface ChatConfig {
   suggestions?: string[];
   suggestionsPlacement?: 'always' | 'onFocus';
   showSuggestions?: boolean;
+  retryMessage?: (messageId: string) => void;
 }
 
 const ChatContext = createContext<ChatConfig | null>(null);
