@@ -1,8 +1,11 @@
-import React, { forwardRef, memo, useState, useRef, useEffect } from 'react';
-import { Input, Button, Dropdown, Menu, useTheme2 } from '@grafana/ui';
+import React, { forwardRef, memo, useState, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
+import { Input, Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { cx } from '@emotion/css';
 import { useStyles } from './styles';
 import { AgentConfig } from 'types';
+import { ChatMenu } from './shared/ChatMenu';
+import { useSuggestions } from './hooks/useSuggestions';
 
 interface InputAreaProps {
   value: string;
@@ -27,111 +30,153 @@ interface InputAreaProps {
   welcomeMessage?: string;
   showWelcomeMessage?: boolean;
   onSuggestionClick: (suggestion: string) => void;
+  hideSuggestions?: boolean;
+  showSuggestions?: boolean;
 }
 
 export const InputArea = memo(
   forwardRef<HTMLDivElement, InputAreaProps>((props, ref) => {
     const theme = useTheme2();
     const styles = useStyles(theme);
-    const [showPopup, setShowPopup] = useState(false);
-    const popupRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-      if (props.suggestionsPlacement === 'onFocus') {
-        setShowPopup(props.inputFocused || false);
+    const { showPopup, popupRef, inputRef, onFocus, onBlur } = useSuggestions({
+      suggestions: props.suggestions || [],
+      placement: props.suggestionsPlacement || 'always',
+      hideWhen: props.hideSuggestions || !props.showSuggestions,
+    });
+
+    const [popupPosition, setPopupPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+
+    const updatePopupPosition = useCallback(() => {
+      if (inputRef.current && showPopup) {
+        const rect = inputRef.current.getBoundingClientRect();
+        setPopupPosition({
+          top: rect.bottom + 4,
+          left: rect.left,
+          width: rect.width,
+        });
+      } else {
+        setPopupPosition(null);
       }
-    }, [props.inputFocused, props.suggestionsPlacement]);
+    }, [inputRef, showPopup]);
 
     useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (popupRef.current && !popupRef.current.contains(event.target as Node) &&
-            inputRef.current && !inputRef.current.contains(event.target as Node)) {
-          setShowPopup(false);
-          if (props.onBlur) props.onBlur();
-        }
+      if (!showPopup) {return;}
+      updatePopupPosition();
+      window.addEventListener('scroll', updatePopupPosition, true);
+      window.addEventListener('resize', updatePopupPosition);
+      return () => {
+        window.removeEventListener('scroll', updatePopupPosition, true);
+        window.removeEventListener('resize', updatePopupPosition);
       };
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [props]);
+    }, [showPopup, updatePopupPosition]);
 
     const handleSuggestionClick = (suggestion: string) => {
       props.onSuggestionClick(suggestion);
-      setShowPopup(false);
-      if (props.onBlur) props.onBlur();
+      // Закрываем popup после выбора
+      if (popupRef.current) {
+        // просто даём возможность закрыться через onBlur
+        if (inputRef.current) {inputRef.current.blur();}
+      }
     };
 
     const menu = (
-      <Menu className={styles.customMenu}>
-        <Menu.Item label="Очистить чат" onClick={props.onClearChat} />
-        <Menu.Divider />
-        <Menu.Item label="Экспорт чата" onClick={props.onExportChat} />
-        <Menu.Divider />
-        <Menu.Item label="Выбрать агента" disabled />
-        {props.agents.map((agent) => (
-          <Menu.Item key={agent.name} label={agent.name} onClick={() => props.setSelectedAgent(agent)} />
-        ))}
-        <Menu.Divider />
-        <Menu.Item label="Настройки" onClick={props.onOpenSettings} />
-      </Menu>
+      <ChatMenu
+        agents={props.agents}
+        onClearChat={props.onClearChat}
+        onExportChat={props.onExportChat}
+        onOpenSettings={props.onOpenSettings}
+        onSelectAgent={props.setSelectedAgent}
+        className={styles.menu.customMenu}
+      />
     );
 
-    const showSuggestionsAlways = props.suggestionsPlacement === 'always' && props.suggestions && props.suggestions.length > 0;
-    const showSuggestionsPopup = props.suggestionsPlacement === 'onFocus' && showPopup && props.suggestions && props.suggestions.length > 0;
+    const showSuggestionsAlways = !props.hideSuggestions &&
+    props.showSuggestions && 
+    props.suggestionsPlacement === 'always' &&
+    props.suggestions &&
+    props.suggestions.length > 0;
 
     const containerStyle = cx(
-      styles.inputContainer,
+      styles.input.container,
       props.className,
-      props.centerInput && styles.centeredInputWrapper
+      props.centerInput && styles.base.centeredInputWrapper
+    );
+
+    const popupContent = showPopup && props.suggestions && popupPosition && (
+      <div
+        ref={popupRef}
+        className={styles.suggestions.popupPortal}
+        style={{
+          top: popupPosition.top,
+          left: popupPosition.left,
+          width: popupPosition.width,
+        }}
+      >
+        <div className={styles.suggestions.popupHeader}>Можно спросить:</div>
+        <div className={styles.suggestions.popupList}>
+          {props.suggestions.map((suggestion, idx) => (
+            <div
+              key={idx}
+              className={styles.suggestions.popupItem}
+              onClick={() => handleSuggestionClick(suggestion)}
+            >
+              {suggestion}
+            </div>
+          ))}
+        </div>
+        <div className={styles.suggestions.popupFooter}>
+          Ответит: <strong>{props.selectedAgent.name}</strong>
+        </div>
+      </div>
     );
 
     return (
-      <div ref={ref} className={containerStyle}>
-        {props.showWelcomeMessage && props.welcomeMessage && (
-          <div className={styles.welcomeMessage}>{props.welcomeMessage}</div>
-        )}
-        <div style={{ position: 'relative', width: '100%' }}>
-          <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-            <Input
-              ref={inputRef}
-              className={styles.inputBox}
-              value={props.value}
-              onChange={props.onChange}
-              onKeyDown={props.onKeyDown}
-              onFocus={() => {
-                if (props.onFocus) props.onFocus();
-                if (props.suggestionsPlacement === 'onFocus') setShowPopup(true);
-              }}
-              onBlur={() => {
-                setTimeout(() => {
-                  if (!popupRef.current?.contains(document.activeElement)) {
-                    if (props.onBlur) props.onBlur();
-                    setShowPopup(false);
-                  }
-                }, 200);
-              }}
-              placeholder={props.placeholderText}
-              suffix={
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon="arrow-right"
-                  onClick={props.onSend}
-                  disabled={props.isLoading || !props.value.trim()}
-                  aria-label="Отправить сообщение"
-                />
-              }
-            />
-            <Dropdown overlay={menu} placement="bottom-end">
-              <Button variant="secondary" size="sm" icon="bars" className={styles.iconButton} aria-label="Меню" />
-            </Dropdown>
+      <>
+        <div ref={ref} className={containerStyle}>
+          {props.showWelcomeMessage && props.welcomeMessage && (
+            <div className={styles.welcome.message}>{props.welcomeMessage}</div>
+          )}
+          <div style={{ position: 'relative', width: '100%' }}>
+            <div className={styles.input.inlineWrapper}>
+              <Input
+                ref={inputRef}
+                className={styles.input.box}
+                value={props.value}
+                onChange={props.onChange}
+                onKeyDown={props.onKeyDown}
+                onFocus={() => {
+                  onFocus();
+                  if (props.onFocus) {props.onFocus();}
+                }}
+                onBlur={() => {
+                  onBlur();
+                  if (props.onBlur) {props.onBlur();}
+                }}
+                placeholder={props.placeholderText}
+                suffix={
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon="arrow-right"
+                    onClick={props.onSend}
+                    disabled={props.isLoading || !props.value.trim()}
+                    aria-label="Отправить сообщение"
+                  />
+                }
+              />
+              <Dropdown overlay={menu} placement="bottom-end">
+                <Button variant="secondary" size="sm" icon="bars" className={styles.header.iconButton} aria-label="Меню" />
+              </Dropdown>
+            </div>
           </div>
-          {showSuggestionsPopup && (
-            <div ref={popupRef} className={styles.suggestionsPopup}>
+
+          {showSuggestionsAlways && (
+            <div className={styles.suggestions.container}>
               {props.suggestions!.map((suggestion, idx) => (
                 <div
                   key={idx}
-                  className={styles.suggestionItem}
+                  className={styles.suggestions.item}
                   onClick={() => handleSuggestionClick(suggestion)}
                 >
                   {suggestion}
@@ -140,20 +185,8 @@ export const InputArea = memo(
             </div>
           )}
         </div>
-        {showSuggestionsAlways && (
-          <div className={styles.suggestionsContainer}>
-            {props.suggestions!.map((suggestion, idx) => (
-              <div
-                key={idx}
-                className={styles.suggestionItem}
-                onClick={() => handleSuggestionClick(suggestion)}
-              >
-                {suggestion}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+        {ReactDOM.createPortal(popupContent, document.body)}
+      </>
     );
   })
 );

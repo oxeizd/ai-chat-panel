@@ -1,6 +1,7 @@
+// hooks/useChatMessages.ts
 import { useState, useCallback, useRef } from 'react';
 import { Message, AgentConfig } from 'types';
-import { useAgent } from '../agents';
+import { useAgent } from '../agent';
 import { GrafanaUser } from './useGrafanaUser';
 
 const generateSessionId = () => {
@@ -19,14 +20,14 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
   const [inputValue, setInputValue] = useState('');
   const sessionIdRef = useRef(generateSessionId());
 
-  const { isLoading, sendMessage: agentSendMessage, resetSession: agentResetSession } = useAgent(currentAgent);
+  const { isLoading, sendMessage: agentSendMessage, resetSession } = useAgent(currentAgent);
 
-  const newChat = useCallback(async () => {
+  const newChat = useCallback(() => {
     setMessages([]);
     setInputValue('');
     sessionIdRef.current = generateSessionId();
-    await agentResetSession();
-  }, [agentResetSession]);
+    resetSession();
+  }, [resetSession]);
 
   const sendMessage = useCallback(async () => {
     if (!inputValue.trim() || isLoading || !currentAgent) {

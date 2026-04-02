@@ -1,6 +1,17 @@
 // components/editors/AgentsEditor.tsx
 import React, { useState, useEffect } from 'react';
-import { Button, Input, TextArea, Checkbox, Modal, Switch, Field, Combobox, ComboboxOption, Select } from '@grafana/ui';
+import {
+  Button,
+  Input,
+  TextArea,
+  Checkbox,
+  Modal,
+  Switch,
+  Field,
+  Combobox,
+  ComboboxOption,
+  Collapse,
+} from '@grafana/ui';
 import { AgentConfig, EndpointConfig, PollingConfig } from 'types';
 
 interface AgentsEditorProps {
@@ -8,7 +19,7 @@ interface AgentsEditorProps {
   onChange: (value: AgentConfig[]) => void;
 }
 
-const methodOptions = [
+const methodOptions: ComboboxOption<string>[] = [
   { label: 'GET', value: 'GET' },
   { label: 'POST', value: 'POST' },
   { label: 'PUT', value: 'PUT' },
@@ -59,17 +70,20 @@ const EndpointEditor: React.FC<{
         borderRadius: '4px',
         padding: '12px',
         marginBottom: '12px',
-        position: 'relative',
+        backgroundColor: '#fafafa',
       }}
     >
-      <Button
-        variant="destructive"
-        size="sm"
-        icon="trash-alt"
-        onClick={() => onRemove(index)}
-        style={{ position: 'absolute', top: '8px', right: '8px' }}
-        aria-label="Удалить эндпоинт"
-      />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <strong style={{ fontSize: '1rem' }}>Эндпоинт #{index + 1}</strong>
+        <Button
+          variant="destructive"
+          size="sm"
+          icon="trash-alt"
+          onClick={() => onRemove(index)}
+          aria-label="Удалить эндпоинт"
+        />
+      </div>
+
       <div style={{ marginBottom: '8px' }}>
         <Input
           label="Название операции"
@@ -78,14 +92,17 @@ const EndpointEditor: React.FC<{
           placeholder="например: ask, new_thread, chat_messages"
         />
       </div>
+
       <div style={{ marginBottom: '8px' }}>
-        <Select
-          label="HTTP метод"
-          value={methodOptions.find((opt) => opt.value === endpoint.method) || methodOptions[0]}
-          options={methodOptions}
-          onChange={(opt) => handleChange('method', opt?.value)}
-        />
+        <Field label="HTTP метод">
+          <Combobox
+            value={methodOptions.find(opt => opt.value === endpoint.method) || methodOptions[0]}
+            options={methodOptions}
+            onChange={(opt) => handleChange('method', opt?.value || 'POST')}
+          />
+        </Field>
       </div>
+
       <div style={{ marginBottom: '8px' }}>
         <Input
           label="Путь (с переменными вида {thread_id})"
@@ -94,6 +111,7 @@ const EndpointEditor: React.FC<{
           placeholder="/{thread_id}/ask"
         />
       </div>
+
       <div style={{ marginBottom: '8px' }}>
         <TextArea
           label="Тело запроса (JSON шаблон, опционально)"
@@ -103,6 +121,7 @@ const EndpointEditor: React.FC<{
           rows={2}
         />
       </div>
+
       <div style={{ marginBottom: '8px' }}>
         <TextArea
           label="Заголовки (JSON, опционально)"
@@ -112,6 +131,7 @@ const EndpointEditor: React.FC<{
           rows={3}
         />
       </div>
+
       <div style={{ marginBottom: '8px' }}>
         <Input
           label="Сохранять поля в контекст (через запятую)"
@@ -123,6 +143,7 @@ const EndpointEditor: React.FC<{
           Укажите имена полей, которые нужно извлечь из ответа и сохранить для следующих шагов.
         </div>
       </div>
+
       <div style={{ marginBottom: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
           <Switch
@@ -250,10 +271,13 @@ const AgentEditModal: React.FC<{
     onDismiss();
   };
 
-  const operationOptions: ComboboxOption<string>[] = (editedAgent.endpoints || [])
+  const operationOptions: Array<ComboboxOption<string>> = (editedAgent.endpoints || [])
     .map(ep => ep.operation || '')
     .filter(Boolean)
     .map(value => ({ label: value, value }));
+
+  // Выбранная операция (может быть undefined или пустая строка)
+  const selectedStartup = operationOptions.find(opt => opt.value === editedAgent.startupOperation) || null;
 
   return (
     <Modal title={agent ? 'Редактирование агента' : 'Новый агент'} isOpen={isOpen} onDismiss={onDismiss}>
@@ -265,6 +289,7 @@ const AgentEditModal: React.FC<{
           placeholder="Например: GPT-4"
         />
       </div>
+
       <div style={{ marginBottom: '16px' }}>
         <Input
           label="Базовый URL"
@@ -273,31 +298,43 @@ const AgentEditModal: React.FC<{
           placeholder="https://api.example.com"
         />
       </div>
-      <div style={{ marginBottom: '16px' }}>
-        <TextArea
-          label="Общая конфигурация (JSON)"
-          value={editedAgent.config || ''}
-          onChange={(e) => updateField('config', e.currentTarget.value)}
-          placeholder='{"temperature": 0.7, "model": "gpt-4"}'
-          rows={3}
-        />
-      </div>
-      <div style={{ marginBottom: '16px' }}>
+
+      <Collapse label="Дополнительная конфигурация (опционально)" isOpen={false} collapsible>
+        <div style={{ marginTop: '12px' }}>
+          <TextArea
+            label="Общая конфигурация (JSON)"
+            value={editedAgent.config || ''}
+            onChange={(e) => updateField('config', e.currentTarget.value)}
+            placeholder='{"temperature": 0.7, "model": "gpt-4"}'
+            rows={3}
+          />
+          <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+            Необязательное поле. Используется для передачи общих параметров во все запросы.
+          </div>
+        </div>
+      </Collapse>
+
+      <div style={{ marginBottom: '16px', marginTop: '16px' }}>
         <Checkbox
           label="Агент по умолчанию"
           value={editedAgent.default}
           onChange={(e) => updateField('default', e.currentTarget.checked)}
         />
       </div>
+
       <div style={{ marginBottom: '16px' }}>
         <Field label="Стартовая операция (выполняется при создании сессии)">
           <Combobox
-            value={editedAgent.startupOperation || ''}
+            value={selectedStartup}
             options={operationOptions}
-            onChange={(val: ComboboxOption<string>) => updateField('startupOperation', val.value)}
+            onChange={(opt) => updateField('startupOperation', opt?.value || '')}
             placeholder="Не выбрано"
+            isClearable
           />
         </Field>
+        <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+          Выберите операцию, которая будет выполнена автоматически при создании нового чата. Чтобы убрать выбор, нажмите крестик.
+        </div>
       </div>
 
       <div style={{ marginTop: '12px' }}>

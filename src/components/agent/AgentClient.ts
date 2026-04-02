@@ -68,8 +68,8 @@ export class AgentClient {
 
       const lastResponse = await executeWorkflow(steps, context, this.config.api);
       // При необходимости можно извлечь thread_id, run_id из последнего ответа
-      if (lastResponse.thread_id) this.context.thread_id = lastResponse.thread_id;
-      if (lastResponse.run_id) this.context.run_id = lastResponse.run_id;
+      if (lastResponse.thread_id) {this.context.thread_id = lastResponse.thread_id;}
+      if (lastResponse.run_id) {this.context.run_id = lastResponse.run_id;}
 
       // Возвращаем финальный текст
       return lastResponse.reply || lastResponse.result || JSON.stringify(lastResponse);

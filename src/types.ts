@@ -15,6 +15,7 @@ export interface PanelOptions {
   centerInput?: boolean;      // центрировать поле ввода по горизонтали
   welcomeMessage?: string;    // текст приветствия
   showWelcomeMessage?: boolean; // показывать приветствие
+  showSuggestions?: boolean;
   suggestions?: string;     // массив рекомендаций
   suggestionsPlacement?: 'always' | 'onFocus'; // как показывать рекомендации
 }
@@ -61,4 +62,5 @@ export interface ChatStyle {
   bottom?: number;
   maxHeight: number;
   width: number;
+  padding?: number | string;
 }

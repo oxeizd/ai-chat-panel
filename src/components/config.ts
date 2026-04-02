@@ -7,6 +7,7 @@ export const CHAT_SETTINGS = {
   margin: 8,
   positionOffset: 65,
   inputWrapperHeight: 150, // примерная высота области ввода + шапка + кнопки
+  default_padding: 16
 };
 
 export const DEFAULT_PLACEHOLDER_TEXT = 'Введите сообщение...';

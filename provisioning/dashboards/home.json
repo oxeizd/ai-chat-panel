@@ -26,20 +26,210 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 24,
+        "h": 16,
+        "w": 12,
         "x": 0,
         "y": 0
       },
       "id": 2,
       "options": {
-        "agents": [],
-        "inlineMode": false,
-        "placeholderText": ""
+        "agents": [
+          {
+            "api": "https://openrouter.ai",
+            "config": "",
+            "default": true,
+            "endpoints": [
+              {
+                "body": "{\n  \"model\": \"google/lyria-3-pro-preview\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"{user_input}\" }\n  ]\n}",
+                "headers": {
+                  "Authorization": "Bearer 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"
+                },
+                "method": "POST",
+                "operation": "ask",
+                "path": "/api/v1/chat/completions",
+                "polling": {
+                  "enabled": false
+                },
+                "saveToContext": []
+              }
+            ],
+            "name": "openrouter",
+            "startupOperation": "",
+            "workflow": [
+              "ask"
+            ]
+          }
+        ],
+        "centerInput": true,
+        "inlineMode": true,
+        "maxWidth": 1300,
+        "placeholderText": "",
+        "showWelcomeMessage": true,
+        "suggestions": "1231. 312321 231 , 13121",
+        "suggestionsPlacement": "always",
+        "welcomeMessage": "123"
       },
       "pluginVersion": "1.0.0",
       "title": "",
-      "transparent": true,
+      "type": "oxd-aichat-panel"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "agents": [
+          {
+            "api": "https://openrouter.ai",
+            "config": "",
+            "default": true,
+            "endpoints": [
+              {
+                "body": "{\n  \"model\": \"google/lyria-3-pro-preview\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"{user_input}\" }\n  ]\n}",
+                "headers": {
+                  "Authorization": "Bearer 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"
+                },
+                "method": "POST",
+                "operation": "ask",
+                "path": "/api/v1/chat/completions",
+                "polling": {
+                  "enabled": false
+                },
+                "saveToContext": []
+              }
+            ],
+            "name": "openrouter",
+            "startupOperation": "",
+            "workflow": [
+              "ask"
+            ]
+          }
+        ],
+        "centerInput": true,
+        "inlineMode": false,
+        "maxWidth": 1300,
+        "placeholderText": "",
+        "showWelcomeMessage": true,
+        "suggestions": "1231. 312321 231 , 13121",
+        "suggestionsPlacement": "always",
+        "welcomeMessage": "123"
+      },
+      "pluginVersion": "1.0.0",
+      "title": "",
+      "type": "oxd-aichat-panel"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 4,
+      "options": {
+        "agents": [
+          {
+            "api": "https://openrouter.ai",
+            "config": "",
+            "default": true,
+            "endpoints": [
+              {
+                "body": "{\n  \"model\": \"google/lyria-3-pro-preview\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"{user_input}\" }\n  ]\n}",
+                "headers": {
+                  "Authorization": "Bearer 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"
+                },
+                "method": "POST",
+                "operation": "ask",
+                "path": "/api/v1/chat/completions",
+                "polling": {
+                  "enabled": false
+                },
+                "saveToContext": []
+              }
+            ],
+            "name": "openrouter",
+            "startupOperation": "",
+            "workflow": [
+              "ask"
+            ]
+          }
+        ],
+        "centerInput": true,
+        "inlineMode": false,
+        "maxWidth": 1300,
+        "placeholderText": "",
+        "showWelcomeMessage": true,
+        "suggestions": "1231. 312321 231 , 13121",
+        "suggestionsPlacement": "always",
+        "welcomeMessage": "123"
+      },
+      "pluginVersion": "1.0.0",
+      "title": "",
+      "type": "oxd-aichat-panel"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 5,
+      "options": {
+        "agents": [
+          {
+            "api": "https://openrouter.ai",
+            "config": "",
+            "default": true,
+            "endpoints": [
+              {
+                "body": "{\n  \"model\": \"google/lyria-3-pro-preview\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"{user_input}\" }\n  ]\n}",
+                "headers": {
+                  "Authorization": "Bearer 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"
+                },
+                "method": "POST",
+                "operation": "ask",
+                "path": "/api/v1/chat/completions",
+                "polling": {
+                  "enabled": false
+                },
+                "saveToContext": []
+              }
+            ],
+            "name": "openrouter",
+            "startupOperation": "",
+            "workflow": [
+              "ask"
+            ]
+          }
+        ],
+        "centerInput": false,
+        "inlineMode": false,
+        "maxWidth": 1300,
+        "placeholderText": "",
+        "showWelcomeMessage": false,
+        "suggestions": "привет, как дела?; какие функции ты выполняешь?; что ты за модель?",
+        "suggestionsPlacement": "onFocus",
+        "welcomeMessage": "123"
+      },
+      "pluginVersion": "1.0.0",
+      "title": "",
       "type": "oxd-aichat-panel"
     },
     {
@@ -51,7 +241,7 @@
         "h": 16,
         "w": 24,
         "x": 0,
-        "y": 4
+        "y": 20
       },
       "id": 1,
       "options": {
@@ -85,6 +275,6 @@
   "timezone": "browser",
   "title": "home",
   "uid": "gkvxx4",
-  "version": 2,
+  "version": 7,
   "weekStart": ""
 }

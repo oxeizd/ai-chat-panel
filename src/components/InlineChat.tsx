@@ -1,201 +1,114 @@
-import React, { useRef, useLayoutEffect, useState } from 'react';
+// components/InlineChat.tsx
+import React, { useRef, useState } from 'react';
 import { cx } from '@emotion/css';
-import { Button, Spinner, Dropdown, Menu, useTheme2 } from '@grafana/ui';
+import { useTheme2 } from '@grafana/ui';
 import { useStyles } from './styles';
-import { Message, AgentConfig } from 'types';
+import { MessageList } from './shared/MessageList';
+import { ChatHeader } from './shared/ChatHeader';
+import { BottomButtons } from './shared/BottomButtons';
+import { ChatTextarea } from './shared/ChatTextarea';
+import { FullscreenChatPortal } from './shared/FullscreenChatPortal';
+import { useAutoScroll } from './hooks/useAutoScroll';
+import { useChat } from './shared/ChatContext';
 
-interface InlineChatProps {
-  messages: Message[];
-  isLoading: boolean;
-  inputValue: string;
-  setInputValue: (value: string) => void;
-  sendMessage: () => void;
-  clearChat: () => void;
-  newChat: () => void;
-  selectedAgent: AgentConfig;
-  setSelectedAgent: (agent: AgentConfig) => void;
-  exportChat: () => void;
-  openSettings: () => void;
-  placeholderText: string;
-  agents: AgentConfig[];
-  maxWidth?: number;
-  centerInput?: boolean;
-  welcomeMessage?: string;
-  showWelcomeMessage?: boolean;
-  suggestions?: string[];
-  suggestionsPlacement?: 'always' | 'onFocus';
-}
-
-export const InlineChat: React.FC<InlineChatProps> = (props) => {
+export const InlineChat: React.FC = () => {
+  const props = useChat();
   const theme = useTheme2();
   const styles = useStyles(theme);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [inputFocused, setInputFocused] = useState(false);
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
 
-  useLayoutEffect(() => {
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-    }
-  }, [props.messages]);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      props.sendMessage();
-    }
-  };
-
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    const container = e.currentTarget;
-    const atTop = container.scrollTop === 0;
-    const atBottom = container.scrollTop + container.clientHeight >= container.scrollHeight;
-    if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)) {
-      e.preventDefault();
-    }
-  };
+  useAutoScroll(messagesContainerRef, [props.messages]);
 
   const handleSuggestionClick = (suggestion: string) => {
     props.setInputValue(suggestion);
     props.sendMessage();
   };
 
-  const menu = (
-    <Menu className={styles.customMenu}>
-      <Menu.Item label="Очистить чат" onClick={props.clearChat} />
-      <Menu.Divider />
-      <Menu.Item label="Экспорт чата" onClick={props.exportChat} />
-      <Menu.Divider />
-      <Menu.Item label="Выбрать агента" disabled />
-      {props.agents.map((agent) => (
-        <Menu.Item key={agent.name} label={agent.name} onClick={() => props.setSelectedAgent(agent)} />
-      ))}
-      <Menu.Divider />
-      <Menu.Item label="Настройки" onClick={props.openSettings} />
-    </Menu>
-  );
+  const openFullscreen = () => setIsFullscreenOpen(true);
+  const closeFullscreen = () => setIsFullscreenOpen(false);
 
-  const agentMenu = (
-    <Menu className={styles.customMenu}>
-      {props.agents.map((agent) => (
-        <Menu.Item key={agent.name} label={agent.name} onClick={() => props.setSelectedAgent(agent)} />
-      ))}
-    </Menu>
-  );
-
-  const showSuggestions = props.suggestions && props.suggestions.length > 0 && (
-    (props.suggestionsPlacement === 'always') ||
-    (props.suggestionsPlacement === 'onFocus' && inputFocused)
-  );
+  const showSuggestions =
+    props.showSuggestions &&
+    props.suggestionsPlacement === 'always' &&
+    props.suggestions &&
+    props.suggestions.length > 0 &&
+    props.messages.length === 0;
 
   const wrapperStyle = cx(
-    styles.normalWrapper,
-    props.maxWidth && props.maxWidth > 0 ? styles.withMaxWidth(props.maxWidth) : undefined,
-    props.centerInput && styles.verticalCentered
+    styles.base.normalWrapper,
+    props.maxWidth && props.maxWidth > 0 ? styles.base.withMaxWidth(props.maxWidth) : undefined,
+    props.centerInput && styles.base.verticalCentered
   );
 
-  const inputWrapperStyle = cx(
-    styles.chatInputWrapper,
-    props.centerInput && styles.centeredInputWrapper
-  );
+  const messageListStyles = {
+    messageWrapper: styles.messages.wrapper,
+    userMessageWrapper: styles.messages.userWrapper,
+    aiMessageWrapper: styles.messages.aiWrapper,
+    messageBubble: styles.messages.bubble,
+    userMessageBubble: styles.messages.userBubble,
+    aiMessageBubble: styles.messages.aiBubble,
+  };
 
   return (
-    <div className={wrapperStyle} style={{ height: '100%' }}>
-      <div className={styles.chatHeader}>
-        <Dropdown overlay={menu} placement="bottom-end">
-          <Button variant="secondary" size="sm" icon="bars" className={styles.iconButton} aria-label="Меню" />
-        </Dropdown>
-      </div>
+    <>
+      <div className={wrapperStyle} style={{ height: '100%' }}>
+        <ChatHeader
+          agents={props.agents}
+          onClearChat={props.clearChat}
+          onExportChat={props.exportChat}
+          onOpenSettings={props.openSettings}
+          onSelectAgent={props.setSelectedAgent}
+          menuClassName={styles.menu.customMenu}
+          iconButtonClassName={styles.header.iconButton}
+          welcomeMessage={props.showWelcomeMessage ? props.welcomeMessage : undefined}
+          onFullscreen={openFullscreen}
+          isFullscreen={false}
+        />
 
-      {props.showWelcomeMessage && props.welcomeMessage && (
-        <div className={styles.welcomeMessage}>{props.welcomeMessage}</div>
-      )}
+        <div ref={messagesContainerRef} className={styles.messages.container}>
+          <MessageList
+            messages={props.messages}
+            isLoading={props.isLoading}
+            placeholderText={props.placeholderText}
+            showPlaceholder={!props.welcomeMessage}
+            styles={messageListStyles}
+          />
+        </div>
 
-      <div ref={messagesContainerRef} className={styles.chatMessagesContainer} onWheel={handleWheel}>
-        {props.messages.length === 0 && props.placeholderText && !props.welcomeMessage && (
-          <div style={{ textAlign: 'center', opacity: 0.7, padding: '20px' }}>{props.placeholderText}</div>
-        )}
-        {props.messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={cx(
-              styles.messageWrapper,
-              msg.sender === 'user' ? styles.userMessageWrapper : styles.aiMessageWrapper
-            )}
-          >
-            <div
-              className={cx(
-                styles.messageBubble,
-                msg.sender === 'user' ? styles.userMessageBubble : styles.aiMessageBubble
-              )}
-            >
-              {msg.text}
-            </div>
-          </div>
-        ))}
-        {props.isLoading && (
-          <div className={cx(styles.messageWrapper, styles.aiMessageWrapper)}>
-            <div className={cx(styles.messageBubble, styles.aiMessageBubble)}>
-              <Spinner />
-            </div>
+        {showSuggestions && (
+          <div className={styles.suggestions.container}>
+            {props.suggestions!.map((suggestion, idx) => (
+              <div key={idx} className={styles.suggestions.item} onClick={() => handleSuggestionClick(suggestion)}>
+                {suggestion}
+              </div>
+            ))}
           </div>
         )}
-      </div>
 
-      <div className={inputWrapperStyle}>
-        <textarea
-          ref={textareaRef}
-          className={styles.chatTextarea}
+        <ChatTextarea
           value={props.inputValue}
           onChange={(e) => props.setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => setInputFocused(true)}
-          onBlur={() => setInputFocused(false)}
+          onSend={props.sendMessage}
+          isLoading={props.isLoading}
           placeholder={props.placeholderText}
-          rows={3}
         />
-        <Button
-          variant="secondary"
-          size="sm"
-          icon="arrow-right"
-          onClick={props.sendMessage}
-          disabled={props.isLoading || !props.inputValue.trim()}
-          className={styles.sendButton}
-          aria-label="Отправить сообщение"
+
+        <BottomButtons
+          selectedAgent={props.selectedAgent}
+          agents={props.agents}
+          onSelectAgent={props.setSelectedAgent}
+          onNewChat={props.newChat}
+          agentButtonClassName={styles.bottomButtons.agentButton}
+          newChatButtonClassName={styles.bottomButtons.newChatButton}
+          menuClassName={styles.menu.customMenu}
         />
       </div>
 
-      {showSuggestions && (
-        <div className={styles.suggestionsContainer}>
-          {props.suggestions!.map((suggestion, idx) => (
-            <div
-              key={idx}
-              className={styles.suggestionItem}
-              onClick={() => handleSuggestionClick(suggestion)}
-            >
-              {suggestion}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className={styles.bottomButtons}>
-        <Dropdown overlay={agentMenu} placement="top-start">
-          <Button variant="secondary" size="sm" className={styles.agentButton} icon="user" aria-label="Выбор агента">
-            {props.selectedAgent.name}
-          </Button>
-        </Dropdown>
-        <Button
-          variant="secondary"
-          size="sm"
-          icon="plus"
-          onClick={props.newChat}
-          className={styles.newChatButton}
-          aria-label="Новый чат"
-        >
-          Новый чат
-        </Button>
-      </div>
-    </div>
+      <FullscreenChatPortal
+        isOpen={isFullscreenOpen}
+        onClose={closeFullscreen}
+      />
+    </>
   );
 };

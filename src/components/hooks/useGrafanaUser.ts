@@ -10,7 +10,7 @@ export interface GrafanaUser {
 
 export const useGrafanaUser = () => {
   const [user, setUser] = useState<GrafanaUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     getBackendSrv()
@@ -18,10 +18,9 @@ export const useGrafanaUser = () => {
       .then((data) => {
         setUser(data);
       })
-      .catch((err) => console.error('Failed to fetch user', err))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  return { user, loading };
+  return { user };
 };
-// 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 api key

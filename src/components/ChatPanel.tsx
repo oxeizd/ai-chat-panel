@@ -1,3 +1,4 @@
+// components/ChatPanel.tsx
 import React, { useState, useCallback } from 'react';
 import { PanelProps } from '@grafana/data';
 import { PanelOptions, AgentConfig } from 'types';
@@ -6,6 +7,7 @@ import { FloatingChatPanel } from './FloatingChatPanel';
 import { useChatMessages } from './hooks/useChatMessages';
 import { useGrafanaUser } from './hooks/useGrafanaUser';
 import { DEFAULT_PLACEHOLDER_TEXT } from './config';
+import { ChatProvider, ChatConfig } from './shared/ChatContext';
 
 interface Props extends PanelProps<PanelOptions> {}
 
@@ -51,10 +53,10 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
 
   // Преобразуем строку с запятыми в массив
   const suggestionsArray = options.suggestions
-    ? options.suggestions.split(',').map(s => s.trim()).filter(Boolean)
+    ? options.suggestions.split(';').map(s => s.trim()).filter(Boolean)
     : [];
 
-  const commonProps = {
+  const chatConfig: ChatConfig = {
     messages,
     isLoading,
     inputValue,
@@ -73,12 +75,21 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
     welcomeMessage: options.welcomeMessage,
     showWelcomeMessage: options.showWelcomeMessage,
     suggestions: suggestionsArray,
-    suggestionsPlacement: options.suggestionsPlacement || 'always',
+    suggestionsPlacement: options.suggestionsPlacement,
+    showSuggestions: options.showSuggestions,
   };
 
   if (inlineMode) {
-    return <InlineChat {...commonProps} />;
+    return (
+      <ChatProvider value={chatConfig}>
+        <InlineChat />
+      </ChatProvider>
+    );
   }
 
-  return <FloatingChatPanel {...commonProps} />;
+  return (
+    <ChatProvider value={chatConfig}>
+      <FloatingChatPanel />
+    </ChatProvider>
+  );
 };

@@ -27,14 +27,14 @@ export const useAgent = (agentConfig: AgentConfig | null) => {
         setIsLoading(false);
       }
     },
-    [clientRef.current]
+    []
   );
 
   const resetSession = useCallback(async () => {
     if (clientRef.current) {
       await clientRef.current.resetSession();
     }
-  }, [clientRef.current]);
+  }, []);
 
   return {
     isLoading,

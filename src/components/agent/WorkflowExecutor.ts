@@ -101,7 +101,7 @@ export const executeEndpoint = async (
 };
 
 export const executeWorkflow = async (
-  steps: { endpoint: EndpointConfig }[],
+  steps: Array<{ endpoint: EndpointConfig }>,
   context: WorkflowContext,
   baseUrl: string
 ): Promise<any> => {

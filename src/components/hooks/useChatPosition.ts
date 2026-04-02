@@ -91,6 +91,7 @@ export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
       bottom,
       maxHeight: Math.max(minHeight, maxHeight),
       width: rect.width,
+      padding: CHAT_SETTINGS.default_padding
     });
   }, [isChatOpen, chatStyle]); // chatStyle добавлен в зависимости
 
