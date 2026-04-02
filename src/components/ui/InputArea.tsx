@@ -34,6 +34,10 @@ interface InputAreaProps {
   showSuggestions?: boolean;
 }
 
+const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {
+  e.currentTarget.blur();
+};
+
 export const InputArea = memo(
   forwardRef<HTMLDivElement, InputAreaProps>((props, ref) => {
     const theme = useTheme2();
@@ -50,18 +54,16 @@ export const InputArea = memo(
     const updatePopupPosition = useCallback(() => {
       if (inputRef.current && showPopup) {
         const rect = inputRef.current.getBoundingClientRect();
-        setPopupPosition({
-          top: rect.bottom + 4,
-          left: rect.left,
-          width: rect.width,
-        });
+        setPopupPosition({ top: rect.bottom + 4, left: rect.left, width: rect.width });
       } else {
         setPopupPosition(null);
       }
     }, [inputRef, showPopup]);
 
     useEffect(() => {
-      if (!showPopup) {return;}
+      if (!showPopup) {
+        return;
+      }
       updatePopupPosition();
       window.addEventListener('scroll', updatePopupPosition, true);
       window.addEventListener('resize', updatePopupPosition);
@@ -73,11 +75,7 @@ export const InputArea = memo(
 
     const handleSuggestionClick = (suggestion: string) => {
       props.onSuggestionClick(suggestion);
-      // Закрываем popup после выбора
-      if (popupRef.current) {
-        // просто даём возможность закрыться через onBlur
-        if (inputRef.current) {inputRef.current.blur();}
-      }
+      inputRef.current?.blur();
     };
 
     const menu = (
@@ -91,11 +89,12 @@ export const InputArea = memo(
       />
     );
 
-    const showSuggestionsAlways = !props.hideSuggestions &&
-    props.showSuggestions && 
-    props.suggestionsPlacement === 'always' &&
-    props.suggestions &&
-    props.suggestions.length > 0;
+    const showSuggestionsAlways =
+      !props.hideSuggestions &&
+      props.showSuggestions &&
+      props.suggestionsPlacement === 'always' &&
+      props.suggestions &&
+      props.suggestions.length > 0;
 
     const containerStyle = cx(
       styles.input.container,
@@ -107,20 +106,12 @@ export const InputArea = memo(
       <div
         ref={popupRef}
         className={styles.suggestions.popupPortal}
-        style={{
-          top: popupPosition.top,
-          left: popupPosition.left,
-          width: popupPosition.width,
-        }}
+        style={{ top: popupPosition.top, left: popupPosition.left, width: popupPosition.width }}
       >
         <div className={styles.suggestions.popupHeader}>Можно спросить:</div>
         <div className={styles.suggestions.popupList}>
           {props.suggestions.map((suggestion, idx) => (
-            <div
-              key={idx}
-              className={styles.suggestions.popupItem}
-              onClick={() => handleSuggestionClick(suggestion)}
-            >
+            <div key={idx} className={styles.suggestions.popupItem} onClick={() => handleSuggestionClick(suggestion)}>
               {suggestion}
             </div>
           ))}
@@ -147,11 +138,11 @@ export const InputArea = memo(
                 onKeyDown={props.onKeyDown}
                 onFocus={() => {
                   onFocus();
-                  if (props.onFocus) {props.onFocus();}
+                  props.onFocus?.();
                 }}
                 onBlur={() => {
                   onBlur();
-                  if (props.onBlur) {props.onBlur();}
+                  props.onBlur?.();
                 }}
                 placeholder={props.placeholderText}
                 suffix={
@@ -159,14 +150,24 @@ export const InputArea = memo(
                     variant="secondary"
                     size="sm"
                     icon="arrow-right"
-                    onClick={props.onSend}
+                    onClick={(e) => {
+                      blurButton(e);
+                      props.onSend();
+                    }}
                     disabled={props.isLoading || !props.value.trim()}
                     aria-label="Отправить сообщение"
                   />
                 }
               />
               <Dropdown overlay={menu} placement="bottom-end">
-                <Button variant="secondary" size="sm" icon="bars" className={styles.header.iconButton} aria-label="Меню" />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon="bars"
+                  className={styles.header.iconButton}
+                  aria-label="Меню"
+                  onClick={blurButton}
+                />
               </Dropdown>
             </div>
           </div>
@@ -174,11 +175,7 @@ export const InputArea = memo(
           {showSuggestionsAlways && (
             <div className={styles.suggestions.container}>
               {props.suggestions!.map((suggestion, idx) => (
-                <div
-                  key={idx}
-                  className={styles.suggestions.item}
-                  onClick={() => handleSuggestionClick(suggestion)}
-                >
+                <div key={idx} className={styles.suggestions.item} onClick={() => handleSuggestionClick(suggestion)}>
                   {suggestion}
                 </div>
               ))}

@@ -10,16 +10,12 @@ export interface GrafanaUser {
 
 export const useGrafanaUser = () => {
   const [user, setUser] = useState<GrafanaUser | null>(null);
-  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     getBackendSrv()
       .get('/api/user')
-      .then((data) => {
-        setUser(data);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .then((data) => setUser(data))
+      .catch(() => {});
   }, []);
 
   return { user };

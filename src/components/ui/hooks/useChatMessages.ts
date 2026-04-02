@@ -1,8 +1,8 @@
-// hooks/useChatMessages.ts
 import { useState, useCallback, useRef } from 'react';
 import { Message, AgentConfig } from 'types';
-import { useAgent } from '../agent';
+import { useAgent } from 'components/agent';
 import { GrafanaUser } from './useGrafanaUser';
+import { MESSAGES } from '../config';
 
 const generateSessionId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -19,20 +19,32 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const sessionIdRef = useRef(generateSessionId());
+  const isSendingRef = useRef(false);
 
   const { isLoading, sendMessage: agentSendMessage, resetSession } = useAgent(currentAgent);
 
-  const newChat = useCallback(() => {
+  const newChat = useCallback(async () => {
     setMessages([]);
     setInputValue('');
     sessionIdRef.current = generateSessionId();
-    resetSession();
+    try {
+      await resetSession();
+    } catch (err) {
+      console.warn('Failed to reset session on backend', err);
+    }
   }, [resetSession]);
 
   const sendMessage = useCallback(async () => {
+    // Защита от повторного вызова
+    if (isSendingRef.current) {
+      return;
+    }
+
     if (!inputValue.trim() || isLoading || !currentAgent) {
       return;
     }
+
+    isSendingRef.current = true;
 
     const userMessage: Message = {
       id: generateMessageId(),
@@ -41,6 +53,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       timestamp: Date.now(),
     };
     setMessages((prev) => [...prev, userMessage]);
+    const currentInput = inputValue;
     setInputValue('');
 
     try {
@@ -54,7 +67,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
         additionalContext.userName = user.name;
       }
 
-      const reply = await agentSendMessage(userMessage.text, additionalContext);
+      const reply = await agentSendMessage(currentInput, additionalContext);
 
       const aiMessage: Message = {
         id: generateMessageId(),
@@ -64,11 +77,17 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       };
       setMessages((prev) => [...prev, aiMessage]);
     } catch (error) {
-      console.error('Ошибка при отправке сообщения:', error);
       setMessages((prev) => [
         ...prev,
-        { id: generateMessageId(), text: '❌ Не удалось получить ответ. Проверьте соединение.', sender: 'ai', timestamp: Date.now() },
+        {
+          id: generateMessageId(),
+          text: MESSAGES.errorResponse,
+          sender: 'ai',
+          timestamp: Date.now(),
+        },
       ]);
+    } finally {
+      isSendingRef.current = false;
     }
   }, [inputValue, isLoading, currentAgent, user, agentSendMessage]);
 

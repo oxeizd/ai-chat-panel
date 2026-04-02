@@ -1,7 +1,7 @@
 import { PanelPlugin } from '@grafana/data';
 import { PanelOptions } from './types';
 import { ChatPanel } from './components/ChatPanel';
-import { AgentsEditor } from './components/editors/AgentsEditor';
+import { AgentsEditor } from './components/editor/AgentsEditor';
 
 export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((builder) => {
   return builder
@@ -10,7 +10,7 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
       name: 'Inline mode',
       description: 'Display chat inside panel instead of floating',
       defaultValue: false,
-      category: ['Mode settings']
+      category: ['Mode settings'],
     })
     .addBooleanSwitch({
       path: 'centerInput',
@@ -18,28 +18,28 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
       description: 'Центрировать поле ввода',
       defaultValue: false,
       category: ['Mode settings'],
-      showIf: (config) => config.inlineMode  === false,
+      showIf: (config) => config.inlineMode === false,
     })
     .addNumberInput({
       path: 'maxWidth',
       name: 'Max width',
       description: 'Ограничить максимальную ширину чата',
       defaultValue: 0,
-      category: ['Standard settings']
+      category: ['Standard settings'],
     })
     .addTextInput({
       path: 'placeholderText',
       name: 'Placeholder text',
       description: 'Text to show when chat is empty',
       defaultValue: '',
-      category: ['Standard settings']
+      category: ['Standard settings'],
     })
     .addBooleanSwitch({
       path: 'showWelcomeMessage',
       name: 'Show welcome message',
       description: 'Показывать приветствие',
       defaultValue: false,
-      category: ['Chat options']
+      category: ['Chat options'],
     })
     .addTextInput({
       path: 'welcomeMessage',
@@ -47,14 +47,14 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
       description: 'Приветственный текст над чатом',
       defaultValue: '',
       category: ['Chat options'],
-      showIf: (config) => config.showWelcomeMessage  === true,
+      showIf: (config) => config.showWelcomeMessage === true,
     })
     .addBooleanSwitch({
       path: 'showSuggestions',
       name: 'Show suggestions',
-      description: 'display suggestions',
+      description: 'Display suggestions',
       defaultValue: false,
-      category: ['Chat options']
+      category: ['Chat options'],
     })
     .addTextInput({
       path: 'suggestions',
@@ -82,7 +82,6 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
       id: 'agents',
       path: 'agents',
       name: 'Agents',
-      description: 'Configure AI agents',
       editor: AgentsEditor,
       defaultValue: [],
       category: ['Agent options'],

@@ -1,4 +1,3 @@
-// components/editors/AgentsEditor.tsx
 import React, { useState, useEffect } from 'react';
 import {
   Button,
@@ -11,7 +10,10 @@ import {
   Combobox,
   ComboboxOption,
   Collapse,
+  useTheme2,
 } from '@grafana/ui';
+import { GrafanaTheme2 } from '@grafana/data';
+import { css } from '@emotion/css';
 import { AgentConfig, EndpointConfig, PollingConfig } from 'types';
 
 interface AgentsEditorProps {
@@ -19,7 +21,7 @@ interface AgentsEditorProps {
   onChange: (value: AgentConfig[]) => void;
 }
 
-const methodOptions: ComboboxOption<string>[] = [
+const methodOptions: Array<ComboboxOption<string>> = [
   { label: 'GET', value: 'GET' },
   { label: 'POST', value: 'POST' },
   { label: 'PUT', value: 'PUT' },
@@ -27,18 +29,34 @@ const methodOptions: ComboboxOption<string>[] = [
   { label: 'PATCH', value: 'PATCH' },
 ];
 
+const getEndpointEditorStyles = (theme: GrafanaTheme2) => ({
+  container: css`
+    border: 1px solid ${theme.colors.border.weak};
+    border-radius: ${theme.shape.radius.default};
+    padding: ${theme.spacing(2)};
+    margin-bottom: ${theme.spacing(2)};
+    background: ${theme.colors.background.secondary};
+  `,
+});
+
 const EndpointEditor: React.FC<{
   endpoint: EndpointConfig;
   index: number;
   onChange: (index: number, updated: EndpointConfig) => void;
   onRemove: (index: number) => void;
 }> = ({ endpoint, index, onChange, onRemove }) => {
+  const theme = useTheme2();
+  const styles = getEndpointEditorStyles(theme);
+
   const handleChange = (field: keyof EndpointConfig, val: any) => {
     onChange(index, { ...endpoint, [field]: val });
   };
 
   const handleSaveToContextChange = (val: string) => {
-    const fields = val.split(',').map(s => s.trim()).filter(Boolean);
+    const fields = val
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     handleChange('saveToContext', fields);
   };
 
@@ -64,39 +82,31 @@ const EndpointEditor: React.FC<{
   const headersString = endpoint.headers ? JSON.stringify(endpoint.headers, null, 2) : '';
 
   return (
-    <div
-      style={{
-        border: '1px solid #ddd',
-        borderRadius: '4px',
-        padding: '12px',
-        marginBottom: '12px',
-        backgroundColor: '#fafafa',
-      }}
-    >
+    <div className={styles.container}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <strong style={{ fontSize: '1rem' }}>Эндпоинт #{index + 1}</strong>
+        <strong>Endpoint #{index + 1}</strong>
         <Button
           variant="destructive"
           size="sm"
           icon="trash-alt"
           onClick={() => onRemove(index)}
-          aria-label="Удалить эндпоинт"
+          aria-label="Delete endpoint"
         />
       </div>
 
       <div style={{ marginBottom: '8px' }}>
         <Input
-          label="Название операции"
+          label="Operation name"
           value={endpoint.operation}
           onChange={(e) => handleChange('operation', e.currentTarget.value)}
-          placeholder="например: ask, new_thread, chat_messages"
+          placeholder="e.g., ask, new_thread, chat_messages"
         />
       </div>
 
       <div style={{ marginBottom: '8px' }}>
-        <Field label="HTTP метод">
+        <Field label="HTTP method">
           <Combobox
-            value={methodOptions.find(opt => opt.value === endpoint.method) || methodOptions[0]}
+            value={methodOptions.find((opt) => opt.value === endpoint.method) || methodOptions[0]}
             options={methodOptions}
             onChange={(opt) => handleChange('method', opt?.value || 'POST')}
           />
@@ -105,7 +115,7 @@ const EndpointEditor: React.FC<{
 
       <div style={{ marginBottom: '8px' }}>
         <Input
-          label="Путь (с переменными вида {thread_id})"
+          label="Path (with variables like {thread_id})"
           value={endpoint.path}
           onChange={(e) => handleChange('path', e.currentTarget.value)}
           placeholder="/{thread_id}/ask"
@@ -114,7 +124,7 @@ const EndpointEditor: React.FC<{
 
       <div style={{ marginBottom: '8px' }}>
         <TextArea
-          label="Тело запроса (JSON шаблон, опционально)"
+          label="Request body (JSON template, optional)"
           value={endpoint.body || ''}
           onChange={(e) => handleChange('body', e.currentTarget.value)}
           placeholder='{"message": "{user_input}"}'
@@ -124,7 +134,7 @@ const EndpointEditor: React.FC<{
 
       <div style={{ marginBottom: '8px' }}>
         <TextArea
-          label="Заголовки (JSON, опционально)"
+          label="Headers (JSON, optional)"
           value={headersString}
           onChange={(e) => handleHeadersChange(e.currentTarget.value)}
           placeholder='{"Authorization": "Bearer token"}'
@@ -134,20 +144,32 @@ const EndpointEditor: React.FC<{
 
       <div style={{ marginBottom: '8px' }}>
         <Input
-          label="Сохранять поля в контекст (через запятую)"
+          label="Save fields to context (comma-separated)"
           value={endpoint.saveToContext?.join(', ') || ''}
           onChange={(e) => handleSaveToContextChange(e.currentTarget.value)}
           placeholder="thread_id, run_id, session_id"
         />
         <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-          Укажите имена полей, которые нужно извлечь из ответа и сохранить для следующих шагов.
+          Specify field names to extract from response and save for subsequent steps.
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '8px' }}>
+        <Input
+          label="Reply field (optional)"
+          value={endpoint.replyField || ''}
+          onChange={(e) => handleChange('replyField', e.currentTarget.value)}
+          placeholder="e.g., text, message, answer"
+        />
+        <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+          Specify which field in the response contains the chat reply. If empty, auto-detection is used.
         </div>
       </div>
 
       <div style={{ marginBottom: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
           <Switch
-            label="Опрос (polling)"
+            label="Polling"
             value={endpoint.polling?.enabled || false}
             onChange={(e) => handlePollingChange(e.currentTarget.checked)}
           />
@@ -156,7 +178,7 @@ const EndpointEditor: React.FC<{
           <div style={{ marginLeft: '24px', marginTop: '8px' }}>
             <div style={{ marginBottom: '8px' }}>
               <Input
-                label="Интервал (мс)"
+                label="Interval (ms)"
                 type="number"
                 value={endpoint.polling?.intervalMs ?? 1000}
                 onChange={(e) => handlePollingFieldChange('intervalMs', parseInt(e.currentTarget.value, 10))}
@@ -164,7 +186,7 @@ const EndpointEditor: React.FC<{
             </div>
             <div style={{ marginBottom: '8px' }}>
               <Input
-                label="Максимум попыток"
+                label="Max attempts"
                 type="number"
                 value={endpoint.polling?.maxAttempts ?? 10}
                 onChange={(e) => handlePollingFieldChange('maxAttempts', parseInt(e.currentTarget.value, 10))}
@@ -172,21 +194,21 @@ const EndpointEditor: React.FC<{
             </div>
             <div style={{ marginBottom: '8px' }}>
               <Input
-                label="Поле статуса"
+                label="Status field"
                 value={endpoint.polling?.statusField ?? 'status'}
                 onChange={(e) => handlePollingFieldChange('statusField', e.currentTarget.value)}
               />
             </div>
             <div style={{ marginBottom: '8px' }}>
               <Input
-                label="Значение успеха"
+                label="Success value"
                 value={endpoint.polling?.successValue ?? 'completed'}
                 onChange={(e) => handlePollingFieldChange('successValue', e.currentTarget.value)}
               />
             </div>
             <div style={{ marginBottom: '8px' }}>
               <Input
-                label="Поле результата"
+                label="Result field"
                 value={endpoint.polling?.resultField ?? 'result'}
                 onChange={(e) => handlePollingFieldChange('resultField', e.currentTarget.value)}
               />
@@ -216,7 +238,10 @@ const AgentEditModal: React.FC<{
     }
   );
 
+  const [isConfigOpen, setIsConfigOpen] = useState(false); // состояние для Collapse
+
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEditedAgent(
       agent || {
         name: '',
@@ -228,6 +253,7 @@ const AgentEditModal: React.FC<{
         startupOperation: '',
       }
     );
+    setIsConfigOpen(false);
   }, [agent]);
 
   const updateField = (field: keyof AgentConfig, value: any) => {
@@ -243,6 +269,7 @@ const AgentEditModal: React.FC<{
       saveToContext: [],
       polling: { enabled: false },
       headers: {},
+      replyField: '',
     };
     setEditedAgent((prev) => ({
       ...prev,
@@ -272,81 +299,84 @@ const AgentEditModal: React.FC<{
   };
 
   const operationOptions: Array<ComboboxOption<string>> = (editedAgent.endpoints || [])
-    .map(ep => ep.operation || '')
+    .map((ep) => ep.operation || '')
     .filter(Boolean)
-    .map(value => ({ label: value, value }));
+    .map((value) => ({ label: value, value }));
 
-  // Выбранная операция (может быть undefined или пустая строка)
-  const selectedStartup = operationOptions.find(opt => opt.value === editedAgent.startupOperation) || null;
+  const selectedStartup = operationOptions.find((opt) => opt.value === editedAgent.startupOperation) || null;
 
   return (
-    <Modal title={agent ? 'Редактирование агента' : 'Новый агент'} isOpen={isOpen} onDismiss={onDismiss}>
+    <Modal title={agent ? 'Edit Agent' : 'New Agent'} isOpen={isOpen} onDismiss={onDismiss}>
       <div style={{ marginBottom: '16px' }}>
         <Input
-          label="Имя агента"
+          label="Agent Name"
           value={editedAgent.name}
           onChange={(e) => updateField('name', e.currentTarget.value)}
-          placeholder="Например: GPT-4"
+          placeholder="e.g., GPT-4"
         />
       </div>
 
       <div style={{ marginBottom: '16px' }}>
         <Input
-          label="Базовый URL"
+          label="Base URL"
           value={editedAgent.api}
           onChange={(e) => updateField('api', e.currentTarget.value)}
           placeholder="https://api.example.com"
         />
       </div>
 
-      <Collapse label="Дополнительная конфигурация (опционально)" isOpen={false} collapsible>
+      <Collapse
+        label="Additional Configuration (optional)"
+        isOpen={isConfigOpen}
+        onToggle={() => setIsConfigOpen(!isConfigOpen)}
+      >
         <div style={{ marginTop: '12px' }}>
           <TextArea
-            label="Общая конфигурация (JSON)"
+            label="General Configuration (JSON)"
             value={editedAgent.config || ''}
             onChange={(e) => updateField('config', e.currentTarget.value)}
             placeholder='{"temperature": 0.7, "model": "gpt-4"}'
             rows={3}
           />
           <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-            Необязательное поле. Используется для передачи общих параметров во все запросы.
+            Optional. Used to pass common parameters to all requests.
           </div>
         </div>
       </Collapse>
 
       <div style={{ marginBottom: '16px', marginTop: '16px' }}>
         <Checkbox
-          label="Агент по умолчанию"
+          label="Default Agent"
           value={editedAgent.default}
           onChange={(e) => updateField('default', e.currentTarget.checked)}
         />
       </div>
 
       <div style={{ marginBottom: '16px' }}>
-        <Field label="Стартовая операция (выполняется при создании сессии)">
+        <Field label="Startup Operation (executed when session starts)">
           <Combobox
             value={selectedStartup}
             options={operationOptions}
             onChange={(opt) => updateField('startupOperation', opt?.value || '')}
-            placeholder="Не выбрано"
+            placeholder="Not selected"
             isClearable
           />
         </Field>
         <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-          Выберите операцию, которая будет выполнена автоматически при создании нового чата. Чтобы убрать выбор, нажмите крестик.
+          Select an operation to run automatically when a new chat is created. Click cross to clear.
         </div>
       </div>
 
       <div style={{ marginTop: '12px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <h4 style={{ margin: 0 }}>Эндпоинты</h4>
+          <h4 style={{ margin: 0 }}>Endpoints</h4>
           <Button icon="plus" onClick={addEndpoint} variant="secondary" size="sm">
-            Добавить эндпоинт
+            Add Endpoint
           </Button>
         </div>
         {(editedAgent.endpoints || []).length === 0 && (
           <div style={{ color: '#999', fontStyle: 'italic', marginBottom: '8px' }}>
-            Нет настроенных эндпоинтов. Добавьте хотя бы один для взаимодействия с агентом.
+            No endpoints configured. Add at least one to interact with the agent.
           </div>
         )}
         {(editedAgent.endpoints || []).map((endpoint, epIdx) => (
@@ -362,26 +392,29 @@ const AgentEditModal: React.FC<{
 
       <div style={{ marginBottom: '16px', marginTop: '16px' }}>
         <Input
-          label="Workflow (порядок операций через запятую)"
+          label="Workflow (comma-separated operation order)"
           value={editedAgent.workflow ? editedAgent.workflow.join(', ') : ''}
           onChange={(e) => {
             const workflowStr = e.currentTarget.value;
-            const workflow = workflowStr.split(',').map((s) => s.trim()).filter(Boolean);
+            const workflow = workflowStr
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean);
             updateField('workflow', workflow);
           }}
           placeholder="new_thread, ask, run_result"
         />
         <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-          Укажите названия операций (из списка эндпоинтов) в порядке выполнения.
+          Specify operation names (from endpoints list) in execution order.
         </div>
       </div>
 
       <Modal.ButtonRow>
         <Button variant="secondary" onClick={onDismiss}>
-          Отмена
+          Cancel
         </Button>
         <Button variant="primary" onClick={handleSave}>
-          Сохранить
+          Save
         </Button>
       </Modal.ButtonRow>
     </Modal>
@@ -419,9 +452,12 @@ export const AgentsEditor: React.FC<AgentsEditorProps> = ({ value = [], onChange
       const newAgents = [...agents];
       newAgents[editingIndex] = agent;
       if (agent.default) {
-        newAgents.forEach((a, i) => {
-          if (i !== editingIndex) a.default = false;
-        });
+        // Создаём копии, чтобы не мутировать
+        for (let i = 0; i < newAgents.length; i++) {
+          if (i !== editingIndex) {
+            newAgents[i] = { ...newAgents[i], default: false };
+          }
+        }
       }
       updateAgents(newAgents);
     }
@@ -432,7 +468,7 @@ export const AgentsEditor: React.FC<AgentsEditorProps> = ({ value = [], onChange
   const handleRemove = (index: number) => {
     const newAgents = agents.filter((_, i) => i !== index);
     if (agents[index].default && newAgents.length > 0) {
-      newAgents[0].default = true;
+      newAgents[0] = { ...newAgents[0], default: true };
     }
     updateAgents(newAgents);
   };
@@ -454,7 +490,7 @@ export const AgentsEditor: React.FC<AgentsEditorProps> = ({ value = [], onChange
         >
           <div>
             <strong>{agent.name}</strong>
-            {agent.default && <span style={{ marginLeft: '8px', color: '#007bff' }}>(по умолчанию)</span>}
+            {agent.default && <span style={{ marginLeft: '8px', color: '#007bff' }}>(default)</span>}
           </div>
           <div>
             <Button
@@ -463,20 +499,20 @@ export const AgentsEditor: React.FC<AgentsEditorProps> = ({ value = [], onChange
               variant="secondary"
               size="sm"
               style={{ marginRight: '8px' }}
-              aria-label="Редактировать агента"
+              aria-label="Edit agent"
             />
             <Button
               icon="trash-alt"
               onClick={() => handleRemove(idx)}
               variant="destructive"
               size="sm"
-              aria-label="Удалить агента"
+              aria-label="Delete agent"
             />
           </div>
         </div>
       ))}
       <Button icon="plus" onClick={handleAdd} variant="secondary">
-        Добавить агента
+        Add Agent
       </Button>
 
       <AgentEditModal

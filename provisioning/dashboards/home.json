@@ -42,7 +42,7 @@
               {
                 "body": "{\n  \"model\": \"google/lyria-3-pro-preview\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"{user_input}\" }\n  ]\n}",
                 "headers": {
-                  "Authorization": "Bearer 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"
+                  "Authorization": ""
                 },
                 "method": "POST",
                 "operation": "ask",
@@ -55,15 +55,14 @@
             ],
             "name": "openrouter",
             "startupOperation": "",
-            "workflow": [
-              "ask"
-            ]
+            "workflow": ["ask"]
           }
         ],
         "centerInput": true,
         "inlineMode": true,
         "maxWidth": 1300,
         "placeholderText": "",
+        "showSuggestions": true,
         "showWelcomeMessage": true,
         "suggestions": "1231. 312321 231 , 13121",
         "suggestionsPlacement": "always",
@@ -95,7 +94,7 @@
               {
                 "body": "{\n  \"model\": \"google/lyria-3-pro-preview\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"{user_input}\" }\n  ]\n}",
                 "headers": {
-                  "Authorization": "Bearer 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"
+                  "Authorization": ""
                 },
                 "method": "POST",
                 "operation": "ask",
@@ -108,15 +107,14 @@
             ],
             "name": "openrouter",
             "startupOperation": "",
-            "workflow": [
-              "ask"
-            ]
+            "workflow": ["ask"]
           }
         ],
         "centerInput": true,
         "inlineMode": false,
         "maxWidth": 1300,
         "placeholderText": "",
+        "showSuggestions": false,
         "showWelcomeMessage": true,
         "suggestions": "1231. 312321 231 , 13121",
         "suggestionsPlacement": "always",
@@ -132,7 +130,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
+        "h": 5,
         "w": 12,
         "x": 0,
         "y": 16
@@ -148,7 +146,7 @@
               {
                 "body": "{\n  \"model\": \"google/lyria-3-pro-preview\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"{user_input}\" }\n  ]\n}",
                 "headers": {
-                  "Authorization": "Bearer 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"
+                  "Authorization": ""
                 },
                 "method": "POST",
                 "operation": "ask",
@@ -161,17 +159,16 @@
             ],
             "name": "openrouter",
             "startupOperation": "",
-            "workflow": [
-              "ask"
-            ]
+            "workflow": ["ask"]
           }
         ],
         "centerInput": true,
         "inlineMode": false,
         "maxWidth": 1300,
         "placeholderText": "",
+        "showSuggestions": true,
         "showWelcomeMessage": true,
-        "suggestions": "1231. 312321 231 , 13121",
+        "suggestions": "привет, как дела?; какие функции ты выполняешь?; что ты за модель?; kafka да?",
         "suggestionsPlacement": "always",
         "welcomeMessage": "123"
       },
@@ -201,7 +198,7 @@
               {
                 "body": "{\n  \"model\": \"google/lyria-3-pro-preview\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"{user_input}\" }\n  ]\n}",
                 "headers": {
-                  "Authorization": "Bearer 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"
+                  "Authorization": ""
                 },
                 "method": "POST",
                 "operation": "ask",
@@ -214,15 +211,14 @@
             ],
             "name": "openrouter",
             "startupOperation": "",
-            "workflow": [
-              "ask"
-            ]
+            "workflow": ["ask"]
           }
         ],
         "centerInput": false,
         "inlineMode": false,
         "maxWidth": 1300,
         "placeholderText": "",
+        "showSuggestions": true,
         "showWelcomeMessage": false,
         "suggestions": "привет, как дела?; какие функции ты выполняешь?; что ты за модель?",
         "suggestionsPlacement": "onFocus",
@@ -241,7 +237,7 @@
         "h": 16,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 21
       },
       "id": 1,
       "options": {

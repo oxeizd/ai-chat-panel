@@ -2,8 +2,8 @@
 export type VariableContext = Record<string, any>;
 
 /**
- * Заменяет в строке все вхождения вида {variable} на значения из контекста.
- * Если переменная не найдена, оставляет как есть.
+ * Replaces all occurrences of {variable} in a string with values from context.
+ * Leaves the placeholder unchanged if the variable is not found.
  */
 export const resolveString = (str: string, context: VariableContext): string => {
   return str.replace(/\{([^}]+)\}/g, (match, key) => {
@@ -13,7 +13,7 @@ export const resolveString = (str: string, context: VariableContext): string => 
 };
 
 /**
- * Рекурсивно обходит объект и заменяет все строковые значения с переменными.
+ * Recursively walks an object and resolves all string values containing variables.
  */
 export const resolveObject = <T extends Record<string, any>>(obj: T, context: VariableContext): T => {
   const result: any = Array.isArray(obj) ? [] : {};

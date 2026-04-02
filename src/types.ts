@@ -1,23 +1,16 @@
 export interface PanelOptions {
-  /** Режим отображения: плавающий чат поверх панели или внутри */
   inlineMode?: boolean;
-
-  /** Текст-заглушка, когда чат пуст */
   placeholderText?: string;
-
-  /** Загружать рекомендуемые вопросы при инициализации панели */
   fetchRecommendedQuestions?: boolean;
-
-  /** Список агентов с их конфигурацией */
   agents: AgentConfig[];
   agentsJson?: string;
-  maxWidth?: number;          // максимальная ширина чата в пикселях
-  centerInput?: boolean;      // центрировать поле ввода по горизонтали
-  welcomeMessage?: string;    // текст приветствия
-  showWelcomeMessage?: boolean; // показывать приветствие
+  maxWidth?: number;
+  centerInput?: boolean;
+  welcomeMessage?: string;
+  showWelcomeMessage?: boolean;
   showSuggestions?: boolean;
-  suggestions?: string;     // массив рекомендаций
-  suggestionsPlacement?: 'always' | 'onFocus'; // как показывать рекомендации
+  suggestions?: string;
+  suggestionsPlacement?: 'always' | 'onFocus';
 }
 
 export interface PollingConfig {
@@ -37,6 +30,7 @@ export interface EndpointConfig {
   saveToContext?: string[];
   polling?: PollingConfig;
   headers?: Record<string, string>;
+  replyField?: string;
 }
 
 export interface AgentConfig {
@@ -50,7 +44,7 @@ export interface AgentConfig {
 }
 
 export interface Message {
-  id: string; 
+  id: string;
   text: string;
   sender: 'user' | 'ai';
   timestamp: number;

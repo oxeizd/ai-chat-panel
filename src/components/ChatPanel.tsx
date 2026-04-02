@@ -2,12 +2,12 @@
 import React, { useState, useCallback } from 'react';
 import { PanelProps } from '@grafana/data';
 import { PanelOptions, AgentConfig } from 'types';
-import { InlineChat } from './InlineChat';
-import { FloatingChatPanel } from './FloatingChatPanel';
-import { useChatMessages } from './hooks/useChatMessages';
-import { useGrafanaUser } from './hooks/useGrafanaUser';
-import { DEFAULT_PLACEHOLDER_TEXT } from './config';
-import { ChatProvider, ChatConfig } from './shared/ChatContext';
+import { InlineChat } from './ui/InlineChat';
+import { FloatingChatPanel } from './ui/FloatingChatPanel';
+import { useChatMessages } from './ui/hooks/useChatMessages';
+import { useGrafanaUser } from './ui/hooks/useGrafanaUser';
+import { DEFAULT_PLACEHOLDER_TEXT, DEFAULT_AGENT } from './ui/config';
+import { ChatProvider, ChatConfig } from './ui/shared/ChatContext';
 
 interface Props extends PanelProps<PanelOptions> {}
 
@@ -17,16 +17,7 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
 
   const { user } = useGrafanaUser();
 
-  const agents = options.agents?.length
-    ? options.agents
-    : [
-        {
-          name: 'Агент по умолчанию',
-          api: 'YOUR_AI_AGENT_API_ENDPOINT',
-          config: '',
-          default: true,
-        },
-      ];
+  const agents: AgentConfig[] = options.agents?.length ? options.agents : [DEFAULT_AGENT];
 
   const defaultAgent = agents.find((a) => a.default) || agents[0];
   const [selectedAgent, setSelectedAgent] = useState<AgentConfig>(defaultAgent);
@@ -47,13 +38,13 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
     URL.revokeObjectURL(url);
   }, [messages]);
 
-  const openSettings = useCallback(() => {
-    console.log('Открыть настройки чата');
-  }, []);
+  const openSettings = useCallback(() => {}, []);
 
-  // Преобразуем строку с запятыми в массив
   const suggestionsArray = options.suggestions
-    ? options.suggestions.split(';').map(s => s.trim()).filter(Boolean)
+    ? options.suggestions
+        .split(';')
+        .map((s) => s.trim())
+        .filter(Boolean)
     : [];
 
   const chatConfig: ChatConfig = {
@@ -79,17 +70,5 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
     showSuggestions: options.showSuggestions,
   };
 
-  if (inlineMode) {
-    return (
-      <ChatProvider value={chatConfig}>
-        <InlineChat />
-      </ChatProvider>
-    );
-  }
-
-  return (
-    <ChatProvider value={chatConfig}>
-      <FloatingChatPanel />
-    </ChatProvider>
-  );
+  return <ChatProvider value={chatConfig}>{inlineMode ? <InlineChat /> : <FloatingChatPanel />}</ChatProvider>;
 };

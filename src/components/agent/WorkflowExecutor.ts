@@ -25,7 +25,7 @@ export const executeEndpoint = async (
   const path = resolveString(endpoint.path, context);
   const url = `${baseUrl}${path}`;
 
-  let body: any = undefined;
+  let body: string | undefined;
   if (endpoint.body) {
     try {
       const parsedBody = JSON.parse(endpoint.body);
@@ -42,11 +42,7 @@ export const executeEndpoint = async (
   };
 
   const makeRequest = async (): Promise<any> => {
-    const response = await fetch(url, {
-      method: endpoint.method,
-      headers,
-      body,
-    });
+    const response = await fetch(url, { method: endpoint.method, headers, body });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status} on ${endpoint.method} ${url}`);
     }
@@ -55,16 +51,15 @@ export const executeEndpoint = async (
 
   let data = await makeRequest();
 
-  // Обработка polling
+  // Polling handling
   const polling = endpoint.polling ? { ...DEFAULT_POLLING_CONFIG, ...endpoint.polling } : null;
   if (polling?.enabled) {
     let attempts = 1;
     while (attempts < polling.maxAttempts) {
-      const status = data[polling.statusField];
-      if (status === polling.successValue) {
+      if (data[polling.statusField] === polling.successValue) {
         break;
       }
-      await new Promise(resolve => setTimeout(resolve, polling.intervalMs));
+      await new Promise((resolve) => setTimeout(resolve, polling.intervalMs));
       data = await makeRequest();
       attempts++;
     }
@@ -76,13 +71,32 @@ export const executeEndpoint = async (
     }
   }
 
-  // Автоматическое извлечение текста из ответов OpenRouter и подобных структур
-  if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
-    data.reply = data.choices[0].message.content;
+  // --- Extract reply text for the chat ---
+  let replyText: string | undefined;
+
+  if (endpoint.replyField) {
+    // Use explicitly configured field
+    const replyValue = data[endpoint.replyField];
+    if (replyValue !== undefined) {
+      replyText = String(replyValue);
+    }
+  } else {
+    // Auto-detection: OpenRouter style, then common fields
+    if (data.choices?.[0]?.message?.content) {
+      replyText = data.choices[0].message.content;
+    } else if (data.reply !== undefined) {
+      replyText = String(data.reply);
+    } else if (data.result !== undefined) {
+      replyText = String(data.result);
+    }
   }
 
-  // Сохраняем поля в контекст
-  if (endpoint.saveToContext && endpoint.saveToContext.length) {
+  if (replyText !== undefined) {
+    data.reply = replyText;
+  }
+
+  // Save fields into context
+  if (endpoint.saveToContext?.length) {
     for (const key of endpoint.saveToContext) {
       if (data[key] !== undefined) {
         context[key] = data[key];

@@ -1,6 +1,7 @@
 import { css } from '@emotion/css';
 import { GrafanaTheme2 } from '@grafana/data';
 import { useMemo } from 'react';
+import { MessageListStyles } from './shared/MessageList';
 
 const toRgba = (color: string, alpha: number) => {
   if (color.startsWith('#')) {
@@ -16,7 +17,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
   const bgColor = theme.colors.background.primary;
 
   return {
-    
     // ===== Базовые контейнеры =====
     base: {
       normalWrapper: css`
@@ -56,7 +56,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
         flex-wrap: wrap;
         gap: ${theme.spacing(1)};
         padding: ${theme.spacing(0.65)};
-        z-index: 9999;
+        /* z-index удалён, так как нет позиционирования */
       `,
       item: css`
         background: ${theme.colors.background.secondary};
@@ -80,7 +80,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
         box-shadow: ${theme.shadows.z2};
         max-height: 300px;
         overflow-y: auto;
-        z-index: 21000;
+        z-index: 2000;
         padding: ${theme.spacing(1)} ${theme.spacing(2)};
       `,
       popupHeader: css`
@@ -126,23 +126,19 @@ export const getStyles = (theme: GrafanaTheme2) => {
     // ===== Поле ввода =====
     input: {
       container: css`
-        position: static;
+        position: relative;
         display: flex;
         align-items: center;
         gap: ${theme.spacing(0.5)};
         padding: ${theme.spacing(0.75)} ${theme.spacing(0)} ${theme.spacing(1.75)};
         flex-direction: column;
-        overflow: visible;
+        /* position: static и overflow: visible удалены (значения по умолчанию) */
       `,
       inlineWrapper: css`
         display: flex;
         gap: ${theme.spacing(1)};
         width: 100%;
         align-items: center;
-      `,
-      wrapper: css`
-        position: relative;
-        flex: 1;
       `,
       containerHidden: css`
         opacity: 0;
@@ -156,7 +152,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
         resize: none;
         width: 100%;
         min-height: 72px;
-        max-height: 120px;
+        max-height: 100px;
         font-family: inherit;
         font-size: 0.875rem;
         line-height: 1.4;
@@ -173,8 +169,8 @@ export const getStyles = (theme: GrafanaTheme2) => {
       `,
       sendButton: css`
         position: absolute;
-        right: ${theme.spacing(3.2)};
-        bottom: ${theme.spacing(7)};
+        right: ${theme.spacing(2.4)};
+        bottom: ${theme.spacing(3.5)};
         width: 32px;
         height: 32px;
         padding: 0;
@@ -194,21 +190,10 @@ export const getStyles = (theme: GrafanaTheme2) => {
           font-weight: 600;
         }
       `,
-      sendButtonFloating: css`
-        bottom: ${theme.spacing(8)};
-        right: ${theme.spacing(4)};
-      `,
     },
 
     // ===== Шапка чата =====
     header: {
-      container: css`
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: ${theme.spacing(1)} ${theme.spacing(2)};
-        flex-shrink: 0;
-      `,
       iconButton: css`
         width: 32px;
         height: 32px;
@@ -217,15 +202,15 @@ export const getStyles = (theme: GrafanaTheme2) => {
         justify-content: center;
         padding: 0;
         background: transparent;
-        border: none; 
+        border: none;
         border-radius: ${theme.shape.radius.default};
         cursor: pointer;
-      
+
         &:hover {
           background: ${theme.colors.action.hover};
           border: 1px solid ${theme.colors.border.weak};
         }
-      
+
         &.fullHeight {
           height: 100%;
         }
@@ -239,10 +224,19 @@ export const getStyles = (theme: GrafanaTheme2) => {
           transform-origin: center;
         }
 
-        svg rect.l1 { y: 2; height: 2; }
-        svg rect.l2 { y: 10; height: 2; }
-        svg rect.l3 { y: 18; height: 2; }
-    `,
+        svg rect.l1 {
+          y: 2;
+          height: 2;
+        }
+        svg rect.l2 {
+          y: 10;
+          height: 2;
+        }
+        svg rect.l3 {
+          y: 18;
+          height: 2;
+        }
+      `,
     },
 
     // ===== Сообщения =====
@@ -311,22 +305,16 @@ export const getStyles = (theme: GrafanaTheme2) => {
         flex-direction: column;
         overflow: hidden;
         z-index: 1000;
-        width: 100%;
+        /* width: 100% удалено — ширина задаётся через style или left/right */
         isolation: isolate;
       `,
     },
 
     // ===== Нижние кнопки =====
     bottomButtons: {
-      container: css`
-        display: flex;
-        gap: ${theme.spacing(1)};
-        padding: ${theme.spacing(1)} ${theme.spacing(2)} ${theme.spacing(2)} ${theme.spacing(2)};
-        flex-shrink: 0;
-      `,
       agentButton: css`
         flex: 1;
-        justify-content: space-between;
+        /* justify-content: space-between; удалено — не используется */
         background: ${theme.colors.background.primary}CC;
         border: 1px solid ${theme.colors.border.weak};
       `,
@@ -340,7 +328,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
     // ===== Меню =====
     menu: {
       customMenu: css`
-        z-index: 21000 !important;
+        z-index: 3000 !important;
         background: ${theme.colors.background.primary};
         min-width: 200px;
         max-height: 300px;
@@ -359,7 +347,15 @@ export const getStyles = (theme: GrafanaTheme2) => {
   };
 };
 
-
 export const useStyles = (theme: GrafanaTheme2) => {
   return useMemo(() => getStyles(theme), [theme]);
 };
+
+export const getMessageListStyles = (styles: ReturnType<typeof getStyles>): MessageListStyles => ({
+  messageWrapper: styles.messages.wrapper,
+  userMessageWrapper: styles.messages.userWrapper,
+  aiMessageWrapper: styles.messages.aiWrapper,
+  messageBubble: styles.messages.bubble,
+  userMessageBubble: styles.messages.userBubble,
+  aiMessageBubble: styles.messages.aiBubble,
+});

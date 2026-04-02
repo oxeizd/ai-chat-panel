@@ -41,7 +41,6 @@ export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
     let bottom: number | undefined;
     let maxHeight: number;
 
-    // Используем актуальный chatStyle из замыкания (он будет обновляться при изменении зависимости)
     const isCurrentlyDown = chatStyle.top !== undefined;
     const shouldSwitch =
       (isCurrentlyDown && !canFitMinBelow && canFitMinAbove) || (!isCurrentlyDown && !canFitMinAbove && canFitMinBelow);
@@ -52,14 +51,8 @@ export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
     } else if (!isCurrentlyDown && !shouldSwitch) {
       bottom = viewportHeight - rect.top + margin - positionOffset;
       maxHeight = Math.max(minHeight, Math.min(requiredHeight, availableAbove, viewportHeight * viewportLimit));
-    } else if (canFitTargetBelow && canFitTargetAbove) {
+    } else if (canFitTargetBelow || canFitTargetAbove) {
       top = rect.bottom + margin - positionOffset;
-      maxHeight = targetHeight;
-    } else if (canFitTargetBelow) {
-      top = rect.bottom + margin - positionOffset;
-      maxHeight = targetHeight;
-    } else if (canFitTargetAbove) {
-      bottom = viewportHeight - rect.top + margin - positionOffset;
       maxHeight = targetHeight;
     } else if (canFitMinBelow && canFitMinAbove) {
       if (availableBelow >= availableAbove) {
@@ -91,9 +84,9 @@ export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
       bottom,
       maxHeight: Math.max(minHeight, maxHeight),
       width: rect.width,
-      padding: CHAT_SETTINGS.default_padding
+      padding: CHAT_SETTINGS.default_padding,
     });
-  }, [isChatOpen, chatStyle]); // chatStyle добавлен в зависимости
+  }, [isChatOpen, chatStyle]);
 
   useEffect(() => {
     if (!isChatOpen) {
@@ -105,10 +98,10 @@ export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
     window.addEventListener('resize', handleResizeOrScroll);
     window.addEventListener('scroll', handleResizeOrScroll);
 
-    let resizeObserver: ResizeObserver | null = null;
+    let inputResizeObserver: ResizeObserver | null = null;
     if (inputContainerRef.current && window.ResizeObserver) {
-      resizeObserver = new ResizeObserver(updateChatPosition);
-      resizeObserver.observe(inputContainerRef.current);
+      inputResizeObserver = new ResizeObserver(updateChatPosition);
+      inputResizeObserver.observe(inputContainerRef.current);
     }
 
     let chatResizeObserver: ResizeObserver | null = null;
@@ -120,10 +113,10 @@ export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
     return () => {
       window.removeEventListener('resize', handleResizeOrScroll);
       window.removeEventListener('scroll', handleResizeOrScroll);
-      resizeObserver?.disconnect();
+      inputResizeObserver?.disconnect();
       chatResizeObserver?.disconnect();
     };
-  }, [isChatOpen, messages, updateChatPosition]);
+  }, [isChatOpen, updateChatPosition]);
 
   return {
     inputContainerRef,

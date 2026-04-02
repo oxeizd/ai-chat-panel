@@ -67,7 +67,7 @@
               {
                 "body": "{\n  \"model\": \"openai/gpt-3.5-turbo\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{user_input}\"\n    }\n  ]\n}",
                 "headers": {
-                  "Authorization": "Bearer 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"
+                  "Authorization": ""
                 },
                 "method": "POST",
                 "operation": "ask",
@@ -80,9 +80,7 @@
             ],
             "name": "OpenRouter GPT-3.5",
             "startupOperation": "ask",
-            "workflow": [
-              "ask"
-            ]
+            "workflow": ["ask"]
           }
         ],
         "inlineMode": false,

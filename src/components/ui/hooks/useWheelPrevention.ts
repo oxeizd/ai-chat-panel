@@ -1,5 +1,9 @@
 import { useCallback, WheelEvent } from 'react';
 
+/**
+ * Returns a wheel handler for inline scrollable elements (e.g. ChatTextarea).
+ * Prevents scroll from leaking to the parent when the element is at its boundary.
+ */
 export const useWheelPrevention = () => {
   return useCallback((e: WheelEvent<HTMLElement>) => {
     const target = e.currentTarget;

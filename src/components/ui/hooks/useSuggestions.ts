@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 interface UseSuggestionsOptions {
   suggestions: string[];
   placement: 'always' | 'onFocus';
-  hideWhen?: boolean; // скрывать подсказки, если true
+  hideWhen?: boolean;
 }
 
 export const useSuggestions = ({ suggestions, placement, hideWhen = false }: UseSuggestionsOptions) => {

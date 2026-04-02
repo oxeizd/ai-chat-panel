@@ -19,6 +19,10 @@ interface ChatHeaderProps {
   onFullscreen?: () => void;
 }
 
+const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {
+  e.currentTarget.blur();
+};
+
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
   onBack,
   agents,
@@ -47,7 +51,14 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
       }
       placement="bottom-end"
     >
-      <Button variant="secondary" size="sm" icon="bars" className={iconButtonClassName} aria-label="Меню" />
+      <Button
+        variant="secondary"
+        size="sm"
+        icon="bars"
+        className={iconButtonClassName}
+        aria-label="Меню"
+        onClick={blurButton}
+      />
     </Dropdown>
   );
 
@@ -55,10 +66,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     <Button
       variant="secondary"
       size="sm"
-      icon={isFullscreen ? "times" : "external-link-alt"}
-      onClick={onFullscreen}
+      icon={isFullscreen ? 'times' : 'external-link-alt'}
+      onClick={(e) => {
+        blurButton(e);
+        onFullscreen();
+      }}
       className={iconButtonClassName}
-      aria-label={isFullscreen ? "Выйти из полноэкранного режима" : "Полноэкранный режим"}
+      aria-label={isFullscreen ? 'Выйти из полноэкранного режима' : 'Полноэкранный режим'}
     />
   );
 
@@ -69,7 +83,10 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           icon="arrow-left"
           variant="secondary"
           size="sm"
-          onClick={onBack}
+          onClick={(e) => {
+            blurButton(e);
+            onBack();
+          }}
           className={iconButtonClassName}
           aria-label="Назад"
         />

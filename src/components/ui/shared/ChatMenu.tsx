@@ -1,6 +1,6 @@
 import React from 'react';
 import { Menu } from '@grafana/ui';
-import { AgentConfig } from '../../types';
+import { AgentConfig } from '../../../types';
 
 interface ChatMenuProps {
   agents: AgentConfig[];
