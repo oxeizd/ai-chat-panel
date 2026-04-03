@@ -15,6 +15,7 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
 
   return (
     <ChatProvider
+      debug={options.debug ?? false}
       agents={agents}
       placeholderText={placeholderText}
       suggestions={options.suggestions}

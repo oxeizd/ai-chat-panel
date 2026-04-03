@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { Message, AgentConfig } from 'types';
+import { Message, AgentConfig, DebugTrace, TraceStep } from 'types';
 import { useAgent } from 'components/agent';
 import { GrafanaUser } from '../../hooks/useGrafanaUser';
 import { MESSAGES } from '../core/config';
@@ -13,15 +13,15 @@ const generateSessionId = () => {
 
 const generateMessageId = () => `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
-export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaUser | null) => {
+export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaUser | null, debug: boolean) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const sessionIdRef = useRef(generateSessionId());
   const isSendingRef = useRef(false);
+  const [traces, setTraces] = useState<Map<string, DebugTrace>>(new Map());
 
   const { isLoading, sendMessage: agentSendMessage, resetSession } = useAgent(currentAgent);
 
-  // Основная функция отправки текста, возвращает успех/ошибку
   const sendText = useCallback(
     async (text: string): Promise<boolean> => {
       if (isSendingRef.current) {
@@ -52,6 +52,24 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       };
       setMessages((prev) => [...prev, userMessage]);
 
+      let trace: DebugTrace | undefined;
+      if (debug) {
+        trace = {
+          userMessageId,
+          userInput: text,
+          steps: [],
+        };
+        setTraces((prev) => new Map(prev).set(userMessageId, trace!));
+      }
+
+      const addTraceStep = (step: TraceStep) => {
+        if (!debug || !trace) {
+          return;
+        }
+        trace.steps.push(step);
+        setTraces((prev) => new Map(prev).set(userMessageId, trace));
+      };
+
       try {
         const additionalContext: Record<string, any> = {
           sessionID: sessionIdRef.current,
@@ -63,7 +81,12 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
           additionalContext.userName = user.name;
         }
 
-        const reply = await agentSendMessage(text, additionalContext);
+        const reply = await agentSendMessage(text, additionalContext, addTraceStep);
+
+        if (debug && trace) {
+          trace.finalReply = reply;
+          setTraces((prev) => new Map(prev).set(userMessageId, trace));
+        }
 
         const aiMessage: Message = {
           id: generateMessageId(),
@@ -78,31 +101,26 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
         let errorMessage = MESSAGES.errorResponse;
         let rawError = '';
 
-        // Получаем raw тело ошибки, если есть
         if (error?.responseBody) {
           rawError = typeof error.responseBody === 'string' ? error.responseBody : JSON.stringify(error.responseBody);
         } else if (error?.message) {
           rawError = error.message;
         }
 
-        // Пытаемся извлечь читаемое сообщение
         try {
           const parsed = JSON.parse(rawError);
           errorMessage = parsed.error?.message || parsed.message || parsed.error?.metadata?.raw || 'Неизвестная ошибка';
           statusCode = parsed.error?.code || parsed.status || error.status;
         } catch {
-          // Если не JSON, используем rawError как есть (обрезаем)
           if (rawError) {
             errorMessage = rawError.length > 200 ? rawError.substring(0, 200) + '...' : rawError;
           }
         }
 
-        // Если всё ещё нет статуса, пробуем взять из error.status
         if (!statusCode && error?.status) {
           statusCode = error.status;
         }
 
-        // Дополнительные понятные сообщения для частых кодов
         if (statusCode === 429) {
           errorMessage = 'Слишком много запросов (Rate limit). Попробуйте позже.';
         } else if (statusCode === 400) {
@@ -113,7 +131,11 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
           errorMessage = 'Ошибка на сервере. Повторите позже.';
         }
 
-        // Помечаем сообщение пользователя
+        if (debug && trace) {
+          trace.error = { message: errorMessage, status: statusCode, raw: rawError };
+          setTraces((prev) => new Map(prev).set(userMessageId, trace));
+        }
+
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === userMessageId
@@ -122,7 +144,6 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
           )
         );
 
-        // Сообщение от AI
         const errorAiMessage: Message = {
           id: generateMessageId(),
           text: `❌ ${errorMessage}`,
@@ -137,10 +158,9 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
         isSendingRef.current = false;
       }
     },
-    [currentAgent, isLoading, agentSendMessage, user]
+    [currentAgent, isLoading, agentSendMessage, user, debug]
   );
 
-  // sendMessage с опциональным текстом
   const sendMessage = useCallback(
     (customText?: string) => {
       const textToSend = customText !== undefined ? customText : inputValue;
@@ -154,7 +174,6 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     [inputValue, sendText]
   );
 
-  // Повторная отправка сообщения – не удаляем историю, а отправляем заново и обновляем статус
   const retryMessage = useCallback(
     async (messageId: string) => {
       const msgIndex = messages.findIndex((m) => m.id === messageId);
@@ -163,17 +182,13 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       }
 
       const originalMessage = messages[msgIndex];
-      // Убираем флаг ошибки у пользовательского сообщения
       setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, error: false } : m)));
 
-      // Удаляем последующие сообщения (ответы AI, включая ошибочные)
       const newMessages = messages.slice(0, msgIndex + 1);
       setMessages(newMessages);
 
-      // Отправляем заново
       const success = await sendText(originalMessage.text);
       if (!success) {
-        // Если повторная отправка не удалась, возвращаем флаг ошибки пользовательскому сообщению
         setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, error: true } : m)));
       }
     },
@@ -184,6 +199,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     setMessages([]);
     setInputValue('');
     sessionIdRef.current = generateSessionId();
+    setTraces(new Map());
     try {
       await resetSession();
     } catch (err) {
@@ -193,7 +209,10 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
 
   const clearChat = useCallback(() => {
     setMessages([]);
+    setTraces(new Map());
   }, []);
+
+  const getTrace = useCallback((messageId: string) => traces.get(messageId), [traces]);
 
   return {
     messages,
@@ -204,5 +223,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     clearChat,
     newChat,
     retryMessage,
+    traces,
+    getTrace,
   };
 };

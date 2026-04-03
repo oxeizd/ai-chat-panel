@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { cx } from '@emotion/css';
 import { Spinner, Button, Icon, Modal } from '@grafana/ui';
 import { useChat } from 'components/ui/core/ChatConfig';
+import { DebugTraceModal } from './DebugTraceModal';
 
 export interface MessageListStyles {
   messageWrapper: string;
@@ -18,8 +19,10 @@ interface MessageListProps {
 }
 
 export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true, styles }) => {
-  const { messages, isLoading, placeholderText, retryMessage } = useChat();
+  const { messages, isLoading, placeholderText, retryMessage, debug, getTrace } = useChat();
   const [errorDetails, setErrorDetails] = useState<any>(null);
+  const [traceModalOpen, setTraceModalOpen] = useState(false);
+  const [selectedTrace, setSelectedTrace] = useState<any>(null);
 
   let lastUserMessageIndex = -1;
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -29,8 +32,18 @@ export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true
     }
   }
 
-  const handleMessageClick = (msg: any) => {
-    if (msg.sender === 'ai' && msg.errorDetails) {
+  const handleUserMessageClick = (msg: any) => {
+    if (debug && getTrace) {
+      const trace = getTrace(msg.id);
+      if (trace) {
+        setSelectedTrace(trace);
+        setTraceModalOpen(true);
+      }
+    }
+  };
+
+  const handleAiMessageClick = (msg: any) => {
+    if (debug && msg.errorDetails) {
       setErrorDetails(msg.errorDetails);
     }
   };
@@ -47,8 +60,18 @@ export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true
             styles.messageWrapper,
             msg.sender === 'user' ? styles.userMessageWrapper : styles.aiMessageWrapper
           )}
-          onClick={() => handleMessageClick(msg)}
-          style={msg.errorDetails ? { cursor: 'pointer' } : undefined}
+          onClick={() => {
+            if (msg.sender === 'user') {
+              handleUserMessageClick(msg);
+            } else if (msg.sender === 'ai') {
+              handleAiMessageClick(msg);
+            }
+          }}
+          style={
+            debug && (msg.sender === 'user' || (msg.sender === 'ai' && msg.errorDetails))
+              ? { cursor: 'pointer' }
+              : undefined
+          }
         >
           <div
             className={cx(
@@ -56,8 +79,16 @@ export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true
               msg.sender === 'user' ? styles.userMessageBubble : styles.aiMessageBubble
             )}
           >
-            {msg.text}
-            {msg.errorDetails && msg.sender === 'ai' && (
+            {/* Улучшенный вывод ошибки при debug */}
+            {msg.sender === 'ai' && msg.errorDetails && debug ? (
+              <>
+                ❌ {msg.errorDetails.status ? `[${msg.errorDetails.status}] ` : ''}
+                {msg.errorDetails.message}
+              </>
+            ) : (
+              msg.text
+            )}
+            {debug && msg.errorDetails && msg.sender === 'ai' && (
               <Icon name="info-circle" style={{ marginLeft: '8px', fontSize: '14px', opacity: 0.7 }} />
             )}
           </div>
@@ -89,7 +120,8 @@ export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true
         </div>
       )}
 
-      {errorDetails && (
+      {/* Модалка ошибки (только при debug) */}
+      {debug && errorDetails && (
         <Modal title="Детали ошибки" isOpen={!!errorDetails} onDismiss={() => setErrorDetails(null)}>
           <div>
             <p>
@@ -120,6 +152,8 @@ export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true
           </Modal.ButtonRow>
         </Modal>
       )}
+
+      <DebugTraceModal isOpen={traceModalOpen} trace={selectedTrace} onDismiss={() => setTraceModalOpen(false)} />
     </>
   );
 };

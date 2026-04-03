@@ -11,6 +11,7 @@ export interface PanelOptions {
   showSuggestions?: boolean;
   suggestions?: string;
   suggestionsPlacement?: 'always' | 'onFocus';
+  debug?: boolean;
 }
 
 export interface PollingConfig {
@@ -66,4 +67,26 @@ export interface ChatStyle {
   maxHeight: number;
   width: number;
   padding?: number | string;
+}
+
+export interface TraceStep {
+  type: 'request' | 'response' | 'polling' | 'context_update';
+  timestamp: number;
+  endpoint?: EndpointConfig;
+  url?: string;
+  method?: string;
+  requestBody?: any;
+  responseStatus?: number;
+  responseBody?: any;
+  pollingAttempt?: number;
+  contextChanges?: Record<string, any>;
+  error?: any;
+}
+
+export interface DebugTrace {
+  userMessageId: string;
+  userInput: string;
+  steps: TraceStep[];
+  finalReply?: string;
+  error?: any;
 }

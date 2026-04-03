@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import { Message, AgentConfig } from 'types';
+import { Message, AgentConfig, DebugTrace } from 'types';
 import { useGrafanaUser } from 'components/hooks/useGrafanaUser';
 import { useChatMessages } from '../hooks/useChatMessages';
 import { useChatOpen } from '../hooks/useChatOpen';
@@ -52,6 +52,9 @@ export interface ChatConfig {
   exportChat: () => void;
   openSettings: () => void;
   handleSuggestionClick: (suggestion: string) => void;
+
+  debug: boolean;
+  getTrace?: (messageId: string) => DebugTrace | undefined;
 }
 
 interface ChatProviderProps {
@@ -65,6 +68,7 @@ interface ChatProviderProps {
   centerInput?: boolean;
   welcomeMessage?: string;
   showWelcomeMessage?: boolean;
+  debug?: boolean;
 }
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({
@@ -78,6 +82,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   centerInput,
   welcomeMessage,
   showWelcomeMessage = false,
+  debug = false,
 }) => {
   // User
   const { user } = useGrafanaUser();
@@ -96,7 +101,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     clearChat,
     newChat,
     retryMessage,
-  } = useChatMessages(selectedAgent, user);
+    getTrace,
+  } = useChatMessages(selectedAgent, user, debug);
 
   // UI state
   const { isChatOpen, openChat, closeChat } = useChatOpen();
@@ -203,6 +209,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     exportChat,
     openSettings,
     handleSuggestionClick,
+    debug,
+    getTrace,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

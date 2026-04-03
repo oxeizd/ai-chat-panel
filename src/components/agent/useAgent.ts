@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { AgentConfig } from 'types';
+import { AgentConfig, TraceStep } from 'types';
 import { AgentClient } from './AgentClient';
 
 export const useAgent = (agentConfig: AgentConfig | null) => {
@@ -10,17 +10,20 @@ export const useAgent = (agentConfig: AgentConfig | null) => {
     clientRef.current = agentConfig ? new AgentClient(agentConfig) : null;
   }, [agentConfig]);
 
-  const sendMessage = useCallback(async (userInput: string, additionalContext?: Record<string, any>) => {
-    if (!clientRef.current) {
-      throw new Error('Агент не выбран');
-    }
-    setIsLoading(true);
-    try {
-      return await clientRef.current.sendMessage(userInput, additionalContext);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const sendMessage = useCallback(
+    async (userInput: string, additionalContext?: Record<string, any>, onTrace?: (step: TraceStep) => void) => {
+      if (!clientRef.current) {
+        throw new Error('Агент не выбран');
+      }
+      setIsLoading(true);
+      try {
+        return await clientRef.current.sendMessage(userInput, additionalContext, onTrace);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   const resetSession = useCallback(async () => {
     await clientRef.current?.resetSession();

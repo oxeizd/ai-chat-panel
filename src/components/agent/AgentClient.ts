@@ -1,4 +1,4 @@
-import { AgentConfig, EndpointConfig } from 'types';
+import { AgentConfig, EndpointConfig, TraceStep } from 'types';
 import { executeWorkflow, executeEndpoint, WorkflowContext } from './WorkflowExecutor';
 import { VariableContext } from './VariableResolver';
 
@@ -23,12 +23,27 @@ export class AgentClient {
     }
   }
 
-  private async runEndpoint(endpoint: EndpointConfig, additionalContext: VariableContext): Promise<any> {
+  private async runEndpoint(
+    endpoint: EndpointConfig,
+    additionalContext: VariableContext,
+    onTrace?: (step: TraceStep) => void
+  ): Promise<any> {
     const combinedContext: WorkflowContext = { ...this.context, ...additionalContext };
-    return executeEndpoint(endpoint, combinedContext, this.config.api, this.config.config, this.config.headers);
+    return executeEndpoint(
+      endpoint,
+      combinedContext,
+      this.config.api,
+      this.config.config,
+      this.config.headers,
+      onTrace
+    );
   }
 
-  public async sendMessage(userInput: string, additionalContext: VariableContext = {}): Promise<string> {
+  public async sendMessage(
+    userInput: string,
+    additionalContext: VariableContext = {},
+    onTrace?: (step: TraceStep) => void
+  ): Promise<string> {
     const context = this.context;
     context.user_input = userInput;
     Object.assign(context, additionalContext);
@@ -54,7 +69,7 @@ export class AgentClient {
       if (this.config.startupOperation && !this.initialized) {
         const startupEndpoint = endpointMap.get(this.config.startupOperation);
         if (startupEndpoint) {
-          await this.runEndpoint(startupEndpoint, context);
+          await this.runEndpoint(startupEndpoint, context, onTrace);
           this.initialized = true;
         }
       }
@@ -64,7 +79,8 @@ export class AgentClient {
         context,
         this.config.api,
         this.config.config,
-        this.config.headers
+        this.config.headers,
+        onTrace
       );
 
       if (lastResponse.thread_id) {
@@ -106,17 +122,52 @@ export class AgentClient {
       headersObj['Content-Type'] = 'application/json';
     }
 
+    // Трейс для fallback запроса
+    if (onTrace) {
+      onTrace({
+        type: 'request',
+        timestamp: Date.now(),
+        url: this.config.api,
+        method: 'POST',
+        requestBody,
+      });
+    }
+
     const response = await fetch(this.config.api, {
       method: 'POST',
       headers: headersObj,
       body: JSON.stringify(requestBody),
     });
 
+    let responseData;
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      let errorText = '';
+      try {
+        errorText = await response.text();
+      } catch {
+        errorText = 'Unable to read error body';
+      }
+      if (onTrace) {
+        onTrace({
+          type: 'response',
+          timestamp: Date.now(),
+          responseStatus: response.status,
+          responseBody: errorText,
+        });
+      }
+      throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
     }
 
-    const data = await response.json();
-    return data.reply || data.result || 'Ответ не получен';
+    responseData = await response.json();
+    if (onTrace) {
+      onTrace({
+        type: 'response',
+        timestamp: Date.now(),
+        responseStatus: response.status,
+        responseBody: responseData,
+      });
+    }
+
+    return responseData.reply || responseData.result || 'Ответ не получен';
   }
 }

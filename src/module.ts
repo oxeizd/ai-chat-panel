@@ -1,7 +1,7 @@
 import { PanelPlugin } from '@grafana/data';
 import { PanelOptions } from './types';
 import { ChatPanel } from './components/ChatPanel';
-import { AgentsEditor } from './components/editor/AgentsEditor';
+import { AgentsEditor } from './components/editors/agentEditor/AgentsEditor';
 
 export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((builder) => {
   return builder
@@ -85,5 +85,12 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
       editor: AgentsEditor,
       defaultValue: [],
       category: ['Agent options'],
+    })
+    .addBooleanSwitch({
+      path: 'debug',
+      name: 'Debug mode',
+      description: 'Enable debug traces (click on user message to see full request flow)',
+      defaultValue: false,
+      category: ['Debug'],
     });
 });

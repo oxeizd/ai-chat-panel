@@ -1,5 +1,4 @@
-// WorkflowExecutor.ts
-import { EndpointConfig, PollingConfig } from 'types';
+import { EndpointConfig, PollingConfig, TraceStep } from 'types';
 import { VariableContext, resolveString, resolveObject } from './VariableResolver';
 
 export interface WorkflowContext extends VariableContext {
@@ -45,7 +44,8 @@ export const executeEndpoint = async (
   context: WorkflowContext,
   baseUrl: string,
   agentConfig?: string,
-  agentHeaders?: string
+  agentHeaders?: string,
+  onTrace?: (step: TraceStep) => void
 ): Promise<any> => {
   const path = resolveString(endpoint.path, context);
   const url = `${baseUrl}${path}`;
@@ -67,24 +67,17 @@ export const executeEndpoint = async (
   const mergedHeaders = mergeObjects(agentHeadersObj, endpointHeadersObj);
   const headers: HeadersInit = mergedHeaders as HeadersInit;
 
-  // Log request (debug)
-  console.log(`🌐 Request: ${endpoint.method} ${url}`);
-
-  const safeHeaders: Record<string, string> = {};
-  if (headers instanceof Headers) {
-    headers.forEach((value, key) => {
-      safeHeaders[key] = key.toLowerCase() === 'authorization' ? '***' : value;
+  // Запись трейса запроса
+  if (onTrace) {
+    onTrace({
+      type: 'request',
+      timestamp: Date.now(),
+      endpoint,
+      url,
+      method: endpoint.method,
+      requestBody: mergedBody,
     });
-  } else if (Array.isArray(headers)) {
-    headers.forEach(([key, value]) => {
-      safeHeaders[key] = key.toLowerCase() === 'authorization' ? '***' : value;
-    });
-  } else {
-    for (const [key, value] of Object.entries(headers)) {
-      safeHeaders[key] = key.toLowerCase() === 'authorization' ? '***' : String(value);
-    }
   }
-  console.log(`Request: ${endpoint.method} ${url}`, { headers: safeHeaders, body });
 
   const makeRequest = async (): Promise<any> => {
     const response = await fetch(url, { method: endpoint.method, headers, body });
@@ -95,8 +88,6 @@ export const executeEndpoint = async (
       } catch (e) {
         errorBody = 'Unable to read error body';
       }
-      console.error(`❌ HTTP ${response.status} on ${endpoint.method} ${url}`);
-      console.error('Response body:', errorBody);
       const error: any = new Error(`HTTP ${response.status} on ${endpoint.method} ${url}`);
       error.status = response.status;
       error.responseBody = errorBody;
@@ -106,6 +97,16 @@ export const executeEndpoint = async (
   };
 
   let data = await makeRequest();
+
+  // Запись трейса ответа
+  if (onTrace) {
+    onTrace({
+      type: 'response',
+      timestamp: Date.now(),
+      responseStatus: 200,
+      responseBody: data,
+    });
+  }
 
   const polling = endpoint.polling ? { ...DEFAULT_POLLING_CONFIG, ...endpoint.polling } : null;
 
@@ -123,9 +124,25 @@ export const executeEndpoint = async (
       try {
         console.log(`⏳ Polling attempt ${attempts + 1}/${polling.maxAttempts}`);
         data = await makeRequest();
+
+        if (onTrace) {
+          onTrace({
+            type: 'polling',
+            timestamp: Date.now(),
+            pollingAttempt: attempts + 1,
+            responseBody: data,
+          });
+        }
       } catch (err: any) {
         if (retryCodes.has(err.status)) {
-          console.log(`Polling: retryable status ${err.status}, attempt ${attempts + 1}`);
+          if (onTrace) {
+            onTrace({
+              type: 'polling',
+              timestamp: Date.now(),
+              pollingAttempt: attempts + 1,
+              error: { status: err.status, message: err.message },
+            });
+          }
           attempts++;
           continue;
         }
@@ -143,6 +160,7 @@ export const executeEndpoint = async (
     }
   }
 
+  // Извлечение reply
   let replyText: string | undefined;
   if (endpoint.replyField) {
     const replyValue = data[endpoint.replyField];
@@ -162,9 +180,12 @@ export const executeEndpoint = async (
     data.reply = replyText;
   }
 
+  // Сохранение в контекст
+  const contextChanges: Record<string, any> = {};
   if (endpoint.saveToContext?.length) {
     for (const key of endpoint.saveToContext) {
       if (data[key] !== undefined) {
+        contextChanges[key] = data[key];
         context[key] = data[key];
       }
     }
@@ -172,9 +193,18 @@ export const executeEndpoint = async (
     const exclude = ['reply', 'result', 'status'];
     for (const [key, value] of Object.entries(data)) {
       if (!exclude.includes(key)) {
+        contextChanges[key] = value;
         context[key] = value;
       }
     }
+  }
+
+  if (onTrace && Object.keys(contextChanges).length > 0) {
+    onTrace({
+      type: 'context_update',
+      timestamp: Date.now(),
+      contextChanges,
+    });
   }
 
   return data;
@@ -185,11 +215,12 @@ export const executeWorkflow = async (
   context: WorkflowContext,
   baseUrl: string,
   agentConfig?: string,
-  agentHeaders?: string
+  agentHeaders?: string,
+  onTrace?: (step: TraceStep) => void
 ): Promise<any> => {
   let lastResponse: any = null;
   for (const step of steps) {
-    lastResponse = await executeEndpoint(step.endpoint, context, baseUrl, agentConfig, agentHeaders);
+    lastResponse = await executeEndpoint(step.endpoint, context, baseUrl, agentConfig, agentHeaders, onTrace);
   }
   return lastResponse;
 };
