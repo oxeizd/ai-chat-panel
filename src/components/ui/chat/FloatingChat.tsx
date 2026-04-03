@@ -1,16 +1,15 @@
-// components/FloatingChat.tsx
 import React, { forwardRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useTheme2 } from '@grafana/ui';
-import { useStyles, getMessageListStyles } from './styles';
-import { MessageList } from './shared/MessageList';
-import { ChatHeader } from './shared/ChatHeader';
-import { BottomButtons } from './shared/BottomButtons';
-import { ChatTextarea } from './shared/ChatTextarea';
-import { useChat } from './shared/ChatContext';
+import { useStyles, getMessageListStyles } from 'components/ui/core/styles';
+import { MessageList } from 'components/ui/shared/MessageList';
+import { ChatHeader } from 'components/ui/shared/ChatHeader';
+import { BottomButtons } from 'components/ui/shared/BottomButtons';
+import { ChatTextarea } from 'components/ui/shared/ChatTextarea';
+import { useChat } from '../core/ChatConfig';
 
 interface FloatingChatProps {
-  chatStyle: { left: number; top?: number; bottom?: number; maxHeight: number; width: number };
+  chatStyle: React.CSSProperties;
   onClose: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;

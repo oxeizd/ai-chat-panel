@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { cx } from '@emotion/css';
-import { Spinner, Button, Icon } from '@grafana/ui';
-import { useChat } from './ChatContext';
+import { Spinner, Button, Icon, Modal } from '@grafana/ui';
+import { useChat } from 'components/ui/core/ChatConfig';
 
 export interface MessageListStyles {
   messageWrapper: string;
@@ -19,6 +19,7 @@ interface MessageListProps {
 
 export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true, styles }) => {
   const { messages, isLoading, placeholderText, retryMessage } = useChat();
+  const [errorDetails, setErrorDetails] = useState<any>(null);
 
   let lastUserMessageIndex = -1;
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -27,6 +28,12 @@ export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true
       break;
     }
   }
+
+  const handleMessageClick = (msg: any) => {
+    if (msg.sender === 'ai' && msg.errorDetails) {
+      setErrorDetails(msg.errorDetails);
+    }
+  };
 
   return (
     <>
@@ -40,6 +47,8 @@ export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true
             styles.messageWrapper,
             msg.sender === 'user' ? styles.userMessageWrapper : styles.aiMessageWrapper
           )}
+          onClick={() => handleMessageClick(msg)}
+          style={msg.errorDetails ? { cursor: 'pointer' } : undefined}
         >
           <div
             className={cx(
@@ -48,6 +57,9 @@ export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true
             )}
           >
             {msg.text}
+            {msg.errorDetails && msg.sender === 'ai' && (
+              <Icon name="info-circle" style={{ marginLeft: '8px', fontSize: '14px', opacity: 0.7 }} />
+            )}
           </div>
           {msg.sender === 'user' && msg.error && (
             <div style={{ marginLeft: '8px', alignSelf: 'center' }}>
@@ -56,7 +68,10 @@ export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true
                   icon="repeat"
                   size="sm"
                   variant="secondary"
-                  onClick={() => retryMessage?.(msg.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    retryMessage?.(msg.id);
+                  }}
                   aria-label="Повторить отправку"
                 />
               ) : (
@@ -72,6 +87,38 @@ export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true
             <Spinner />
           </div>
         </div>
+      )}
+
+      {errorDetails && (
+        <Modal title="Детали ошибки" isOpen={!!errorDetails} onDismiss={() => setErrorDetails(null)}>
+          <div>
+            <p>
+              <strong>Статус:</strong> {errorDetails.status || 'неизвестно'}
+            </p>
+            <p>
+              <strong>Сообщение:</strong> {errorDetails.message}
+            </p>
+            {errorDetails.raw && (
+              <details>
+                <summary>Техническая информация</summary>
+                <pre
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    fontSize: '12px',
+                    marginTop: '8px',
+                  }}
+                >
+                  {errorDetails.raw}
+                </pre>
+              </details>
+            )}
+          </div>
+          <Modal.ButtonRow>
+            <Button variant="secondary" onClick={() => setErrorDetails(null)}>
+              Закрыть
+            </Button>
+          </Modal.ButtonRow>
+        </Modal>
       )}
     </>
   );

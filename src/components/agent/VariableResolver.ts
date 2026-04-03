@@ -1,4 +1,4 @@
-// agents/VariableResolver.ts
+// VariableResolver.ts
 export type VariableContext = Record<string, any>;
 
 /**

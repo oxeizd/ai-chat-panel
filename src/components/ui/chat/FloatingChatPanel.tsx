@@ -1,39 +1,28 @@
-// components/FloatingChatPanel.tsx
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme2 } from '@grafana/ui';
 import { cx } from '@emotion/css';
-import { useStyles } from './styles';
+import { useStyles } from 'components/ui/core/styles';
 import { InputArea } from './InputArea';
 import { FloatingChat } from './FloatingChat';
-import { useChatOpen } from './hooks/useChatOpen';
-import { useChatPosition } from './hooks/useChatPosition';
-import { useChatWheelHandler } from './hooks/useChatWheelHandler';
-import { useAutoScroll } from './hooks/useAutoScroll';
-import { useChat } from './shared/ChatContext';
+import { useChat } from 'components/ui/core/ChatConfig';
 
 export const FloatingChatPanel: React.FC = () => {
   const props = useChat();
-  const { sendMessage, messages, maxWidth, centerInput } = props;
+  const {
+    sendMessage,
+    messages,
+    maxWidth,
+    centerInput,
+    isChatOpen,
+    openChat,
+    closeChat,
+    chatStyle,
+    chatMessagesRef,
+    inputContainerRef,
+    setFloatingChatRefCallback,
+  } = props;
   const theme = useTheme2();
   const styles = useStyles(theme);
-
-  const { isChatOpen, openChat, closeChat } = useChatOpen();
-  const { inputContainerRef, chatMessagesRef, floatingChatRef, chatStyle } = useChatPosition(isChatOpen, messages);
-
-  const [chatDomElement, setChatDomElement] = useState<HTMLElement | null>(null);
-  const setFloatingChatRefCallback = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (floatingChatRef && 'current' in floatingChatRef) {
-        // eslint-disable-next-line react-hooks/immutability
-        (floatingChatRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-      }
-      setChatDomElement(node);
-    },
-    [floatingChatRef]
-  );
-
-  useChatWheelHandler(isChatOpen, chatDomElement);
-  useAutoScroll(chatMessagesRef, [messages, isChatOpen]);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -66,30 +55,27 @@ export const FloatingChatPanel: React.FC = () => {
     };
   }, [isFullscreen]);
 
-  const toggleFullscreen = useCallback(() => setIsFullscreen((prev) => !prev), []);
+  const toggleFullscreen = () => setIsFullscreen((prev) => !prev);
 
-  const handleSendWithOpen = useCallback(() => {
+  const handleSendWithOpen = () => {
     sendMessage();
     if (!isChatOpen) {
       openChat();
     }
-  }, [sendMessage, isChatOpen, openChat]);
+  };
 
-  const handleSendText = useCallback(
-    (text: string) => {
-      sendMessage(text);
-      if (!isChatOpen) {
-        openChat();
-      }
-    },
-    [sendMessage, isChatOpen, openChat]
-  );
-
-  const handleContinue = useCallback(() => {
+  const handleSendText = (text: string) => {
+    sendMessage(text);
     if (!isChatOpen) {
       openChat();
     }
-  }, [isChatOpen, openChat]);
+  };
+
+  const handleContinue = () => {
+    if (!isChatOpen) {
+      openChat();
+    }
+  };
 
   const hasHistory = messages.length > 0;
   const continueMode = !isChatOpen && hasHistory;

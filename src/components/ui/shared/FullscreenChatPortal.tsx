@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { FloatingChat } from '../FloatingChat';
-import { useChat } from './ChatContext';
+import { FloatingChat } from '../chat/FloatingChat';
+import { useChat } from 'components/ui/core/ChatConfig';
 
 interface FullscreenChatPortalProps {
   isOpen: boolean;

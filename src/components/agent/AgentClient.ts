@@ -25,7 +25,7 @@ export class AgentClient {
 
   private async runEndpoint(endpoint: EndpointConfig, additionalContext: VariableContext): Promise<any> {
     const combinedContext: WorkflowContext = { ...this.context, ...additionalContext };
-    return executeEndpoint(endpoint, combinedContext, this.config.api);
+    return executeEndpoint(endpoint, combinedContext, this.config.api, this.config.config, this.config.headers);
   }
 
   public async sendMessage(userInput: string, additionalContext: VariableContext = {}): Promise<string> {
@@ -59,7 +59,14 @@ export class AgentClient {
         }
       }
 
-      const lastResponse = await executeWorkflow(steps, context, this.config.api);
+      const lastResponse = await executeWorkflow(
+        steps,
+        context,
+        this.config.api,
+        this.config.config,
+        this.config.headers
+      );
+
       if (lastResponse.thread_id) {
         this.context.thread_id = lastResponse.thread_id;
       }
@@ -70,7 +77,7 @@ export class AgentClient {
       return lastResponse.reply || lastResponse.result || JSON.stringify(lastResponse);
     }
 
-    // Fallback: single POST to api
+    // Fallback: простой POST
     let requestBody: any = { message: userInput };
     if (this.config.config) {
       try {
@@ -84,9 +91,24 @@ export class AgentClient {
       }
     }
 
+    const headersObj: Record<string, string> = {};
+    if (this.config.headers) {
+      try {
+        const parsed = JSON.parse(this.config.headers);
+        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+          Object.assign(headersObj, parsed);
+        }
+      } catch (e) {
+        console.warn('Invalid agent headers JSON, ignoring', e);
+      }
+    }
+    if (!headersObj['Content-Type'] && !headersObj['content-type']) {
+      headersObj['Content-Type'] = 'application/json';
+    }
+
     const response = await fetch(this.config.api, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headersObj,
       body: JSON.stringify(requestBody),
     });
 

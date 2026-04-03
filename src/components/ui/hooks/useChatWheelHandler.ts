@@ -1,5 +1,18 @@
 import { useEffect } from 'react';
-import { isElementInsideChat } from '../utils/domUtils';
+
+const isElementInsideChat = (element: HTMLElement | null, chatElement: HTMLElement | null): boolean => {
+  if (!chatElement) {
+    return false;
+  }
+  let current = element;
+  while (current) {
+    if (current === chatElement) {
+      return true;
+    }
+    current = current.parentElement;
+  }
+  return false;
+};
 
 /**
  * Предотвращает прокрутку страницы, когда мышь находится внутри плавающего чата.

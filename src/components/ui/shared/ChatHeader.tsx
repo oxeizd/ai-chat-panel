@@ -1,8 +1,8 @@
 import React from 'react';
 import { Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { ChatMenu } from './ChatMenu';
-import { useChat } from './ChatContext';
-import { useStyles } from '../styles';
+import { useChat } from 'components/ui/core/ChatConfig';
+import { useStyles } from 'components/ui/core/styles';
 
 interface ChatHeaderProps {
   onBack?: () => void;
@@ -97,7 +97,14 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   );
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px 0 16px' }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        padding: '8px 16px 0 16px',
+      }}
+    >
       <div style={{ flex: 1 }}>{leftSection}</div>
       {fullscreenButton}
       {menuButton}

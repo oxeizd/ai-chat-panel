@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { Message, AgentConfig } from 'types';
 import { useAgent } from 'components/agent';
-import { GrafanaUser } from './useGrafanaUser';
-import { MESSAGES } from '../config';
+import { GrafanaUser } from '../../hooks/useGrafanaUser';
+import { MESSAGES } from '../core/config';
 
 const generateSessionId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -73,17 +73,65 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
         };
         setMessages((prev) => [...prev, aiMessage]);
         return true;
-      } catch (error) {
-        // Помечаем сообщение пользователя ошибкой
-        setMessages((prev) => prev.map((msg) => (msg.id === userMessageId ? { ...msg, error: true } : msg)));
-        // Добавляем сообщение об ошибке от AI
-        const errorMessage: Message = {
+      } catch (error: any) {
+        let statusCode: number | undefined;
+        let errorMessage = MESSAGES.errorResponse;
+        let rawError = '';
+
+        // Получаем raw тело ошибки, если есть
+        if (error?.responseBody) {
+          rawError = typeof error.responseBody === 'string' ? error.responseBody : JSON.stringify(error.responseBody);
+        } else if (error?.message) {
+          rawError = error.message;
+        }
+
+        // Пытаемся извлечь читаемое сообщение
+        try {
+          const parsed = JSON.parse(rawError);
+          errorMessage = parsed.error?.message || parsed.message || parsed.error?.metadata?.raw || 'Неизвестная ошибка';
+          statusCode = parsed.error?.code || parsed.status || error.status;
+        } catch {
+          // Если не JSON, используем rawError как есть (обрезаем)
+          if (rawError) {
+            errorMessage = rawError.length > 200 ? rawError.substring(0, 200) + '...' : rawError;
+          }
+        }
+
+        // Если всё ещё нет статуса, пробуем взять из error.status
+        if (!statusCode && error?.status) {
+          statusCode = error.status;
+        }
+
+        // Дополнительные понятные сообщения для частых кодов
+        if (statusCode === 429) {
+          errorMessage = 'Слишком много запросов (Rate limit). Попробуйте позже.';
+        } else if (statusCode === 400) {
+          errorMessage = 'Неверный запрос';
+        } else if (statusCode === 401 || statusCode === 403) {
+          errorMessage = 'Ошибка авторизации';
+        } else if (statusCode && statusCode >= 500) {
+          errorMessage = 'Ошибка на сервере. Повторите позже.';
+        }
+
+        // Помечаем сообщение пользователя
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === userMessageId
+              ? { ...msg, error: true, errorDetails: { status: statusCode, message: errorMessage, raw: rawError } }
+              : msg
+          )
+        );
+
+        // Сообщение от AI
+        const errorAiMessage: Message = {
           id: generateMessageId(),
-          text: MESSAGES.errorResponse,
+          text: `❌ ${errorMessage}`,
           sender: 'ai',
           timestamp: Date.now(),
+          errorDetails: { status: statusCode, message: errorMessage, raw: rawError },
         };
-        setMessages((prev) => [...prev, errorMessage]);
+        setMessages((prev) => [...prev, errorAiMessage]);
+
         return false;
       } finally {
         isSendingRef.current = false;

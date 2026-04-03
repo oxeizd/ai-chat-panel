@@ -1,7 +1,7 @@
 import { css } from '@emotion/css';
 import { GrafanaTheme2 } from '@grafana/data';
 import { useMemo } from 'react';
-import { MessageListStyles } from './shared/MessageList';
+import { MessageListStyles } from '../shared/MessageList';
 
 const toRgba = (color: string, alpha: number) => {
   if (color.startsWith('#')) {
@@ -56,7 +56,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
         flex-wrap: wrap;
         gap: ${theme.spacing(1)};
         padding: ${theme.spacing(0.65)};
-        /* z-index удалён, так как нет позиционирования */
       `,
       item: css`
         background: ${theme.colors.background.secondary};
@@ -132,7 +131,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
         gap: ${theme.spacing(0.5)};
         padding: ${theme.spacing(0.75)} ${theme.spacing(0)} ${theme.spacing(1.75)};
         flex-direction: column;
-        /* position: static и overflow: visible удалены (значения по умолчанию) */
       `,
       inlineWrapper: css`
         display: flex;
@@ -305,7 +303,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
         flex-direction: column;
         overflow: hidden;
         z-index: 1000;
-        /* width: 100% удалено — ширина задаётся через style или left/right */
         isolation: isolate;
       `,
     },
@@ -314,7 +311,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
     bottomButtons: {
       agentButton: css`
         flex: 1;
-        /* justify-content: space-between; удалено — не используется */
         background: ${theme.colors.background.primary}CC;
         border: 1px solid ${theme.colors.border.weak};
       `,

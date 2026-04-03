@@ -1,14 +1,14 @@
 import React, { useRef, useState } from 'react';
 import { cx } from '@emotion/css';
 import { useTheme2 } from '@grafana/ui';
-import { useStyles, getMessageListStyles } from './styles';
-import { MessageList } from './shared/MessageList';
-import { ChatHeader } from './shared/ChatHeader';
-import { BottomButtons } from './shared/BottomButtons';
-import { ChatTextarea } from './shared/ChatTextarea';
-import { FullscreenChatPortal } from './shared/FullscreenChatPortal';
-import { useAutoScroll } from './hooks/useAutoScroll';
-import { useChat } from './shared/ChatContext';
+import { useStyles, getMessageListStyles } from '../core/styles';
+import { MessageList } from 'components/ui/shared/MessageList';
+import { ChatHeader } from 'components/ui/shared/ChatHeader';
+import { BottomButtons } from 'components/ui/shared/BottomButtons';
+import { ChatTextarea } from 'components/ui/shared/ChatTextarea';
+import { FullscreenChatPortal } from 'components/ui/shared/FullscreenChatPortal';
+import { useAutoScroll } from 'components/ui/hooks/useAutoScroll';
+import { useChat } from 'components/ui/core/ChatConfig';
 
 export const InlineChat: React.FC = () => {
   const props = useChat();

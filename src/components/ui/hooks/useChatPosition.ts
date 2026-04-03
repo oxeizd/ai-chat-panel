@@ -1,11 +1,13 @@
+// useChatPosition.ts
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChatStyle } from 'types';
-import { CHAT_SETTINGS } from '../config';
+import { CHAT_SETTINGS } from '../core/config';
 
 export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
-  const floatingChatRef = useRef<HTMLDivElement>(null);
+  const floatingChatRef = useRef<HTMLDivElement | null>(null);
+  const [chatDomElement, setChatDomElement] = useState<HTMLElement | null>(null);
   const [chatStyle, setChatStyle] = useState<ChatStyle>({
     left: 0,
     top: undefined,
@@ -13,6 +15,12 @@ export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
     maxHeight: CHAT_SETTINGS.minHeight,
     width: 0,
   });
+
+  // Callback ref для установки и синхронизации с DOM-элементом
+  const setFloatingChatRefCallback = useCallback((node: HTMLDivElement | null) => {
+    floatingChatRef.current = node;
+    setChatDomElement(node);
+  }, []);
 
   const updateChatPosition = useCallback(() => {
     if (!inputContainerRef.current || !isChatOpen) {
@@ -86,7 +94,7 @@ export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
       width: rect.width,
       padding: CHAT_SETTINGS.default_padding,
     });
-  }, [isChatOpen, chatStyle]);
+  }, [isChatOpen, chatStyle.top]);
 
   useEffect(() => {
     if (!isChatOpen) {
@@ -121,7 +129,9 @@ export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
   return {
     inputContainerRef,
     chatMessagesRef,
-    floatingChatRef,
+    floatingChatRef, // оставляем для чтения, если нужно
+    setFloatingChatRefCallback, // новая функция для установки
     chatStyle,
+    chatDomElement, // если нужно где-то ещё
   };
 };

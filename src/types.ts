@@ -20,24 +20,26 @@ export interface PollingConfig {
   statusField?: string;
   successValue?: string;
   resultField?: string;
+  retryStatusCodes?: number[];
 }
 
 export interface EndpointConfig {
   operation: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  method: string;
   path: string;
-  body?: string;
+  body?: string; // JSON строка с поддержкой переменных
+  headers?: string; // JSON строка с заголовками
   saveToContext?: string[];
-  polling?: PollingConfig;
-  headers?: Record<string, string>;
   replyField?: string;
+  polling?: PollingConfig;
 }
 
 export interface AgentConfig {
   name: string;
-  api: string;
-  default: boolean;
-  config?: string;
+  api: string; // базовый URL
+  default?: boolean;
+  config?: string; // общие параметры для тела запроса (JSON)
+  headers?: string; // общие заголовки для всех запросов (JSON)
   endpoints?: EndpointConfig[];
   workflow?: string[];
   startupOperation?: string;
@@ -48,7 +50,13 @@ export interface Message {
   text: string;
   sender: 'user' | 'ai';
   timestamp: number;
-  error?: boolean;
+  error?: boolean; // флаг ошибки для сообщения пользователя
+  errorDetails?: {
+    // детали ошибки (для сообщений ai или пользователя)
+    status?: number; // HTTP статус или код ошибки
+    message: string; // читаемое сообщение
+    raw?: string; // сырой ответ сервера
+  };
 }
 
 export interface ChatStyle {

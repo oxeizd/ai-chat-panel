@@ -2,10 +2,10 @@ import React, { forwardRef, memo, useState, useEffect, useCallback } from 'react
 import ReactDOM from 'react-dom';
 import { Input, Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { cx } from '@emotion/css';
-import { useStyles } from './styles';
-import { ChatMenu } from './shared/ChatMenu';
-import { useSuggestions } from './hooks/useSuggestions';
-import { useChat } from './shared/ChatContext';
+import { useStyles } from '../core/styles';
+import { ChatMenu } from 'components/ui/shared/ChatMenu';
+import { useSuggestions } from 'components/ui/hooks/useSuggestions';
+import { useChat } from '../core/ChatConfig';
 
 interface InputAreaProps {
   className?: string;
@@ -47,12 +47,20 @@ export const InputArea = memo(
       hideWhen: !showSuggestions,
     });
 
-    const [popupPosition, setPopupPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+    const [popupPosition, setPopupPosition] = useState<{
+      top: number;
+      left: number;
+      width: number;
+    } | null>(null);
 
     const updatePopupPosition = useCallback(() => {
       if (inputRef.current && showPopup) {
         const rect = inputRef.current.getBoundingClientRect();
-        setPopupPosition({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+        setPopupPosition({
+          top: rect.bottom + 4,
+          left: rect.left,
+          width: rect.width,
+        });
       } else {
         setPopupPosition(null);
       }
@@ -156,7 +164,11 @@ export const InputArea = memo(
       <div
         ref={popupRef}
         className={styles.suggestions.popupPortal}
-        style={{ top: popupPosition.top, left: popupPosition.left, width: popupPosition.width }}
+        style={{
+          top: popupPosition.top,
+          left: popupPosition.left,
+          width: popupPosition.width,
+        }}
       >
         <div className={styles.suggestions.popupHeader}>Можно спросить:</div>
         <div className={styles.suggestions.popupList}>

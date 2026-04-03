@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Button,
   Input,
@@ -14,7 +14,7 @@ import {
 } from '@grafana/ui';
 import { GrafanaTheme2 } from '@grafana/data';
 import { css } from '@emotion/css';
-import { AgentConfig, EndpointConfig, PollingConfig } from 'types';
+import { AgentConfig, EndpointConfig, PollingConfig } from 'types'; // путь подставьте свой
 
 interface AgentsEditorProps {
   value?: AgentConfig[];
@@ -39,6 +39,9 @@ const getEndpointEditorStyles = (theme: GrafanaTheme2) => ({
   `,
 });
 
+// ----------------------------------------------
+// EndpointEditor (редактор одного эндпоинта)
+// ----------------------------------------------
 const EndpointEditor: React.FC<{
   endpoint: EndpointConfig;
   index: number;
@@ -60,15 +63,6 @@ const EndpointEditor: React.FC<{
     handleChange('saveToContext', fields);
   };
 
-  const handleHeadersChange = (val: string) => {
-    try {
-      const headers = val.trim() ? JSON.parse(val) : {};
-      handleChange('headers', headers);
-    } catch (e) {
-      console.warn('Invalid JSON in headers, ignoring');
-    }
-  };
-
   const handlePollingChange = (enabled: boolean) => {
     const currentPolling = endpoint.polling || {};
     handleChange('polling', { ...currentPolling, enabled });
@@ -79,11 +73,9 @@ const EndpointEditor: React.FC<{
     handleChange('polling', { ...current, [field]: val });
   };
 
-  const headersString = endpoint.headers ? JSON.stringify(endpoint.headers, null, 2) : '';
-
   return (
     <div className={styles.container}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <strong>Endpoint #{index + 1}</strong>
         <Button
           variant="destructive"
@@ -94,124 +86,184 @@ const EndpointEditor: React.FC<{
         />
       </div>
 
-      <div style={{ marginBottom: '8px' }}>
-        <Input
-          label="Operation name"
-          value={endpoint.operation}
-          onChange={(e) => handleChange('operation', e.currentTarget.value)}
-          placeholder="e.g., ask, new_thread, chat_messages"
-        />
+      {/* Основное */}
+      <div
+        style={{
+          marginBottom: '16px',
+          padding: '8px',
+          background: theme.colors.background.primary,
+          borderRadius: '4px',
+        }}
+      >
+        <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '12px', color: theme.colors.text.secondary }}>
+          📍 Основное
+        </div>
+        <Field label="Название операции">
+          <Input
+            value={endpoint.operation}
+            onChange={(e) => handleChange('operation', e.currentTarget.value)}
+            placeholder="например: ask, new_thread, get_status"
+          />
+        </Field>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px' }}>
+          <Field label="HTTP метод">
+            <Combobox
+              value={methodOptions.find((opt) => opt.value === endpoint.method) || methodOptions[0]}
+              options={methodOptions}
+              onChange={(opt) => handleChange('method', opt?.value || 'POST')}
+            />
+          </Field>
+          <Field label="Путь (можно с переменными)">
+            <Input
+              value={endpoint.path}
+              onChange={(e) => handleChange('path', e.currentTarget.value)}
+              placeholder="/{thread_id}/messages"
+            />
+          </Field>
+        </div>
       </div>
 
-      <div style={{ marginBottom: '8px' }}>
-        <Field label="HTTP method">
-          <Combobox
-            value={methodOptions.find((opt) => opt.value === endpoint.method) || methodOptions[0]}
-            options={methodOptions}
-            onChange={(opt) => handleChange('method', opt?.value || 'POST')}
+      {/* Тело запроса */}
+      <div
+        style={{
+          marginBottom: '16px',
+          padding: '8px',
+          background: theme.colors.background.primary,
+          borderRadius: '4px',
+        }}
+      >
+        <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '12px', color: theme.colors.text.secondary }}>
+          📦 Тело запроса
+        </div>
+        <Field label="JSON шаблон">
+          <TextArea
+            value={endpoint.body || ''}
+            onChange={(e) => handleChange('body', e.currentTarget.value)}
+            placeholder='{"message": "{user_input}", "temperature": 0.7}'
+            rows={3}
+          />
+        </Field>
+        <div style={{ fontSize: '11px', color: theme.colors.text.disabled, marginTop: '4px' }}>
+          Поддерживает переменные: {'{user_input}'}, {'{thread_id}'} и т.д.
+        </div>
+      </div>
+
+      {/* Заголовки */}
+      <div
+        style={{
+          marginBottom: '16px',
+          padding: '8px',
+          background: theme.colors.background.primary,
+          borderRadius: '4px',
+        }}
+      >
+        <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '12px', color: theme.colors.text.secondary }}>
+          🔐 Заголовки
+        </div>
+        <Field label="HTTP заголовки (JSON)">
+          <TextArea
+            value={endpoint.headers || ''}
+            onChange={(e) => handleChange('headers', e.currentTarget.value)}
+            placeholder='{"Authorization": "Bearer token", "X-API-Key": "key"}'
+            rows={2}
           />
         </Field>
       </div>
 
-      <div style={{ marginBottom: '8px' }}>
-        <Input
-          label="Path (with variables like {thread_id})"
-          value={endpoint.path}
-          onChange={(e) => handleChange('path', e.currentTarget.value)}
-          placeholder="/{thread_id}/ask"
-        />
-      </div>
-
-      <div style={{ marginBottom: '8px' }}>
-        <TextArea
-          label="Request body (JSON template, optional)"
-          value={endpoint.body || ''}
-          onChange={(e) => handleChange('body', e.currentTarget.value)}
-          placeholder='{"message": "{user_input}"}'
-          rows={2}
-        />
-      </div>
-
-      <div style={{ marginBottom: '8px' }}>
-        <TextArea
-          label="Headers (JSON, optional)"
-          value={headersString}
-          onChange={(e) => handleHeadersChange(e.currentTarget.value)}
-          placeholder='{"Authorization": "Bearer token"}'
-          rows={3}
-        />
-      </div>
-
-      <div style={{ marginBottom: '8px' }}>
-        <Input
-          label="Save fields to context (comma-separated)"
-          value={endpoint.saveToContext?.join(', ') || ''}
-          onChange={(e) => handleSaveToContextChange(e.currentTarget.value)}
-          placeholder="thread_id, run_id, session_id"
-        />
-        <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-          Specify field names to extract from response and save for subsequent steps.
+      {/* Работа с ответом */}
+      <div
+        style={{
+          marginBottom: '16px',
+          padding: '8px',
+          background: theme.colors.background.primary,
+          borderRadius: '4px',
+        }}
+      >
+        <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '12px', color: theme.colors.text.secondary }}>
+          🔄 Работа с ответом
+        </div>
+        <Field label="Сохранить поля в контекст">
+          <Input
+            value={endpoint.saveToContext?.join(', ') || ''}
+            onChange={(e) => handleSaveToContextChange(e.currentTarget.value)}
+            placeholder="thread_id, session_id, user_id"
+          />
+        </Field>
+        <div style={{ fontSize: '11px', color: theme.colors.text.disabled, marginTop: '-4px', marginBottom: '12px' }}>
+          Эти поля будут доступны в следующих запросах
+        </div>
+        <Field label="Поле с ответом чата">
+          <Input
+            value={endpoint.replyField || ''}
+            onChange={(e) => handleChange('replyField', e.currentTarget.value)}
+            placeholder="text, message, content"
+          />
+        </Field>
+        <div style={{ fontSize: '11px', color: theme.colors.text.disabled, marginTop: '-4px' }}>
+          Если не указано, определяется автоматически
         </div>
       </div>
 
-      <div style={{ marginBottom: '8px' }}>
-        <Input
-          label="Reply field (optional)"
-          value={endpoint.replyField || ''}
-          onChange={(e) => handleChange('replyField', e.currentTarget.value)}
-          placeholder="e.g., text, message, answer"
-        />
-        <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-          Specify which field in the response contains the chat reply. If empty, auto-detection is used.
-        </div>
-      </div>
-
-      <div style={{ marginBottom: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+      {/* Polling */}
+      <div style={{ padding: '8px', background: theme.colors.background.primary, borderRadius: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 500, color: theme.colors.text.secondary }}>
+            ⏱ Ожидание результата (Polling)
+          </div>
           <Switch
-            label="Polling"
             value={endpoint.polling?.enabled || false}
             onChange={(e) => handlePollingChange(e.currentTarget.checked)}
           />
         </div>
         {endpoint.polling?.enabled && (
-          <div style={{ marginLeft: '24px', marginTop: '8px' }}>
-            <div style={{ marginBottom: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+            <Field label="Интервал (мс)">
               <Input
-                label="Interval (ms)"
                 type="number"
                 value={endpoint.polling?.intervalMs ?? 1000}
                 onChange={(e) => handlePollingFieldChange('intervalMs', parseInt(e.currentTarget.value, 10))}
               />
-            </div>
-            <div style={{ marginBottom: '8px' }}>
+            </Field>
+            <Field label="Максимум попыток">
               <Input
-                label="Max attempts"
                 type="number"
                 value={endpoint.polling?.maxAttempts ?? 10}
                 onChange={(e) => handlePollingFieldChange('maxAttempts', parseInt(e.currentTarget.value, 10))}
               />
-            </div>
-            <div style={{ marginBottom: '8px' }}>
+            </Field>
+            <Field label="Поле статуса">
               <Input
-                label="Status field"
                 value={endpoint.polling?.statusField ?? 'status'}
                 onChange={(e) => handlePollingFieldChange('statusField', e.currentTarget.value)}
               />
-            </div>
-            <div style={{ marginBottom: '8px' }}>
+            </Field>
+            <Field label="Значение успеха">
               <Input
-                label="Success value"
                 value={endpoint.polling?.successValue ?? 'completed'}
                 onChange={(e) => handlePollingFieldChange('successValue', e.currentTarget.value)}
               />
-            </div>
-            <div style={{ marginBottom: '8px' }}>
+            </Field>
+            <Field label="Поле результата">
               <Input
-                label="Result field"
                 value={endpoint.polling?.resultField ?? 'result'}
                 onChange={(e) => handlePollingFieldChange('resultField', e.currentTarget.value)}
               />
+            </Field>
+            <Field label="Retry HTTP статусы (опционально)">
+              <Input
+                value={endpoint.polling?.retryStatusCodes?.join(', ') || ''}
+                onChange={(e) => {
+                  const codes = e.currentTarget.value
+                    .split(',')
+                    .map((s) => parseInt(s.trim(), 10))
+                    .filter((n) => !isNaN(n));
+                  handlePollingFieldChange('retryStatusCodes', codes);
+                }}
+                placeholder="202, 404, 409"
+              />
+            </Field>
+            <div style={{ fontSize: '11px', color: theme.colors.text.disabled, marginTop: '-4px' }}>
+              При получении этих HTTP-статусов опрос продолжится (ошибкой не считается).
             </div>
           </div>
         )}
@@ -220,6 +272,9 @@ const EndpointEditor: React.FC<{
   );
 };
 
+// ----------------------------------------------
+// AgentEditModal (модальное окно редактирования/создания)
+// ----------------------------------------------
 const AgentEditModal: React.FC<{
   isOpen: boolean;
   agent: AgentConfig | null;
@@ -227,34 +282,21 @@ const AgentEditModal: React.FC<{
   onSave: (agent: AgentConfig) => void;
 }> = ({ isOpen, agent, onDismiss, onSave }) => {
   const [editedAgent, setEditedAgent] = useState<AgentConfig>(
-    agent || {
-      name: '',
-      api: '',
-      default: false,
-      config: '',
-      endpoints: [],
-      workflow: [],
-      startupOperation: '',
-    }
-  );
-
-  const [isConfigOpen, setIsConfigOpen] = useState(false); // состояние для Collapse
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setEditedAgent(
+    () =>
       agent || {
         name: '',
         api: '',
         default: false,
         config: '',
+        headers: '',
         endpoints: [],
         workflow: [],
         startupOperation: '',
       }
-    );
-    setIsConfigOpen(false);
-  }, [agent]);
+  );
+
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [isHeadersOpen, setIsHeadersOpen] = useState(false);
 
   const updateField = (field: keyof AgentConfig, value: any) => {
     setEditedAgent((prev) => ({ ...prev, [field]: value }));
@@ -268,7 +310,7 @@ const AgentEditModal: React.FC<{
       body: '',
       saveToContext: [],
       polling: { enabled: false },
-      headers: {},
+      headers: '',
       replyField: '',
     };
     setEditedAgent((prev) => ({
@@ -306,77 +348,97 @@ const AgentEditModal: React.FC<{
   const selectedStartup = operationOptions.find((opt) => opt.value === editedAgent.startupOperation) || null;
 
   return (
-    <Modal title={agent ? 'Edit Agent' : 'New Agent'} isOpen={isOpen} onDismiss={onDismiss}>
+    <Modal title={agent ? 'Редактировать агента' : 'Новый агент'} isOpen={isOpen} onDismiss={onDismiss}>
       <div style={{ marginBottom: '16px' }}>
-        <Input
-          label="Agent Name"
-          value={editedAgent.name}
-          onChange={(e) => updateField('name', e.currentTarget.value)}
-          placeholder="e.g., GPT-4"
-        />
+        <Field label="Имя агента">
+          <Input
+            value={editedAgent.name}
+            onChange={(e) => updateField('name', e.currentTarget.value)}
+            placeholder="например: GPT-4"
+          />
+        </Field>
       </div>
 
       <div style={{ marginBottom: '16px' }}>
-        <Input
-          label="Base URL"
-          value={editedAgent.api}
-          onChange={(e) => updateField('api', e.currentTarget.value)}
-          placeholder="https://api.example.com"
-        />
+        <Field label="Базовый URL">
+          <Input
+            value={editedAgent.api}
+            onChange={(e) => updateField('api', e.currentTarget.value)}
+            placeholder="https://api.example.com"
+          />
+        </Field>
       </div>
 
       <Collapse
-        label="Additional Configuration (optional)"
+        label="Общая конфигурация (доп. параметры для всех запросов)"
         isOpen={isConfigOpen}
         onToggle={() => setIsConfigOpen(!isConfigOpen)}
       >
         <div style={{ marginTop: '12px' }}>
-          <TextArea
-            label="General Configuration (JSON)"
-            value={editedAgent.config || ''}
-            onChange={(e) => updateField('config', e.currentTarget.value)}
-            placeholder='{"temperature": 0.7, "model": "gpt-4"}'
-            rows={3}
-          />
+          <Field label="Параметры (JSON с переменными)">
+            <TextArea
+              value={editedAgent.config || ''}
+              onChange={(e) => updateField('config', e.currentTarget.value)}
+              placeholder='{"model": "gpt-4", "temperature": 0.7, "thread_id": "${thread_id}"}'
+              rows={4}
+            />
+          </Field>
           <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-            Optional. Used to pass common parameters to all requests.
+            Эти параметры будут объединены с телом каждого запроса. Используйте {'${variable}'} для подстановки из
+            контекста.
           </div>
         </div>
       </Collapse>
 
-      <div style={{ marginBottom: '16px', marginTop: '16px' }}>
+      <Collapse label="Общие заголовки" isOpen={isHeadersOpen} onToggle={() => setIsHeadersOpen(!isHeadersOpen)}>
+        <div style={{ marginTop: '12px' }}>
+          <Field label="Заголовки (JSON)">
+            <TextArea
+              value={editedAgent.headers || ''}
+              onChange={(e) => updateField('headers', e.currentTarget.value)}
+              placeholder='{"Authorization": "Bearer token", "X-API-Key": "key"}'
+              rows={3}
+            />
+          </Field>
+          <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+            Будут добавлены к каждому запросу (если не переопределены в endpoint).
+          </div>
+        </div>
+      </Collapse>
+
+      <div style={{ marginBottom: '16px' }}>
         <Checkbox
-          label="Default Agent"
+          label="Агент по умолчанию"
           value={editedAgent.default}
           onChange={(e) => updateField('default', e.currentTarget.checked)}
         />
       </div>
 
       <div style={{ marginBottom: '16px' }}>
-        <Field label="Startup Operation (executed when session starts)">
+        <Field label="Стартовая операция (выполняется при старте сессии)">
           <Combobox
             value={selectedStartup}
             options={operationOptions}
             onChange={(opt) => updateField('startupOperation', opt?.value || '')}
-            placeholder="Not selected"
+            placeholder="Не выбрана"
             isClearable
           />
         </Field>
         <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-          Select an operation to run automatically when a new chat is created. Click cross to clear.
+          Будет автоматически вызвана при создании нового чата.
         </div>
       </div>
 
       <div style={{ marginTop: '12px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <h4 style={{ margin: 0 }}>Endpoints</h4>
+          <h4 style={{ margin: 0 }}>Эндпоинты</h4>
           <Button icon="plus" onClick={addEndpoint} variant="secondary" size="sm">
-            Add Endpoint
+            Добавить эндпоинт
           </Button>
         </div>
         {(editedAgent.endpoints || []).length === 0 && (
           <div style={{ color: '#999', fontStyle: 'italic', marginBottom: '8px' }}>
-            No endpoints configured. Add at least one to interact with the agent.
+            Нет настроенных эндпоинтов. Добавьте хотя бы один.
           </div>
         )}
         {(editedAgent.endpoints || []).map((endpoint, epIdx) => (
@@ -391,40 +453,45 @@ const AgentEditModal: React.FC<{
       </div>
 
       <div style={{ marginBottom: '16px', marginTop: '16px' }}>
-        <Input
-          label="Workflow (comma-separated operation order)"
-          value={editedAgent.workflow ? editedAgent.workflow.join(', ') : ''}
-          onChange={(e) => {
-            const workflowStr = e.currentTarget.value;
-            const workflow = workflowStr
-              .split(',')
-              .map((s) => s.trim())
-              .filter(Boolean);
-            updateField('workflow', workflow);
-          }}
-          placeholder="new_thread, ask, run_result"
-        />
+        <Field label="Workflow (порядок операций через запятую)">
+          <Input
+            value={editedAgent.workflow ? editedAgent.workflow.join(', ') : ''}
+            onChange={(e) => {
+              const workflowStr = e.currentTarget.value;
+              const workflow = workflowStr
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean);
+              updateField('workflow', workflow);
+            }}
+            placeholder="new_thread, ask, run_result"
+          />
+        </Field>
         <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-          Specify operation names (from endpoints list) in execution order.
+          Имена операций (из списка эндпоинтов) в порядке выполнения.
         </div>
       </div>
 
       <Modal.ButtonRow>
         <Button variant="secondary" onClick={onDismiss}>
-          Cancel
+          Отмена
         </Button>
         <Button variant="primary" onClick={handleSave}>
-          Save
+          Сохранить
         </Button>
       </Modal.ButtonRow>
     </Modal>
   );
 };
 
+// ----------------------------------------------
+// Основной компонент AgentsEditor
+// ----------------------------------------------
 export const AgentsEditor: React.FC<AgentsEditorProps> = ({ value = [], onChange }) => {
   const [agents, setAgents] = useState<AgentConfig[]>(value);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const theme = useTheme2();
 
   const updateAgents = (newAgents: AgentConfig[]) => {
     setAgents(newAgents);
@@ -452,7 +519,6 @@ export const AgentsEditor: React.FC<AgentsEditorProps> = ({ value = [], onChange
       const newAgents = [...agents];
       newAgents[editingIndex] = agent;
       if (agent.default) {
-        // Создаём копии, чтобы не мутировать
         for (let i = 0; i < newAgents.length; i++) {
           if (i !== editingIndex) {
             newAgents[i] = { ...newAgents[i], default: false };
@@ -475,44 +541,74 @@ export const AgentsEditor: React.FC<AgentsEditorProps> = ({ value = [], onChange
 
   return (
     <div style={{ marginTop: '8px' }}>
-      {agents.map((agent, idx) => (
-        <div
-          key={idx}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            padding: '8px 12px',
-            marginBottom: '8px',
-          }}
-        >
-          <div>
-            <strong>{agent.name}</strong>
-            {agent.default && <span style={{ marginLeft: '8px', color: '#007bff' }}>(default)</span>}
-          </div>
-          <div>
-            <Button
-              icon="edit"
-              onClick={() => handleEdit(idx)}
-              variant="secondary"
-              size="sm"
-              style={{ marginRight: '8px' }}
-              aria-label="Edit agent"
-            />
-            <Button
-              icon="trash-alt"
-              onClick={() => handleRemove(idx)}
-              variant="destructive"
-              size="sm"
-              aria-label="Delete agent"
-            />
-          </div>
+      {agents.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+          {agents.map((agent, idx) => (
+            <div
+              key={idx}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: theme.colors.background.primary,
+                border: `1px solid ${theme.colors.border.weak}`,
+                borderRadius: theme.shape.radius.default,
+                padding: '12px 16px',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = theme.colors.border.strong;
+                e.currentTarget.style.background = theme.colors.background.secondary;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = theme.colors.border.weak;
+                e.currentTarget.style.background = theme.colors.background.primary;
+              }}
+            >
+              <div
+                style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px', marginRight: '12px' }}
+              >
+                <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {agent.name}
+                </div>
+                {agent.default && (
+                  <div
+                    style={{
+                      fontSize: '11px',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      background: theme.colors.primary.main,
+                      color: 'white',
+                      flexShrink: 0,
+                    }}
+                  >
+                    По умолчанию
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                <Button
+                  icon="edit"
+                  onClick={() => handleEdit(idx)}
+                  variant="secondary"
+                  size="sm"
+                  aria-label="Редактировать"
+                />
+                <Button
+                  icon="trash-alt"
+                  onClick={() => handleRemove(idx)}
+                  variant="destructive"
+                  size="sm"
+                  aria-label="Удалить"
+                />
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
-      <Button icon="plus" onClick={handleAdd} variant="secondary">
-        Add Agent
+      )}
+
+      <Button icon="plus" onClick={handleAdd} variant="secondary" style={{ width: '100%' }}>
+        Добавить агента
       </Button>
 
       <AgentEditModal
