@@ -42,6 +42,9 @@ export interface ChatConfig {
   placeholderText: string;
   maxWidth?: number;
   centerInput?: boolean;
+  buttonText?: string;
+  openFullscreen?: boolean;
+  centerFloatingChat?: boolean;
   welcomeMessage?: string;
   showWelcomeMessage?: boolean;
   suggestions?: string[];
@@ -69,6 +72,9 @@ interface ChatProviderProps {
   welcomeMessage?: string;
   showWelcomeMessage?: boolean;
   debug?: boolean;
+  buttonText?: string;
+  openFullscreen?: boolean;
+  centerFloatingChat?: boolean;
 }
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({
@@ -83,6 +89,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   welcomeMessage,
   showWelcomeMessage = false,
   debug = false,
+  buttonText = 'Open Chat',
+  openFullscreen = false,
+  centerFloatingChat = false,
 }) => {
   // User
   const { user } = useGrafanaUser();
@@ -108,8 +117,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   const { isChatOpen, openChat, closeChat } = useChatOpen();
 
   const { inputContainerRef, chatMessagesRef, floatingChatRef, setFloatingChatRefCallback, chatStyle, chatDomElement } =
-    useChatPosition(isChatOpen, messages);
-
+    useChatPosition(isChatOpen);
+  
   // Fullscreen
   const [isFullscreen, setIsFullscreen] = useState(false);
   const toggleFullscreen = useCallback(() => setIsFullscreen((prev) => !prev), []);
@@ -118,10 +127,28 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     if (!isFullscreen) {
       return;
     }
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    document.body.classList.add('fullscreen-chat-open');
+    if (!document.getElementById('fullscreen-chat-styles')) {
+      const styleTag = document.createElement('style');
+      styleTag.id = 'fullscreen-chat-styles';
+      styleTag.textContent = `
+        body.fullscreen-chat-open {
+          overflow: hidden !important;
+        }
+        body.fullscreen-chat-open .main-view,
+        body.fullscreen-chat-open .page-scrollbar,
+        body.fullscreen-chat-open .grafana-app {
+          overflow: hidden !important;
+        }
+      `;
+      document.head.appendChild(styleTag);
+    }
     return () => {
-      document.body.style.overflow = originalOverflow;
+      document.body.classList.remove('fullscreen-chat-open');
+      const styleTagEl = document.getElementById('fullscreen-chat-styles');
+      if (styleTagEl && !document.querySelector('.fullscreen-chat-open')) {
+        styleTagEl.remove();
+      }
     };
   }, [isFullscreen]);
 
@@ -211,6 +238,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     handleSuggestionClick,
     debug,
     getTrace,
+    buttonText,
+    openFullscreen,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

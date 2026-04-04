@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { cx } from '@emotion/css';
 import { Spinner, Button, Icon, Modal } from '@grafana/ui';
-import { useChat } from 'components/ui/core/ChatConfig';
+import { useChat } from 'components/ui/core/chatConfig';
 import { DebugTraceModal } from './DebugTraceModal';
 
 export interface MessageListStyles {

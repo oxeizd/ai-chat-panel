@@ -1,5 +1,8 @@
 export interface PanelOptions {
-  inlineMode?: boolean;
+  chatMode?: 'floating' | 'inline' | 'button';
+  centerFloatingChat?: boolean;
+  buttonText?: string;
+  openFullscreen?: boolean;
   placeholderText?: string;
   fetchRecommendedQuestions?: boolean;
   agents: AgentConfig[];
@@ -66,7 +69,7 @@ export interface ChatStyle {
   bottom?: number;
   maxHeight: number;
   width: number;
-  padding?: number | string;
+  padding?: number;
 }
 
 export interface TraceStep {

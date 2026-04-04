@@ -4,7 +4,7 @@ import { cx } from '@emotion/css';
 import { useStyles } from '../core/styles';
 import { useKeyboardSubmit } from '../hooks/useKeyboardSubmit';
 import { useWheelPrevention } from '../hooks/useWheelPrevention';
-import { useChat } from '../core/ChatConfig';
+import { useChat } from '../core/chatConfig';
 
 interface ChatTextareaProps {
   disabled?: boolean;

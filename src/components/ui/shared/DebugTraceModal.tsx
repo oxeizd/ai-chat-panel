@@ -14,8 +14,14 @@ export const DebugTraceModal: React.FC<DebugTraceModalProps> = ({ isOpen, trace,
   if (!trace) {
     return null;
   }
+  const modalStyle = css`
+    z-index: 100000 !important;
+  `;
 
   const styles = {
+    modalStyle: css`
+    z-index: 100000 !important;
+  `,
     container: css`
       max-height: 70vh;
       overflow-y: auto;
@@ -36,7 +42,7 @@ export const DebugTraceModal: React.FC<DebugTraceModalProps> = ({ isOpen, trace,
   };
 
   return (
-    <Modal title="Debug Trace" isOpen={isOpen} onDismiss={onDismiss}>
+    <Modal title="Debug Trace" isOpen={isOpen} onDismiss={onDismiss} className={modalStyle}>
       <div className={styles.container}>
         <div>
           <strong>User input:</strong> {trace.userInput}

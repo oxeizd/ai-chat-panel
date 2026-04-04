@@ -1,9 +1,8 @@
-// useChatPosition.ts
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChatStyle } from 'types';
 import { CHAT_SETTINGS } from '../core/config';
 
-export const useChatPosition = (isChatOpen: boolean, messages: any[]) => {
+export const useChatPosition = (isChatOpen: boolean) => {
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const floatingChatRef = useRef<HTMLDivElement | null>(null);

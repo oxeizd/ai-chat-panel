@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { AgentMenu } from './AgentMenu';
-import { useChat } from '../core/ChatConfig';
+import { useChat } from '../core/chatConfig';
 import { useStyles } from '../core/styles';
 
 const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {

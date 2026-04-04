@@ -5,34 +5,59 @@ import { AgentsEditor } from './components/editors/agentEditor/AgentsEditor';
 
 export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((builder) => {
   return builder
-    .addBooleanSwitch({
-      path: 'inlineMode',
-      name: 'Inline mode',
-      description: 'Display chat inside panel instead of floating',
-      defaultValue: false,
+    .addRadio({
+      path: 'chatMode',
+      name: 'Chat mode',
+      defaultValue: 'floating',
+      settings: {
+        options: [
+          { label: 'Floating', value: 'floating' },
+          { label: 'Inline', value: 'inline' },
+          { label: 'Button', value: 'button' },
+        ],
+      },
       category: ['Mode settings'],
     })
     .addBooleanSwitch({
       path: 'centerInput',
-      name: 'Center input position',
-      description: 'Центрировать поле ввода',
+      name: 'Center start input position',
       defaultValue: false,
       category: ['Mode settings'],
-      showIf: (config) => config.inlineMode === false,
+      showIf: (config) => config.chatMode === 'floating',
+    })
+    .addBooleanSwitch({
+      path: 'centerFloatingChat',
+      name: 'Center open chat',
+      defaultValue: false,
+      category: ['Mode settings'],
+      showIf: (config) => config.chatMode === 'floating',
+    })
+    .addTextInput({
+      path: 'buttonText',
+      name: 'Button text',
+      description: 'Text on the button that opens the chat',
+      defaultValue: 'Open Chat',
+      category: ['Mode settings'],
+      showIf: (config) => config.chatMode === 'button',
+    })
+    .addBooleanSwitch({
+      path: 'fullscreen',
+      name: 'Open in fullscreen',
+      defaultValue: false,
+      category: ['Mode settings'],
     })
     .addNumberInput({
       path: 'maxWidth',
       name: 'Max width',
-      description: 'Ограничить максимальную ширину чата',
       defaultValue: 0,
-      category: ['Standard settings'],
+      category: ['Chat options'],
     })
     .addTextInput({
       path: 'placeholderText',
       name: 'Placeholder text',
       description: 'Text to show when chat is empty',
       defaultValue: '',
-      category: ['Standard settings'],
+      category: ['Chat options'],
     })
     .addBooleanSwitch({
       path: 'showWelcomeMessage',
@@ -64,7 +89,7 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
       category: ['Chat options'],
       showIf: (config) => config.showSuggestions === true,
     })
-    .addSelect({
+    .addRadio({
       path: 'suggestionsPlacement',
       name: 'Suggestions placement',
       description: 'Как показывать рекомендации',

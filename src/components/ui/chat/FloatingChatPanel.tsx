@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useTheme2 } from '@grafana/ui';
 import { cx } from '@emotion/css';
 import { useStyles } from 'components/ui/core/styles';
 import { InputArea } from './InputArea';
 import { FloatingChat } from './FloatingChat';
-import { useChat } from 'components/ui/core/ChatConfig';
+import { useChat } from 'components/ui/core/chatConfig';
 
 export const FloatingChatPanel: React.FC = () => {
   const props = useChat();
@@ -24,38 +24,7 @@ export const FloatingChatPanel: React.FC = () => {
   const theme = useTheme2();
   const styles = useStyles(theme);
 
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  useEffect(() => {
-    if (!isFullscreen) {
-      return;
-    }
-    document.body.classList.add('fullscreen-chat-open');
-    if (!document.getElementById('fullscreen-chat-styles')) {
-      const styleTag = document.createElement('style');
-      styleTag.id = 'fullscreen-chat-styles';
-      styleTag.textContent = `
-        body.fullscreen-chat-open {
-          overflow: hidden !important;
-        }
-        body.fullscreen-chat-open .main-view,
-        body.fullscreen-chat-open .page-scrollbar,
-        body.fullscreen-chat-open .grafana-app {
-          overflow: hidden !important;
-        }
-      `;
-      document.head.appendChild(styleTag);
-    }
-    return () => {
-      document.body.classList.remove('fullscreen-chat-open');
-      const styleTagEl = document.getElementById('fullscreen-chat-styles');
-      if (styleTagEl && !document.querySelector('.fullscreen-chat-open')) {
-        styleTagEl.remove();
-      }
-    };
-  }, [isFullscreen]);
-
-  const toggleFullscreen = () => setIsFullscreen((prev) => !prev);
+  const { isFullscreen, toggleFullscreen } = useChat();
 
   const handleSendWithOpen = () => {
     sendMessage();
@@ -100,7 +69,7 @@ export const FloatingChatPanel: React.FC = () => {
         <FloatingChat
           ref={setFloatingChatRefCallback}
           messagesContainerRef={chatMessagesRef}
-          chatStyle={chatStyle}
+          chatStyle={isFullscreen ? styles.floating.fullscreen : chatStyle}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
           onClose={closeChat}

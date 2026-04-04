@@ -127,7 +127,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
       container: css`
         position: relative;
         display: flex;
-        align-items: center;
         gap: ${theme.spacing(0.5)};
         padding: ${theme.spacing(0.75)} ${theme.spacing(0)} ${theme.spacing(1.75)};
         flex-direction: column;
@@ -305,6 +304,14 @@ export const getStyles = (theme: GrafanaTheme2) => {
         z-index: 1000;
         isolation: isolate;
       `,
+      fullscreen: css `
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: '100%';
+        maxHeight: '100vh';
+        padding: 16px;
+      ` as React.CSSProperties
     },
 
     // ===== Нижние кнопки =====

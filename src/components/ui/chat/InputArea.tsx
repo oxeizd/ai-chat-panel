@@ -5,7 +5,7 @@ import { cx } from '@emotion/css';
 import { useStyles } from '../core/styles';
 import { ChatMenu } from 'components/ui/shared/ChatMenu';
 import { useSuggestions } from 'components/ui/hooks/useSuggestions';
-import { useChat } from '../core/ChatConfig';
+import { useChat } from '../core/chatConfig';
 
 interface InputAreaProps {
   className?: string;

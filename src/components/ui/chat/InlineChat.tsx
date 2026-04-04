@@ -1,27 +1,19 @@
-import React, { useRef, useState } from 'react';
+import React from 'react';
 import { cx } from '@emotion/css';
 import { useTheme2 } from '@grafana/ui';
 import { useStyles, getMessageListStyles } from '../core/styles';
-import { MessageList } from 'components/ui/shared/MessageList';
-import { ChatHeader } from 'components/ui/shared/ChatHeader';
-import { BottomButtons } from 'components/ui/shared/BottomButtons';
-import { ChatTextarea } from 'components/ui/shared/ChatTextarea';
-import { FullscreenChatPortal } from 'components/ui/shared/FullscreenChatPortal';
-import { useAutoScroll } from 'components/ui/hooks/useAutoScroll';
-import { useChat } from 'components/ui/core/ChatConfig';
+import { MessageList } from '../shared/MessageList';
+import { ChatHeader } from '../shared/ChatHeader';
+import { BottomButtons } from '../shared/BottomButtons';
+import { ChatTextarea } from '../shared/ChatTextarea';
+import { FloatingChat } from './FloatingChat';
+import { useChat } from '../core/chatConfig';
 
 export const InlineChat: React.FC = () => {
   const props = useChat();
   const theme = useTheme2();
   const styles = useStyles(theme);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
-
-  useAutoScroll(messagesContainerRef, [props.messages]);
-
-  const handleSuggestionClick = (suggestion: string) => {
-    props.sendMessage(suggestion);
-  };
+  const { isFullscreen, toggleFullscreen } = props;
 
   const showSuggestions =
     props.showSuggestions &&
@@ -40,18 +32,18 @@ export const InlineChat: React.FC = () => {
     <>
       <div className={wrapperStyle} style={{ height: '100%' }}>
         <ChatHeader
-          onFullscreen={() => setIsFullscreenOpen(true)}
+          onFullscreen={toggleFullscreen}
           isFullscreen={false}
           welcomeMessage={props.showWelcomeMessage ? props.welcomeMessage : undefined}
         />
-        <div ref={messagesContainerRef} className={styles.messages.container}>
+        <div ref={props.chatMessagesRef} className={styles.messages.container}>
           <MessageList styles={getMessageListStyles(styles)} showPlaceholder={!props.welcomeMessage} />
         </div>
 
         {showSuggestions && (
           <div className={styles.suggestions.container}>
             {props.suggestions!.map((suggestion, idx) => (
-              <div key={idx} className={styles.suggestions.item} onClick={() => handleSuggestionClick(suggestion)}>
+              <div key={idx} className={styles.suggestions.item} onClick={() => props.handleSuggestionClick(suggestion)}>
                 {suggestion}
               </div>
             ))}
@@ -61,7 +53,17 @@ export const InlineChat: React.FC = () => {
         <ChatTextarea />
         <BottomButtons />
       </div>
-      <FullscreenChatPortal isOpen={isFullscreenOpen} onClose={() => setIsFullscreenOpen(false)} />
+
+      {isFullscreen && (
+        <FloatingChat
+          chatStyle={styles.floating.fullscreen}
+          onClose={toggleFullscreen}
+          isFullscreen={true}
+          onToggleFullscreen={toggleFullscreen}
+          messagesContainerRef={props.chatMessagesRef}
+          maxWidth={props.maxWidth}
+        />
+       )}
     </>
   );
 };
