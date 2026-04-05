@@ -3,6 +3,7 @@
   "type": "panel",
   "name": "AI Chat",
   "id": "oxd-aichat-panel",
+  "skipDataQuery": true,
   "info": {
     "keywords": ["panel"],
     "description": "",

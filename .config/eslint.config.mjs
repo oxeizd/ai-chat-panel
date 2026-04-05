@@ -13,6 +13,7 @@ export default defineConfig([
   {
     rules: {
       'react/prop-types': 'off',
+      'react-hooks/refs': 'off',
     },
   },
   {

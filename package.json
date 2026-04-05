@@ -11,7 +11,7 @@
     "lint:fix": "npm run lint -- --fix && prettier --write --list-different .",
     "e2e": "playwright test",
     "server": "docker compose up --build",
-    "sign": "npx --yes @grafana/sign-plugin@latest"
+    "sign": "npx --yes @grafana/sign-plugin@latest --rootUrls http://localhost:3000"
   },
   "author": "Oxd",
   "license": "Apache-2.0",
@@ -20,7 +20,7 @@
     "@grafana/plugin-e2e": "^3.4.7",
     "@grafana/tsconfig": "^2.0.1",
     "@playwright/test": "^1.57.0",
-    "@stylistic/eslint-plugin-ts": "^4.4.0",
+    "@stylistic/eslint-plugin": "^4.4.0",
     "@swc/core": "^1.15.0",
     "@swc/helpers": "^0.5.0",
     "@swc/jest": "^0.2.0",
@@ -70,10 +70,12 @@
     "@grafana/data": "^12.4.0",
     "@grafana/i18n": "^12.4.0",
     "@grafana/runtime": "^12.4.0",
-    "@grafana/ui": "^12.4.0",
     "@grafana/schema": "^12.4.0",
+    "@grafana/ui": "^12.4.0",
     "react": "^18.3.0",
-    "react-dom": "^18.3.0"
+    "react-dom": "^18.3.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "packageManager": "npm@11.11.0"
 }

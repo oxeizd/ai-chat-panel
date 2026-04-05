@@ -1,75 +1,43 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { PanelProps } from '@grafana/data';
-import { PanelOptions, AgentConfig } from 'types';
-import { PanelDataErrorView } from '@grafana/runtime';
-import { InlineChat } from './InlineChat';
-import { FloatingChatPanel } from './FloatingChatPanel';
-import { useChatMessages } from './hooks/useChatMessages';
-import { DEFAULT_AGENT, DEFAULT_PLACEHOLDER_TEXT } from './ChatPanel.config';
+import { PanelOptions } from 'types';
+import { InlineChat } from './ui/chat/InlineChat';
+import { FloatingChatPanel } from './ui/chat/FloatingChatPanel';
+import { ButtonChatPanel } from './ui/chat/ButtonChatPanel';
+import { ChatProvider } from './ui/core/chatConfig';
 
 interface Props extends PanelProps<PanelOptions> {}
 
-export const ChatPanel: React.FC<Props> = ({ options, data, fieldConfig, id }) => {
-  const inlineMode = options.inlineMode ?? false;
-  const placeholderText = options.placeholderText?.trim() || DEFAULT_PLACEHOLDER_TEXT;
+export const ChatPanel: React.FC<Props> = ({ options }) => {
+  const renderChat = useMemo(() => {
+    switch (options.chatMode) {
+      case 'inline':
+        return <InlineChat />;
+      case 'button':
+        return <ButtonChatPanel />;
+      default:
+        return <FloatingChatPanel />;
+    }
+  }, [options.chatMode]);
 
-  const agents: AgentConfig[] = options.agents?.length ? options.agents : [DEFAULT_AGENT];
+  const providerProps = useMemo(
+    () => ({
+      agents: options.agents,
+      placeholderText: options.placeholderText,
+      suggestions: options.suggestions,
+      suggestionsPlacement: options.suggestionsPlacement,
+      showSuggestions: options.showSuggestions,
+      maxWidth: options.maxWidth,
+      centerInput: options.centerInput,
+      welcomeMessage: options.welcomeMessage,
+      showWelcomeMessage: options.showWelcomeMessage,
+      debug: options.debug,
+      buttonText: options.buttonText,
+      openFullscreen: options.openFullscreen,
+      centerFloatingChat: options.chatMode === 'button' ? true : options.centerFloatingChat,
+    }),
+    [options]
+  );
 
-  const [selectedAgent, setSelectedAgent] = useState<AgentConfig>(agents[0]);
-
-  const {
-    messages,
-    isLoading,
-    inputValue,
-    setInputValue,
-    sendMessage,
-    clearChat,
-    newChat,
-  } = useChatMessages(selectedAgent);
-
-  const exportChat = () => {
-    const dataStr = JSON.stringify(messages, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'chat_export.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const openSettings = () => console.log('Открыть настройки чата');
-
-  if (data.series.length === 0) {
-    return (
-      <PanelDataErrorView
-        fieldConfig={fieldConfig}
-        panelId={id}
-        data={data}
-        needsStringField
-      />
-    );
-  }
-
-  const commonProps = {
-    messages,
-    isLoading,
-    inputValue,
-    setInputValue,
-    sendMessage,
-    clearChat,
-    newChat,
-    selectedAgent,
-    setSelectedAgent,
-    exportChat,
-    openSettings,
-    placeholderText,
-    agents,
-  };
-
-  if (inlineMode) {
-    return <InlineChat {...commonProps} />;
-  }
-
-  return <FloatingChatPanel {...commonProps} />;
+  return <ChatProvider {...providerProps}>{renderChat}</ChatProvider>;
 };
