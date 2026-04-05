@@ -8,6 +8,8 @@ import { useChat } from 'components/ui/core/chatConfig';
 
 export const FloatingChatPanel: React.FC = () => {
   const props = useChat();
+  const theme = useTheme2();
+  const styles = useStyles(theme);
   const {
     sendMessage,
     messages,
@@ -20,11 +22,9 @@ export const FloatingChatPanel: React.FC = () => {
     chatMessagesRef,
     inputContainerRef,
     setFloatingChatRefCallback,
+    isFullscreen,
+    toggleFullscreen,
   } = props;
-  const theme = useTheme2();
-  const styles = useStyles(theme);
-
-  const { isFullscreen, toggleFullscreen } = useChat();
 
   const handleSendWithOpen = () => {
     sendMessage();

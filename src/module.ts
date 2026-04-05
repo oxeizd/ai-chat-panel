@@ -27,7 +27,7 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
     })
     .addBooleanSwitch({
       path: 'centerFloatingChat',
-      name: 'Center open chat',
+      name: 'Center chat',
       defaultValue: false,
       category: ['Mode settings'],
       showIf: (config) => config.chatMode === 'floating',

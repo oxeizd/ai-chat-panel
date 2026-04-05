@@ -117,8 +117,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   const { isChatOpen, openChat, closeChat } = useChatOpen();
 
   const { inputContainerRef, chatMessagesRef, floatingChatRef, setFloatingChatRefCallback, chatStyle, chatDomElement } =
-    useChatPosition(isChatOpen);
-  
+    useChatPosition(isChatOpen, centerFloatingChat, maxWidth);
+
   // Fullscreen
   const [isFullscreen, setIsFullscreen] = useState(false);
   const toggleFullscreen = useCallback(() => setIsFullscreen((prev) => !prev), []);
@@ -240,6 +240,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     getTrace,
     buttonText,
     openFullscreen,
+    centerFloatingChat,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

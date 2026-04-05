@@ -43,7 +43,11 @@ export const InlineChat: React.FC = () => {
         {showSuggestions && (
           <div className={styles.suggestions.container}>
             {props.suggestions!.map((suggestion, idx) => (
-              <div key={idx} className={styles.suggestions.item} onClick={() => props.handleSuggestionClick(suggestion)}>
+              <div
+                key={idx}
+                className={styles.suggestions.item}
+                onClick={() => props.handleSuggestionClick(suggestion)}
+              >
                 {suggestion}
               </div>
             ))}
@@ -63,7 +67,7 @@ export const InlineChat: React.FC = () => {
           messagesContainerRef={props.chatMessagesRef}
           maxWidth={props.maxWidth}
         />
-       )}
+      )}
     </>
   );
 };

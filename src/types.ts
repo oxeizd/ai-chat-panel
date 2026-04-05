@@ -63,15 +63,6 @@ export interface Message {
   };
 }
 
-export interface ChatStyle {
-  left: number;
-  top?: number;
-  bottom?: number;
-  maxHeight: number;
-  width: number;
-  padding?: number;
-}
-
 export interface TraceStep {
   type: 'request' | 'response' | 'polling' | 'context_update';
   timestamp: number;

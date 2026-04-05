@@ -1,13 +1,12 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { ChatStyle } from 'types';
+import { useState, useRef, useLayoutEffect, useCallback } from 'react';
 import { CHAT_SETTINGS } from '../core/config';
 
-export const useChatPosition = (isChatOpen: boolean) => {
+export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWidth = 450) => {
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const floatingChatRef = useRef<HTMLDivElement | null>(null);
   const [chatDomElement, setChatDomElement] = useState<HTMLElement | null>(null);
-  const [chatStyle, setChatStyle] = useState<ChatStyle>({
+  const [chatStyle, setChatStyle] = useState<React.CSSProperties>({
     left: 0,
     top: undefined,
     bottom: undefined,
@@ -15,122 +14,128 @@ export const useChatPosition = (isChatOpen: boolean) => {
     width: 0,
   });
 
-  // Callback ref для установки и синхронизации с DOM-элементом
   const setFloatingChatRefCallback = useCallback((node: HTMLDivElement | null) => {
     floatingChatRef.current = node;
     setChatDomElement(node);
   }, []);
 
   const updateChatPosition = useCallback(() => {
+    if (centerChat) {
+      const viewportHeight = window.innerHeight;
+      const maxHeightPx = Math.floor(viewportHeight * 0.8);
+
+      const contentHeight = chatMessagesRef.current?.scrollHeight || 0;
+      const desiredHeight = contentHeight + CHAT_SETTINGS.inputWrapperHeight;
+      const actualHeightPx = Math.min(maxHeightPx, Math.max(CHAT_SETTINGS.minHeight, desiredHeight));
+
+      setChatStyle({
+        position: 'fixed',
+        left: `calc(50% - ${Math.floor(maxWidth / 2)}px)`,
+        top: `calc(50% - ${Math.floor(actualHeightPx / 2)}px + 24px`,
+        width: maxWidth,
+        maxHeight: `${maxHeightPx}px`,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        padding: CHAT_SETTINGS.default_padding,
+      });
+      return;
+    }
+
     if (!inputContainerRef.current || !isChatOpen) {
       return;
     }
 
     const rect = inputContainerRef.current.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
-    const { margin, positionOffset, targetHeight, minHeight, viewportLimit, inputWrapperHeight } = CHAT_SETTINGS;
-
+    const { margin, positionOffset, minHeight, viewportLimit } = CHAT_SETTINGS;
     const contentHeight = chatMessagesRef.current?.scrollHeight || 0;
-    const requiredHeight = contentHeight + inputWrapperHeight;
-
+    const requiredHeight = contentHeight + CHAT_SETTINGS.inputWrapperHeight;
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
-
     const availableBelow = Math.max(0, Math.min(spaceBelow - margin, viewportHeight * viewportLimit));
     const availableAbove = Math.max(0, Math.min(spaceAbove - margin, viewportHeight * viewportLimit));
 
-    const canFitTargetBelow = availableBelow >= targetHeight;
-    const canFitTargetAbove = availableAbove >= targetHeight;
-    const canFitMinBelow = availableBelow >= minHeight;
-    const canFitMinAbove = availableAbove >= minHeight;
+    let preferDown: boolean;
+    const canFitRequiredBelow = availableBelow >= requiredHeight;
+    const canFitRequiredAbove = availableAbove >= requiredHeight;
+
+    if (canFitRequiredBelow && canFitRequiredAbove) {
+      preferDown = availableBelow >= availableAbove;
+    } else if (canFitRequiredBelow) {
+      preferDown = true;
+    } else if (canFitRequiredAbove) {
+      preferDown = false;
+    } else {
+      preferDown = availableBelow >= availableAbove;
+    }
 
     let top: number | undefined;
     let bottom: number | undefined;
     let maxHeight: number;
 
-    const isCurrentlyDown = chatStyle.top !== undefined;
-    const shouldSwitch =
-      (isCurrentlyDown && !canFitMinBelow && canFitMinAbove) || (!isCurrentlyDown && !canFitMinAbove && canFitMinBelow);
-
-    if (isCurrentlyDown && !shouldSwitch) {
+    if (preferDown) {
       top = rect.bottom + margin - positionOffset;
-      maxHeight = Math.max(minHeight, Math.min(requiredHeight, availableBelow, viewportHeight * viewportLimit));
-    } else if (!isCurrentlyDown && !shouldSwitch) {
-      bottom = viewportHeight - rect.top + margin - positionOffset;
-      maxHeight = Math.max(minHeight, Math.min(requiredHeight, availableAbove, viewportHeight * viewportLimit));
-    } else if (canFitTargetBelow || canFitTargetAbove) {
-      top = rect.bottom + margin - positionOffset;
-      maxHeight = targetHeight;
-    } else if (canFitMinBelow && canFitMinAbove) {
-      if (availableBelow >= availableAbove) {
-        top = rect.bottom + margin - positionOffset;
-        maxHeight = availableBelow;
-      } else {
-        bottom = viewportHeight - rect.top + margin - positionOffset;
-        maxHeight = availableAbove;
-      }
-    } else if (canFitMinBelow) {
-      top = rect.bottom + margin - positionOffset;
-      maxHeight = availableBelow;
-    } else if (canFitMinAbove) {
-      bottom = viewportHeight - rect.top + margin - positionOffset;
-      maxHeight = availableAbove;
+      maxHeight = Math.max(minHeight, Math.min(requiredHeight, availableBelow));
     } else {
-      if (availableBelow > availableAbove) {
-        top = rect.bottom + margin - positionOffset;
-        maxHeight = Math.max(100, availableBelow);
-      } else {
-        bottom = viewportHeight - rect.top + margin - positionOffset;
-        maxHeight = Math.max(100, availableAbove);
-      }
+      bottom = viewportHeight - rect.top + margin - positionOffset;
+      maxHeight = Math.max(minHeight, Math.min(requiredHeight, availableAbove));
     }
 
     setChatStyle({
+      position: 'fixed',
       left: rect.left,
       top,
       bottom,
-      maxHeight: Math.max(minHeight, maxHeight),
+      maxHeight,
       width: rect.width,
       padding: CHAT_SETTINGS.default_padding,
     });
-  }, [isChatOpen, chatStyle.top]);
+  }, [isChatOpen, centerChat, maxWidth]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isChatOpen) {
       return;
     }
-    updateChatPosition();
-
+    const frame = requestAnimationFrame(() => updateChatPosition());
     const handleResizeOrScroll = () => requestAnimationFrame(updateChatPosition);
     window.addEventListener('resize', handleResizeOrScroll);
     window.addEventListener('scroll', handleResizeOrScroll);
 
     let inputResizeObserver: ResizeObserver | null = null;
-    if (inputContainerRef.current && window.ResizeObserver) {
+    if (!centerChat && inputContainerRef.current && window.ResizeObserver) {
       inputResizeObserver = new ResizeObserver(updateChatPosition);
       inputResizeObserver.observe(inputContainerRef.current);
     }
 
-    let chatResizeObserver: ResizeObserver | null = null;
+    let chatMessagesResizeObserver: ResizeObserver | null = null;
+    if (chatMessagesRef.current && window.ResizeObserver) {
+      chatMessagesResizeObserver = new ResizeObserver(updateChatPosition);
+      chatMessagesResizeObserver.observe(chatMessagesRef.current);
+    }
+
+    let floatingResizeObserver: ResizeObserver | null = null;
     if (floatingChatRef.current && window.ResizeObserver) {
-      chatResizeObserver = new ResizeObserver(updateChatPosition);
-      chatResizeObserver.observe(floatingChatRef.current);
+      floatingResizeObserver = new ResizeObserver(updateChatPosition);
+      floatingResizeObserver.observe(floatingChatRef.current);
     }
 
     return () => {
+      cancelAnimationFrame(frame);
       window.removeEventListener('resize', handleResizeOrScroll);
       window.removeEventListener('scroll', handleResizeOrScroll);
       inputResizeObserver?.disconnect();
-      chatResizeObserver?.disconnect();
+      chatMessagesResizeObserver?.disconnect();
+      floatingResizeObserver?.disconnect();
     };
-  }, [isChatOpen, updateChatPosition]);
+  }, [isChatOpen, centerChat, updateChatPosition]);
 
   return {
     inputContainerRef,
     chatMessagesRef,
-    floatingChatRef, // оставляем для чтения, если нужно
-    setFloatingChatRefCallback, // новая функция для установки
+    floatingChatRef,
+    setFloatingChatRefCallback,
     chatStyle,
-    chatDomElement, // если нужно где-то ещё
+    chatDomElement,
   };
 };
