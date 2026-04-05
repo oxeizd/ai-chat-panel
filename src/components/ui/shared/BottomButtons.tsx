@@ -9,7 +9,7 @@ const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {
 };
 
 export const BottomButtons: React.FC = () => {
-  const { selectedAgent, agents, setSelectedAgent, newChat } = useChat();
+  const { selectedAgent, agents, setSelectedAgent, newChat, isLoading } = useChat();
   const theme = useTheme2();
   const styles = useStyles(theme);
 
@@ -32,6 +32,7 @@ export const BottomButtons: React.FC = () => {
           className={styles.bottomButtons.agentButton}
           icon="user"
           onClick={blurButton}
+          disabled={isLoading}
         >
           {selectedAgent ? selectedAgent.name : 'Агент не выбран'}
         </Button>
@@ -44,6 +45,7 @@ export const BottomButtons: React.FC = () => {
           blurButton(e);
           newChat();
         }}
+        disabled={isLoading}
         className={styles.bottomButtons.newChatButton}
       >
         Новый чат

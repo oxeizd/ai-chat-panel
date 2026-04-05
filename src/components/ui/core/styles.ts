@@ -304,14 +304,14 @@ export const getStyles = (theme: GrafanaTheme2) => {
         z-index: 1000;
         isolation: isolate;
       `,
-      fullscreen: css `
+      fullscreen: css`
         left: 0;
         top: 0;
         bottom: 0;
         width: '100%';
-        maxHeight: '100vh';
+        maxheight: '100vh';
         padding: 16px;
-      ` as React.CSSProperties
+      ` as React.CSSProperties,
     },
 
     // ===== Нижние кнопки =====

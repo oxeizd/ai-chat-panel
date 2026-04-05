@@ -14,14 +14,15 @@ export const DebugTraceModal: React.FC<DebugTraceModalProps> = ({ isOpen, trace,
   if (!trace) {
     return null;
   }
+
   const modalStyle = css`
     z-index: 100000 !important;
   `;
 
   const styles = {
     modalStyle: css`
-    z-index: 100000 !important;
-  `,
+      z-index: 100000 !important;
+    `,
     container: css`
       max-height: 70vh;
       overflow-y: auto;
