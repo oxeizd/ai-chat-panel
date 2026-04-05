@@ -9,11 +9,29 @@ import { useChat } from '../core/chatConfig';
 
 interface InputAreaProps {
   className?: string;
-  onSend?: () => void; // для обычной отправки (когда не continueMode)
+  onSend?: () => void;
   onContinue?: () => void;
   continueMode?: boolean;
-  onSendText?: (text: string) => void; // для отправки конкретного текста (подсказки)
+  onSendText?: (text: string) => void;
 }
+
+const formatWelcomeMessage = (text: string) => {
+  if (!text) {
+    return null;
+  }
+
+  const parts = text.split(/(\{[^:]+:[^}]+\})/g);
+  return parts.map((part, i) => {
+    const match = part.match(/^\{([^:]+):(.+)\}$/);
+    return match ? (
+      <span key={i} style={{ color: match[1] }}>
+        {match[2]}
+      </span>
+    ) : (
+      part
+    );
+  });
+};
 
 export const InputArea = memo(
   forwardRef<HTMLDivElement, InputAreaProps>((props, ref) => {
@@ -187,7 +205,9 @@ export const InputArea = memo(
     return (
       <>
         <div ref={ref} className={containerStyle}>
-          {showWelcomeMessage && welcomeMessage && <div className={styles.welcome.message}>{welcomeMessage}</div>}
+          {showWelcomeMessage && welcomeMessage && (
+            <div className={styles.welcome.message}>{formatWelcomeMessage(welcomeMessage)}</div>
+          )}
           <div style={{ position: 'relative', width: '100%' }}>
             <div className={styles.input.inlineWrapper}>
               <Input
