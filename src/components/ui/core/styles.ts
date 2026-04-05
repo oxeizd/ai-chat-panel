@@ -72,14 +72,14 @@ export const getStyles = (theme: GrafanaTheme2) => {
       `,
       popupPortal: css`
         position: fixed;
-        background: ${toRgba(bgColor, 0.8)};
+        background: ${toRgba(bgColor, 0.7)};
         backdrop-filter: blur(8px);
         border: 1px solid ${theme.colors.border.weak};
         border-radius: ${theme.shape.radius.default};
         box-shadow: ${theme.shadows.z2};
         max-height: 300px;
         overflow-y: auto;
-        z-index: 2000;
+        z-index: 3000;
         padding: ${theme.spacing(1)} ${theme.spacing(2)};
       `,
       popupHeader: css`
@@ -154,7 +154,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
         font-size: 0.875rem;
         line-height: 1.4;
         padding: ${theme.spacing(1)} ${theme.spacing(5)} ${theme.spacing(1)} ${theme.spacing(1)};
-        background: ${theme.colors.background.primary}CC;
+        background: ${toRgba(bgColor, 0.7)};
         backdrop-filter: blur(10px);
         border: 1px solid ${theme.colors.border.medium};
         border-radius: ${theme.shape.radius.default};
@@ -175,7 +175,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: ${theme.colors.background.primary}CC;
+        background: ${toRgba(bgColor, 0.7)};
         border: 1px solid ${theme.colors.border.weak};
         cursor: pointer;
         &:hover {
@@ -294,36 +294,27 @@ export const getStyles = (theme: GrafanaTheme2) => {
     floating: {
       chat: css`
         position: fixed;
-        background: ${toRgba(bgColor, 0.8)};
+        background: ${toRgba(bgColor, 0.7)};
         backdrop-filter: blur(8px);
         border-radius: ${theme.shape.radius.default};
         box-shadow: ${theme.shadows.z3};
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        z-index: 1000;
-        isolation: isolate;
+        z-index: 2000;
       `,
-      fullscreen: css`
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: '100%';
-        maxheight: '100vh';
-        padding: 16px;
-      ` as React.CSSProperties,
     },
 
     // ===== Нижние кнопки =====
     bottomButtons: {
       agentButton: css`
         flex: 1;
-        background: ${theme.colors.background.primary}CC;
+        background: ${toRgba(bgColor, 0.7)};
         border: 1px solid ${theme.colors.border.weak};
       `,
       newChatButton: css`
         flex-shrink: 0;
-        background: ${theme.colors.background.primary}CC;
+        background: ${toRgba(bgColor, 0.7)};
         border: 1px solid ${theme.colors.border.weak};
       `,
     },
@@ -331,8 +322,9 @@ export const getStyles = (theme: GrafanaTheme2) => {
     // ===== Меню =====
     menu: {
       customMenu: css`
-        z-index: 3000 !important;
-        background: ${theme.colors.background.primary};
+        z-index: 2500 !important;
+        background: ${toRgba(bgColor, 0.7)};
+        backdrop-filter: blur(12px);
         min-width: 240px;
         max-height: 300px;
         overflow-y: auto;
@@ -347,6 +339,25 @@ export const getStyles = (theme: GrafanaTheme2) => {
         }
       `,
     },
+
+    fullscreenStyle: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: '100%',
+      height: '100vh',
+      maxHeight: '100vh',
+      padding: '16px',
+      borderRadius: 0,
+      zIndex: 1000,
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      background: toRgba(bgColor, 0.7),
+      backdropFilter: 'blur(8px)',
+    } as React.CSSProperties,
   };
 };
 

@@ -1,13 +1,13 @@
 import React from 'react';
 import { cx } from '@emotion/css';
 import { useTheme2 } from '@grafana/ui';
-import { useStyles, getMessageListStyles } from '../core/styles';
-import { MessageList } from '../shared/MessageList';
-import { ChatHeader } from '../shared/ChatHeader';
-import { BottomButtons } from '../shared/BottomButtons';
-import { ChatTextarea } from '../shared/ChatTextarea';
-import { FloatingChat } from './FloatingChat';
 import { useChat } from '../core/chatConfig';
+import { FloatingChat } from './FloatingChat';
+import { ChatHeader } from '../shared/ChatHeader';
+import { ChatTextarea } from '../shared/ChatTextarea';
+import { MessageList } from '../shared/MessageList';
+import { BottomButtons } from '../shared/BottomButtons';
+import { useStyles, getMessageListStyles } from '../core/styles';
 
 export const InlineChat: React.FC = () => {
   const props = useChat();
@@ -60,7 +60,7 @@ export const InlineChat: React.FC = () => {
 
       {isFullscreen && (
         <FloatingChat
-          chatStyle={styles.floating.fullscreen}
+          chatStyle={styles.fullscreenStyle}
           onClose={toggleFullscreen}
           isFullscreen={true}
           onToggleFullscreen={toggleFullscreen}

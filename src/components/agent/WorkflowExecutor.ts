@@ -122,7 +122,6 @@ export const executeEndpoint = async (
       await new Promise((resolve) => setTimeout(resolve, polling.intervalMs));
 
       try {
-        console.log(`⏳ Polling attempt ${attempts + 1}/${polling.maxAttempts}`);
         data = await makeRequest();
 
         if (onTrace) {

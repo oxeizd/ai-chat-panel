@@ -31,7 +31,7 @@ export const ButtonChatPanel: React.FC = () => {
   if (!isChatOpen) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-        <Button onClick={handleOpenChat} variant="primary" icon="comments-alt" size="md" disabled={isLoading}>
+        <Button onClick={handleOpenChat} variant="secondary" icon="comments-alt" size="md" disabled={isLoading}>
           {buttonText || 'Open Chat'}
         </Button>
       </div>

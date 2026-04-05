@@ -1,6 +1,6 @@
 import { AgentConfig, EndpointConfig, TraceStep } from 'types';
 import { executeWorkflow, executeEndpoint, WorkflowContext } from './WorkflowExecutor';
-import { VariableContext } from './VariableResolver';
+import { resolveString, VariableContext } from './VariableResolver';
 
 export class AgentClient {
   private config: AgentConfig;
@@ -98,9 +98,7 @@ export class AgentClient {
     if (this.config.config) {
       try {
         let configStr = this.config.config;
-        for (const [key, value] of Object.entries(context)) {
-          configStr = configStr.replace(new RegExp(`\\$\\{${key}\\}`, 'g'), String(value));
-        }
+        configStr = resolveString(configStr, context);
         requestBody = { ...requestBody, ...JSON.parse(configStr) };
       } catch (e) {
         console.warn('Invalid agent config JSON, ignoring', e);

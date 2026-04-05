@@ -69,7 +69,7 @@ export const FloatingChatPanel: React.FC = () => {
         <FloatingChat
           ref={setFloatingChatRefCallback}
           messagesContainerRef={chatMessagesRef}
-          chatStyle={isFullscreen ? styles.floating.fullscreen : chatStyle}
+          chatStyle={isFullscreen ? styles.fullscreenStyle : chatStyle}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
           onClose={closeChat}

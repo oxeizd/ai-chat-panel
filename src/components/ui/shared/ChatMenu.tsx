@@ -37,6 +37,5 @@ export const ChatMenu: React.FC<ChatMenuProps> = ({
         onClick={() => onSelectAgent(agent)}
       />
     ))}
-    <Menu.Divider />
   </Menu>
 );

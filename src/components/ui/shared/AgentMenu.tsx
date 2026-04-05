@@ -14,7 +14,7 @@ export const AgentMenu: React.FC<AgentMenuProps> = ({ agents, selectedAgent, onS
     {agents.map((agent) => (
       <Menu.Item
         key={agent.name}
-        label={selectedAgent?.name === agent.name ? `${agent.name} ✔` : agent.name}
+        label={selectedAgent?.name === agent.name ? `${agent.name}\u00A0✔` : agent.name}
         onClick={() => onSelectAgent(agent)}
       />
     ))}

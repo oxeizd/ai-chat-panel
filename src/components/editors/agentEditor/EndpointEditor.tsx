@@ -88,7 +88,7 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
             <Input
               value={endpoint.path}
               onChange={(e) => handleChange('path', e.currentTarget.value)}
-              placeholder="/{thread_id}/messages"
+              placeholder="/{thread}/messages"
             />
           </Field>
         </div>
@@ -131,7 +131,7 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
           />
         </Field>
         <div style={{ fontSize: '11px', color: theme.colors.text.disabled, marginTop: '4px' }}>
-          Supports variables: {'{user_input}'}, {'{thread_id}'}, etc.
+          Supports variables: {'{user_input}'}, {'{thread}'}, etc.
         </div>
       </div>
 
@@ -151,7 +151,7 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
           <Input
             value={endpoint.saveToContext?.join(', ') || ''}
             onChange={(e) => handleSaveToContextChange(e.currentTarget.value)}
-            placeholder="thread_id, session_id, user_id"
+            placeholder="thread, session_id, user_id"
           />
         </Field>
         <div style={{ fontSize: '11px', color: theme.colors.text.disabled, marginTop: '-4px', marginBottom: '12px' }}>

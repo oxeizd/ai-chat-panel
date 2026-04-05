@@ -1,12 +1,12 @@
-import React, { forwardRef } from 'react';
 import ReactDOM from 'react-dom';
+import React, { forwardRef } from 'react';
 import { useTheme2 } from '@grafana/ui';
-import { useStyles, getMessageListStyles } from 'components/ui/core/styles';
-import { MessageList } from 'components/ui/shared/MessageList';
-import { ChatHeader } from 'components/ui/shared/ChatHeader';
-import { BottomButtons } from 'components/ui/shared/BottomButtons';
-import { ChatTextarea } from 'components/ui/shared/ChatTextarea';
 import { useChat } from '../core/chatConfig';
+import { ChatHeader } from 'components/ui/shared/ChatHeader';
+import { ChatTextarea } from 'components/ui/shared/ChatTextarea';
+import { MessageList } from 'components/ui/shared/MessageList';
+import { BottomButtons } from 'components/ui/shared/BottomButtons';
+import { useStyles, getMessageListStyles } from 'components/ui/core/styles';
 
 interface FloatingChatProps {
   chatStyle: React.CSSProperties;
@@ -23,30 +23,8 @@ export const FloatingChat = forwardRef<HTMLDivElement, FloatingChatProps>(
     const theme = useTheme2();
     const styles = useStyles(theme);
 
-    const floatingStyle: React.CSSProperties = isFullscreen
-      ? {
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: '100%',
-          maxHeight: '100vh',
-          padding: '16px',
-          borderRadius: 0,
-          zIndex: 1999,
-        }
-      : {
-          left: chatStyle.left,
-          top: chatStyle.top,
-          bottom: chatStyle.bottom,
-          maxHeight: chatStyle.maxHeight,
-          width: chatStyle.width,
-          padding: '16px',
-        };
-
     return ReactDOM.createPortal(
-      <div ref={ref} className={styles.floating.chat} style={floatingStyle}>
+      <div ref={ref} className={styles.floating.chat} style={isFullscreen ? styles.fullscreenStyle : chatStyle}>
         <ChatHeader
           onBack={isFullscreen ? undefined : onClose}
           isFullscreen={isFullscreen}

@@ -125,7 +125,7 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
             <TextArea
               value={editedAgent.config || ''}
               onChange={(e) => updateField('config', e.currentTarget.value)}
-              placeholder='{"model": "gpt-4", "temperature": 0.7, "thread_id": "${thread_id}"}'
+              placeholder='{"model": "gpt-4", "temperature": 0.7, "id": "${id}"}'
               rows={3}
             />
           </Field>

@@ -31,7 +31,7 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
       setChatStyle({
         position: 'fixed',
         left: `calc(50% - ${Math.floor(maxWidth / 2)}px)`,
-        top: `calc(50% - ${Math.floor(actualHeightPx / 2)}px + 24px`,
+        top: `calc(50% - ${Math.floor(actualHeightPx / 2)}px + 24px)`,
         width: maxWidth,
         maxHeight: `${maxHeightPx}px`,
         display: 'flex',
