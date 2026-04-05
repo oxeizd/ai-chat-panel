@@ -3,6 +3,8 @@ import { cx } from '@emotion/css';
 import { Spinner, Button, Icon, Modal } from '@grafana/ui';
 import { useChat } from 'components/ui/core/chatConfig';
 import { DebugTraceModal } from './DebugTraceModal';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export interface MessageListStyles {
   messageWrapper: string;
@@ -86,7 +88,7 @@ export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true
                 {msg.errorDetails.message}
               </>
             ) : (
-              msg.text
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
             )}
             {debug && msg.errorDetails && msg.sender === 'ai' && (
               <Icon name="info-circle" style={{ marginLeft: '8px', fontSize: '14px', opacity: 0.7 }} />
