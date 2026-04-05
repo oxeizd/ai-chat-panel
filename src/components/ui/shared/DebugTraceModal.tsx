@@ -24,6 +24,7 @@ export const DebugTraceModal: React.FC<DebugTraceModalProps> = ({ isOpen, trace,
       z-index: 100000 !important;
     `,
     container: css`
+      z-index: 100000 !important;
       max-height: 70vh;
       overflow-y: auto;
       font-family: monospace;

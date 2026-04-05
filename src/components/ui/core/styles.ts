@@ -301,7 +301,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        z-index: 2000;
+        z-index: 1000;
       `,
     },
 

@@ -61,7 +61,7 @@ export const AgentsEditor: React.FC<AgentsEditorProps> = ({ value = [], onChange
   };
 
   return (
-    <div style={{ marginTop: '8px' }}>
+    <div style={{ marginTop: '8px', zIndex: 10000 }}>
       {agents.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           {agents.map((agent, idx) => (
