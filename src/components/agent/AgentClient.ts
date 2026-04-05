@@ -83,13 +83,6 @@ export class AgentClient {
         onTrace
       );
 
-      if (lastResponse.thread_id) {
-        this.context.thread_id = lastResponse.thread_id;
-      }
-      if (lastResponse.run_id) {
-        this.context.run_id = lastResponse.run_id;
-      }
-
       return lastResponse.reply || lastResponse.result || JSON.stringify(lastResponse);
     }
 
