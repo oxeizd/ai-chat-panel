@@ -19,78 +19,93 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
       category: ['Mode settings'],
     })
     .addBooleanSwitch({
-      path: 'centerInput',
-      name: 'Center start input position',
-      defaultValue: false,
-      category: ['Mode settings'],
-      showIf: (config) => config.chatMode === 'floating',
-    })
-    .addBooleanSwitch({
-      path: 'centerFloatingChat',
-      name: 'Center chat',
-      defaultValue: false,
-      category: ['Mode settings'],
-      showIf: (config) => config.chatMode === 'floating',
-    })
-    .addTextInput({
-      path: 'buttonText',
-      name: 'Button text',
-      description: 'Text on the button that opens the chat',
-      defaultValue: 'Open Chat',
-      category: ['Mode settings'],
-      showIf: (config) => config.chatMode === 'button',
-    })
-    .addBooleanSwitch({
-      path: 'fullscreen',
+      path: 'settings.fullscreen',
       name: 'Open in fullscreen',
       defaultValue: false,
       category: ['Mode settings'],
     })
-    .addNumberInput({
-      path: 'maxWidth',
-      name: 'Max width',
-      defaultValue: 0,
-      category: ['Chat options'],
+    .addBooleanSwitch({
+      path: 'chatStyles.centerInput',
+      name: 'Center start input position',
+      defaultValue: false,
+      category: ['Style options'],
+      showIf: (config) => config.chatMode === 'floating',
+    })
+    .addBooleanSwitch({
+      path: 'chatStyles.inputAreaBackground',
+      name: 'input area backgorund',
+      defaultValue: false,
+      category: ['Style options'],
+      showIf: (config) => config.chatMode === 'floating',
+    })
+    .addBooleanSwitch({
+      path: 'chatStyles.centerFloatingChat',
+      name: 'Center chat',
+      defaultValue: false,
+      category: ['Style options'],
+      showIf: (config) => config.chatMode === 'floating',
     })
     .addTextInput({
-      path: 'placeholderText',
+      path: 'chatStyles.buttonText',
+      name: 'Button text',
+      description: 'Text on the button that opens the chat',
+      defaultValue: 'Open Chat',
+      category: ['Style options'],
+      showIf: (config) => config.chatMode === 'button',
+    })
+    .addNumberInput({
+      path: 'chatStyles.maxWidth',
+      name: 'Max width',
+      defaultValue: 0,
+      category: ['Style options'],
+    })
+    .addTextInput({
+      path: 'settings.placeholderText',
       name: 'Placeholder text',
       description: 'Text to show when chat is empty',
       defaultValue: '',
       category: ['Chat options'],
     })
     .addBooleanSwitch({
-      path: 'showWelcomeMessage',
+      path: 'settings.showWelcomeMessage',
       name: 'Show welcome message',
       description: 'Показывать приветствие',
       defaultValue: false,
       category: ['Chat options'],
     })
     .addTextInput({
-      path: 'welcomeMessage',
+      path: 'settings.welcomeMessage',
       name: 'Welcome message',
       description: 'Приветственный текст над чатом',
       defaultValue: '',
       category: ['Chat options'],
-      showIf: (config) => config.showWelcomeMessage === true,
+      settings: {
+        rows: 2,
+        useTextarea: true,
+      },
+      showIf: (config) => config.settings.showWelcomeMessage === true,
     })
     .addBooleanSwitch({
-      path: 'showSuggestions',
+      path: 'settings.showSuggestions',
       name: 'Show suggestions',
       description: 'Display suggestions',
       defaultValue: false,
       category: ['Chat options'],
     })
     .addTextInput({
-      path: 'suggestions',
+      path: 'settings.suggestions',
       name: 'Suggestions',
       description: 'Рекомендации, разделитель ";"',
       defaultValue: '',
       category: ['Chat options'],
-      showIf: (config) => config.showSuggestions === true,
+      settings: {
+        rows: 3,
+        useTextarea: true,
+      },
+      showIf: (config) => config.settings.showSuggestions === true,
     })
     .addRadio({
-      path: 'suggestionsPlacement',
+      path: 'settings.suggestionsPlacement',
       name: 'Suggestions placement',
       description: 'Как показывать рекомендации',
       settings: {
@@ -101,7 +116,7 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
       },
       defaultValue: 'always',
       category: ['Chat options'],
-      showIf: (config) => config.showSuggestions === true,
+      showIf: (config) => config.settings.showSuggestions === true,
     })
     .addCustomEditor({
       id: 'agents',

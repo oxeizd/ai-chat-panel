@@ -57,6 +57,7 @@ export const InputArea = memo(
       showSuggestions,
       welcomeMessage,
       showWelcomeMessage,
+      inputAreaBackground,
     } = chat;
 
     const { showPopup, popupRef, inputRef, onFocus, onBlur } = useSuggestions({
@@ -127,7 +128,12 @@ export const InputArea = memo(
     const showSuggestionsAlways =
       showSuggestions && suggestionsPlacement === 'always' && suggestions && suggestions.length > 0;
 
-    const containerStyle = cx(styles.input.container, props.className, centerInput && styles.base.centeredInputWrapper);
+    const containerStyle = cx(styles.input.container, props.className, centerInput && styles.input.centredContainer);
+    const inlineWrapperStyle = cx(
+      styles.input.inlineWrapper,
+      props.className,
+      inputAreaBackground && styles.input.inlineWrapperArea
+    );
 
     const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {
       e.currentTarget.blur();
@@ -209,7 +215,7 @@ export const InputArea = memo(
             <div className={styles.welcome.message}>{formatWelcomeMessage(welcomeMessage)}</div>
           )}
           <div style={{ position: 'relative', width: '100%' }}>
-            <div className={styles.input.inlineWrapper}>
+            <div className={inlineWrapperStyle}>
               <Input
                 ref={inputRef}
                 className={styles.input.box}

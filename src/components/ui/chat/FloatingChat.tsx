@@ -1,7 +1,6 @@
 import ReactDOM from 'react-dom';
 import React, { forwardRef } from 'react';
 import { useTheme2 } from '@grafana/ui';
-import { useChat } from '../core/chatConfig';
 import { ChatHeader } from 'components/ui/shared/ChatHeader';
 import { ChatTextarea } from 'components/ui/shared/ChatTextarea';
 import { MessageList } from 'components/ui/shared/MessageList';
@@ -18,8 +17,7 @@ interface FloatingChatProps {
 }
 
 export const FloatingChat = forwardRef<HTMLDivElement, FloatingChatProps>(
-  ({ chatStyle, onClose, isFullscreen, onToggleFullscreen, messagesContainerRef, maxWidth: propMaxWidth }, ref) => {
-    const props = useChat();
+  ({ chatStyle, onClose, isFullscreen, onToggleFullscreen, messagesContainerRef }, ref) => {
     const theme = useTheme2();
     const styles = useStyles(theme);
 
@@ -29,7 +27,6 @@ export const FloatingChat = forwardRef<HTMLDivElement, FloatingChatProps>(
           onBack={isFullscreen ? undefined : onClose}
           isFullscreen={isFullscreen}
           onFullscreen={onToggleFullscreen}
-          welcomeMessage={props.showWelcomeMessage ? props.welcomeMessage : undefined}
         />
         <div ref={messagesContainerRef} className={styles.messages.container}>
           <MessageList styles={getMessageListStyles(styles)} />

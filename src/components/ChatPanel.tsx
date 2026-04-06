@@ -8,7 +8,7 @@ import { ChatProvider } from './ui/core/chatConfig';
 
 interface Props extends PanelProps<PanelOptions> {}
 
-export const ChatPanel: React.FC<Props> = ({ options }) => {
+export const ChatPanel: React.FC<Props> = ({ options, height, width }) => {
   const renderChat = useMemo(() => {
     switch (options.chatMode) {
       case 'inline':
@@ -23,20 +23,23 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
   const providerProps = useMemo(
     () => ({
       agents: options.agents,
-      placeholderText: options.placeholderText,
-      suggestions: options.suggestions,
-      suggestionsPlacement: options.suggestionsPlacement,
-      showSuggestions: options.showSuggestions,
-      maxWidth: options.maxWidth,
-      centerInput: options.centerInput,
-      welcomeMessage: options.welcomeMessage,
-      showWelcomeMessage: options.showWelcomeMessage,
+      placeholderText: options.chatStyles.placeholderText,
+      suggestions: options.settings.suggestions,
+      suggestionsPlacement: options.settings.suggestionsPlacement,
+      showSuggestions: options.settings.showSuggestions,
+      maxWidth: options.chatStyles.maxWidth,
+      centerInput: options.chatStyles.centerInput,
+      welcomeMessage: options.settings.welcomeMessage,
+      showWelcomeMessage: options.settings.showWelcomeMessage,
       debug: options.debug,
-      buttonText: options.buttonText,
-      openFullscreen: options.openFullscreen,
-      centerFloatingChat: options.chatMode === 'button' ? true : options.centerFloatingChat,
+      buttonText: options.chatStyles.buttonText,
+      openFullscreen: options.settings.openFullscreen,
+      centerFloatingChat: options.chatMode === 'button' ? true : options.chatStyles.centerFloatingChat,
+      inputAreaBackground: options.chatStyles.inputAreaBackground,
+      panelHeigth: height,
+      panelWidth: width,
     }),
-    [options]
+    [options, height, width]
   );
 
   return <ChatProvider {...providerProps}>{renderChat}</ChatProvider>;

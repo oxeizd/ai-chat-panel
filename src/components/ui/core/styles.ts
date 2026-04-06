@@ -32,20 +32,93 @@ export const getStyles = (theme: GrafanaTheme2) => {
       verticalCentered: css`
         justify-content: center;
       `,
-      centeredInputWrapper: css`
+    },
+
+    // ===== Поле ввода =====
+    input: {
+      container: css`
+        position: relative;
+        display: flex;
+        gap: ${theme.spacing(0.5)};
+        padding: ${theme.spacing(0.75)} ${theme.spacing(0)} ${theme.spacing(1.75)};
+        flex-direction: column;
+      `,
+      centredContainer: css`
         display: flex;
         justify-content: center;
         width: 100%;
+      `,
+      inlineWrapper: css`
+        position: relative;
+        display: flex;
+        gap: ${theme.spacing(1)};
+        width: 100%;
+        align-items: center;
+      `,
+      inlineWrapperArea: css`
+        padding: ${theme.spacing(0.8)};
+        background: ${theme.colors.background.primary};
+        border: 1px solid ${theme.colors.border.medium};
+        border-radius: ${theme.shape.radius.default};
+      `,
+      containerHidden: css`
+        opacity: 0;
+        pointer-events: none;
+      `,
+      box: css`
+        width: 100%;
+        height: 38px;
+      `,
+      textarea: css`
+        resize: none;
+        width: 100%;
+        min-height: 72px;
+        max-height: 100px;
+        font-family: inherit;
+        font-size: 0.875rem;
+        line-height: 1.4;
+        padding: ${theme.spacing(1)} ${theme.spacing(5)} ${theme.spacing(1)} ${theme.spacing(1)};
+        background: ${toRgba(bgColor, 0.7)};
+        backdrop-filter: blur(10px);
+        border: 1px solid ${theme.colors.border.medium};
+        border-radius: ${theme.shape.radius.default};
+        color: ${theme.colors.text.primary};
+        &:focus {
+          outline: none;
+          border-color: ${theme.colors.primary.main};
+        }
+      `,
+      sendButton: css`
+        position: absolute;
+        right: ${theme.spacing(2.4)};
+        bottom: ${theme.spacing(2.5)};
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border-radius: ${theme.shape.radius.circle};
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: ${toRgba(bgColor, 0.7)};
+        border: 1px solid ${theme.colors.border.weak};
+        cursor: pointer;
+        &:hover {
+          background: ${theme.colors.action.hover};
+        }
+        i,
+        svg {
+          font-size: 18px;
+          font-weight: 600;
+        }
       `,
     },
 
     // ===== Приветственное сообщение =====
     welcome: {
       message: css`
-        padding-left: ${theme.spacing(1)};
-        font-size: 1rem;
+        font-size: 1.1rem;
         color: ${theme.colors.text.secondary};
-        margin-bottom: ${theme.spacing(0)};
+        margin-bottom: ${theme.spacing(0.1)};
       `,
     },
 
@@ -55,7 +128,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
         display: flex;
         flex-wrap: wrap;
         gap: ${theme.spacing(1)};
-        padding: ${theme.spacing(0.65)};
+        padding-top: ${theme.spacing(0.8)};
       `,
       item: css`
         background: ${theme.colors.background.secondary};
@@ -118,73 +191,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
         padding-top: ${theme.spacing(0.5)};
         strong {
           color: ${theme.colors.text.primary};
-        }
-      `,
-    },
-
-    // ===== Поле ввода =====
-    input: {
-      container: css`
-        position: relative;
-        display: flex;
-        gap: ${theme.spacing(0.5)};
-        padding: ${theme.spacing(0.75)} ${theme.spacing(0)} ${theme.spacing(1.75)};
-        flex-direction: column;
-      `,
-      inlineWrapper: css`
-        display: flex;
-        gap: ${theme.spacing(1)};
-        width: 100%;
-        align-items: center;
-      `,
-      containerHidden: css`
-        opacity: 0;
-        pointer-events: none;
-      `,
-      box: css`
-        width: 100%;
-        height: 38px;
-      `,
-      textarea: css`
-        resize: none;
-        width: 100%;
-        min-height: 72px;
-        max-height: 100px;
-        font-family: inherit;
-        font-size: 0.875rem;
-        line-height: 1.4;
-        padding: ${theme.spacing(1)} ${theme.spacing(5)} ${theme.spacing(1)} ${theme.spacing(1)};
-        background: ${toRgba(bgColor, 0.7)};
-        backdrop-filter: blur(10px);
-        border: 1px solid ${theme.colors.border.medium};
-        border-radius: ${theme.shape.radius.default};
-        color: ${theme.colors.text.primary};
-        &:focus {
-          outline: none;
-          border-color: ${theme.colors.primary.main};
-        }
-      `,
-      sendButton: css`
-        position: absolute;
-        right: ${theme.spacing(2.4)};
-        bottom: ${theme.spacing(2.5)};
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        border-radius: ${theme.shape.radius.circle};
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: ${toRgba(bgColor, 0.7)};
-        border: 1px solid ${theme.colors.border.weak};
-        cursor: pointer;
-        &:hover {
-          background: ${theme.colors.action.hover};
-        }
-        i,
-        svg {
-          font-size: 18px;
-          font-weight: 600;
         }
       `,
     },

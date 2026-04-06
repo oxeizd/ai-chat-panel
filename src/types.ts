@@ -1,19 +1,22 @@
 export interface PanelOptions {
   chatMode?: 'floating' | 'inline' | 'button';
-  centerFloatingChat?: boolean;
-  buttonText?: string;
-  openFullscreen?: boolean;
-  placeholderText?: string;
-  fetchRecommendedQuestions?: boolean;
+  chatStyles: {
+    centerInput?: boolean;
+    centerFloatingChat?: boolean;
+    buttonText?: string;
+    placeholderText?: string;
+    maxWidth?: number;
+    inputAreaBackground?: boolean;
+  };
+  settings: {
+    openFullscreen?: boolean;
+    showWelcomeMessage?: boolean;
+    welcomeMessage?: string;
+    showSuggestions?: boolean;
+    suggestions?: string;
+    suggestionsPlacement?: 'always' | 'onFocus';
+  };
   agents: AgentConfig[];
-  agentsJson?: string;
-  maxWidth?: number;
-  centerInput?: boolean;
-  welcomeMessage?: string;
-  showWelcomeMessage?: boolean;
-  showSuggestions?: boolean;
-  suggestions?: string;
-  suggestionsPlacement?: 'always' | 'onFocus';
   debug?: boolean;
 }
 
