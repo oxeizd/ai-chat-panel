@@ -290,10 +290,20 @@ export const getStyles = (theme: GrafanaTheme2) => {
         background: rgba(128, 128, 128, 0.2);
         color: ${theme.colors.primary.contrastText};
         border-bottom-right-radius: 0;
+
+        p {
+          margin: 0;
+          padding: 0;
+        }
       `,
       aiBubble: css`
         color: ${theme.colors.text.primary};
         border-bottom-left-radius: 0;
+
+        p {
+          margin: 0;
+          padding: 0;
+        }
       `,
     },
 
