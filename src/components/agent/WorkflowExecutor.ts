@@ -47,8 +47,26 @@ export const executeEndpoint = async (
   agentHeaders?: string,
   onTrace?: (step: TraceStep) => void
 ): Promise<any> => {
+  let resolvedBaseUrl = baseUrl;
+
+  if (!resolvedBaseUrl) {
+    resolvedBaseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  } else if (resolvedBaseUrl.startsWith('/')) {
+    resolvedBaseUrl = (typeof window !== 'undefined' ? window.location.origin : '') + resolvedBaseUrl;
+  }
+
   const path = resolveString(endpoint.path, context);
-  const url = new URL(path, baseUrl).href;
+
+  const combine = (base: string, relative: string) => {
+    if (!relative) {
+      return base;
+    }
+    const baseClean = base.endsWith('/') ? base.slice(0, -1) : base;
+    const relativeClean = relative.startsWith('/') ? relative : '/' + relative;
+    return baseClean + relativeClean;
+  };
+
+  const url = combine(resolvedBaseUrl, path);
 
   const endpointBodyObj = endpoint.body ? parseJson(endpoint.body) : {};
   const agentConfigObj = agentConfig ? parseJson(agentConfig) : {};

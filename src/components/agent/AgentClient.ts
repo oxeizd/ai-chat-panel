@@ -50,12 +50,12 @@ export class AgentClient {
       throw new Error('Agent is already processing a message. Please wait.');
     }
     this.isProcessing = true;
-  
+
     try {
       // ========== ИНИЦИАЛИЗАЦИЯ (без user_input) ==========
       if (this.config.startupOperation && !this.initialized) {
         const endpointMap = new Map<string, EndpointConfig>(
-          this.config.endpoints?.map(ep => [ep.operation, ep]) ?? []
+          this.config.endpoints?.map((ep) => [ep.operation, ep]) ?? []
         );
         const startupEndpoint = endpointMap.get(this.config.startupOperation);
         if (startupEndpoint) {
@@ -64,20 +64,18 @@ export class AgentClient {
           this.initialized = true;
         }
       }
-  
+
       // ========== ДОБАВЛЯЕМ ВХОДНЫЕ ДАННЫЕ В КОНТЕКСТ ==========
       const context = this.context;
       context.user_input = userInput;
       Object.assign(context, additionalContext);
-  
+
       // ========== ОСНОВНАЯ ЛОГИКА С WORKFLOW ==========
       if (this.config.endpoints?.length && this.config.workflow?.length) {
-        const endpointMap = new Map<string, EndpointConfig>(
-          this.config.endpoints.map((ep) => [ep.operation, ep])
-        );
-  
+        const endpointMap = new Map<string, EndpointConfig>(this.config.endpoints.map((ep) => [ep.operation, ep]));
+
         const steps = this.config.workflow
-          .filter(op => op !== this.config.startupOperation)
+          .filter((op) => op !== this.config.startupOperation)
           .map((op) => {
             const ep = endpointMap.get(op);
             if (!ep) {
@@ -87,11 +85,11 @@ export class AgentClient {
             return { endpoint: ep };
           })
           .filter((step): step is { endpoint: EndpointConfig } => step !== null);
-  
+
         if (steps.length === 0) {
           throw new Error('No valid steps in workflow');
         }
-  
+
         const lastResponse = await executeWorkflow(
           steps,
           context,
@@ -100,10 +98,10 @@ export class AgentClient {
           this.config.headers,
           onTrace
         );
-  
+
         return lastResponse.reply || lastResponse.result || JSON.stringify(lastResponse);
       }
-  
+
       // ========== FALLBACK: ПРОСТОЙ POST ==========
       let requestBody: any = { message: userInput };
       if (this.config.config) {
@@ -115,7 +113,7 @@ export class AgentClient {
           console.warn('Invalid agent config JSON, ignoring', e);
         }
       }
-  
+
       const headersObj: Record<string, string> = {};
       if (this.config.headers) {
         try {
@@ -140,7 +138,7 @@ export class AgentClient {
       if (!headersObj['Content-Type'] && !headersObj['content-type']) {
         headersObj['Content-Type'] = 'application/json';
       }
-  
+
       if (onTrace) {
         onTrace({
           type: 'request',
@@ -150,13 +148,13 @@ export class AgentClient {
           requestBody,
         });
       }
-  
+
       const response = await fetch(this.config.api, {
         method: 'POST',
         headers: headersObj,
         body: JSON.stringify(requestBody),
       });
-  
+
       let responseData;
       if (!response.ok) {
         let errorText = '';
@@ -175,7 +173,7 @@ export class AgentClient {
         }
         throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
       }
-  
+
       responseData = await response.json();
       if (onTrace) {
         onTrace({
@@ -185,7 +183,7 @@ export class AgentClient {
           responseBody: responseData,
         });
       }
-  
+
       return responseData.reply || responseData.result || 'Ответ не получен';
     } finally {
       this.isProcessing = false;
