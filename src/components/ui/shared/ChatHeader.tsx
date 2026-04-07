@@ -16,7 +16,7 @@ const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {
 };
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, isFullscreen, onFullscreen }) => {
-  const { agents, clearChat, exportChat, openSettings, setSelectedAgent, selectedAgent, newChat } = useChat();
+  const { agents, clearChat, exportChat, setSelectedAgent, selectedAgent, newChat } = useChat();
 
   const theme = useTheme2();
   const styles = useStyles(theme);
@@ -28,7 +28,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, isFullscreen, on
           agents={agents}
           onClearChat={clearChat}
           onExportChat={exportChat}
-          onOpenSettings={openSettings}
           onSelectAgent={setSelectedAgent}
           selectedAgent={selectedAgent}
           onNewChat={newChat}

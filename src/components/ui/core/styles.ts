@@ -119,6 +119,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
         font-size: 1.1rem;
         color: ${theme.colors.text.secondary};
         margin-bottom: ${theme.spacing(0.1)};
+        padding-left: ${theme.spacing(0.5)};
       `,
     },
 

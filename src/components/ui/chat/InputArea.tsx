@@ -45,7 +45,6 @@ export const InputArea = memo(
       isLoading,
       clearChat,
       exportChat,
-      openSettings,
       newChat,
       selectedAgent,
       setSelectedAgent,
@@ -123,7 +122,6 @@ export const InputArea = memo(
         agents={agents}
         onClearChat={clearChat}
         onExportChat={exportChat}
-        onOpenSettings={openSettings}
         onSelectAgent={setSelectedAgent}
         selectedAgent={selectedAgent}
         onNewChat={newChat}
