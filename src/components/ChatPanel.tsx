@@ -8,7 +8,7 @@ import { ChatProvider } from './ui/core/chatConfig';
 
 interface Props extends PanelProps<PanelOptions> {}
 
-export const ChatPanel: React.FC<Props> = ({ options, height, width }) => {
+export const ChatPanel: React.FC<Props> = ({ options }) => {
   const renderChat = useMemo(() => {
     switch (options.chatMode) {
       case 'inline':
@@ -36,10 +36,8 @@ export const ChatPanel: React.FC<Props> = ({ options, height, width }) => {
       openFullscreen: options.settings.openFullscreen,
       centerFloatingChat: options.chatMode === 'button' ? true : options.chatStyles.centerFloatingChat,
       inputAreaBackground: options.chatStyles.inputAreaBackground,
-      panelHeigth: height,
-      panelWidth: width,
     }),
-    [options, height, width]
+    [options]
   );
 
   return <ChatProvider {...providerProps}>{renderChat}</ChatProvider>;

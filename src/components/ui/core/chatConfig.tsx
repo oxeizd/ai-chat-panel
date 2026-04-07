@@ -79,8 +79,6 @@ interface ChatProviderProps {
   openFullscreen?: boolean;
   centerFloatingChat?: boolean;
   inputAreaBackground?: boolean;
-  panelHeigth?: number;
-  panelWidth?: number;
 }
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({
@@ -91,7 +89,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   suggestionsPlacement = 'always',
   showSuggestions = false,
   maxWidth,
-  centerInput,
+  centerInput = false,
   welcomeMessage,
   showWelcomeMessage = false,
   debug = false,
@@ -99,8 +97,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   openFullscreen = false,
   centerFloatingChat = false,
   inputAreaBackground = false,
-  panelHeigth,
-  panelWidth,
 }) => {
   // User
   const { user } = useGrafanaUser();

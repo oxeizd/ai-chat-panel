@@ -1,7 +1,15 @@
 import { useState, useRef, useLayoutEffect, useCallback } from 'react';
-import { CHAT_SETTINGS } from '../core/config';
 
-export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWidth = 450) => {
+const settings = {
+  margin: 8,
+  top_offset: 100,
+  minHeight: 500,
+  minWrapperHeight: 150,
+  contentLimit: 0.96,
+  padding: 16,
+};
+
+export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWidth = 1300) => {
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const floatingChatRef = useRef<HTMLDivElement | null>(null);
@@ -10,7 +18,7 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
     left: 0,
     top: undefined,
     bottom: undefined,
-    maxHeight: CHAT_SETTINGS.minHeight,
+    maxHeight: settings.minHeight,
     width: 0,
   });
 
@@ -20,25 +28,41 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
   }, []);
 
   const updateChatPosition = useCallback(() => {
-    if (centerChat) {
-      const viewportHeight = window.innerHeight;
-      const maxHeightPx = Math.floor(viewportHeight * 0.8);
+    const desiredHeight =
+      floatingChatRef.current?.offsetHeight ?? (chatMessagesRef.current?.scrollHeight || 0) + settings.minWrapperHeight;
 
-      const contentHeight = chatMessagesRef.current?.scrollHeight || 0;
-      const desiredHeight = contentHeight + CHAT_SETTINGS.inputWrapperHeight;
-      const actualHeightPx = Math.min(maxHeightPx, Math.max(CHAT_SETTINGS.minHeight, desiredHeight));
+    if (centerChat) {
+      const maxHeight = Math.floor((window.innerHeight - settings.top_offset) * 0.96);
+      const height = Math.min(maxHeight, Math.max(settings.minHeight, desiredHeight));
+      const top =
+        window.innerHeight / 2 - Math.floor(height / 2) < 100
+          ? `${settings.top_offset}px`
+          : `calc(50% - ${Math.floor(height / 2)}px)`;
+
+      let width: number;
+
+      if (typeof maxWidth !== 'number' || maxWidth <= 0) {
+        width = 1300;
+      } else {
+        width = maxWidth;
+      }
+
+      if (window.innerWidth < width) {
+        width = Math.round(window.innerWidth * 0.8);
+      }
 
       setChatStyle({
         position: 'fixed',
-        left: `calc(50% - ${Math.floor(maxWidth / 2)}px)`,
-        top: `calc(50% - ${Math.floor(actualHeightPx / 2)}px + 24px)`,
-        width: maxWidth,
-        maxHeight: `${maxHeightPx}px`,
+        left: `calc(50% - ${Math.floor(width / 2)}px)`,
+        top: top,
+        width: width,
+        maxHeight: `${maxHeight}px`,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        padding: CHAT_SETTINGS.default_padding,
+        padding: settings.padding,
       });
+
       return;
     }
 
@@ -47,56 +71,62 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
     }
 
     const rect = inputContainerRef.current.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    const { margin, positionOffset, minHeight, viewportLimit } = CHAT_SETTINGS;
-    const contentHeight = chatMessagesRef.current?.scrollHeight || 0;
-    const requiredHeight = contentHeight + CHAT_SETTINGS.inputWrapperHeight;
-    const spaceBelow = viewportHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    const availableBelow = Math.max(0, Math.min(spaceBelow - margin, viewportHeight * viewportLimit));
-    const availableAbove = Math.max(0, Math.min(spaceAbove - margin, viewportHeight * viewportLimit));
+    const { contentLimit: viewportLimit, margin } = settings;
 
-    let preferDown: boolean;
-    const canFitRequiredBelow = availableBelow >= requiredHeight;
-    const canFitRequiredAbove = availableAbove >= requiredHeight;
+    const top = Math.max(settings.top_offset, rect.top);
+    const bottom = window.innerHeight - rect.bottom + settings.margin;
+    const freerTop = Math.max(0, top - settings.top_offset);
+    const freeBottom = Math.max(0, (window.innerHeight - top + margin) * viewportLimit);
 
-    if (canFitRequiredBelow && canFitRequiredAbove) {
-      preferDown = availableBelow >= availableAbove;
-    } else if (canFitRequiredBelow) {
-      preferDown = true;
-    } else if (canFitRequiredAbove) {
-      preferDown = false;
-    } else {
-      preferDown = availableBelow >= availableAbove;
-    }
+    const showAbove = freerTop >= desiredHeight;
+    const showBelow = freeBottom >= desiredHeight;
+    const preferDown = showBelow ? !showAbove || freeBottom >= freerTop : freeBottom >= freerTop;
 
-    let top: number | undefined;
-    let bottom: number | undefined;
-    let maxHeight: number;
+    let topPosition: number | undefined;
+    let bottomPosition: number | undefined;
+    let maxHeightValue: number | undefined;
 
     if (preferDown) {
-      top = rect.bottom + margin - positionOffset;
-      maxHeight = Math.max(minHeight, Math.min(requiredHeight, availableBelow));
+      topPosition = top;
+      maxHeightValue = freeBottom;
+      bottomPosition = undefined;
     } else {
-      bottom = viewportHeight - rect.top + margin - positionOffset;
-      maxHeight = Math.max(minHeight, Math.min(requiredHeight, availableAbove));
+      topPosition = undefined;
+      maxHeightValue = window.innerHeight - bottom - settings.top_offset;
+      bottomPosition = bottom;
+    }
+
+    let leftPosition: number | undefined;
+    let widthPosition: number | undefined;
+
+    const sidePadding = 12;
+    if (maxWidth > rect.width) {
+      widthPosition = maxWidth;
+      let desiredLeft = rect.right - widthPosition;
+      leftPosition = Math.max(sidePadding, Math.min(desiredLeft, window.innerWidth - widthPosition - sidePadding));
+    } else {
+      leftPosition = rect.left;
+      widthPosition = rect.width;
     }
 
     setChatStyle({
       position: 'fixed',
-      left: rect.left,
-      top,
-      bottom,
-      maxHeight,
-      width: rect.width,
-      padding: CHAT_SETTINGS.default_padding,
+      left: leftPosition,
+      top: topPosition,
+      maxHeight: maxHeightValue,
+      width: widthPosition,
+      bottom: bottomPosition,
+      padding: settings.padding,
     });
+
+    return;
   }, [isChatOpen, centerChat, maxWidth]);
 
   useLayoutEffect(() => {
     if (!isChatOpen) {
       return;
     }
+
     const frame = requestAnimationFrame(() => updateChatPosition());
     const handleResizeOrScroll = () => requestAnimationFrame(updateChatPosition);
     window.addEventListener('resize', handleResizeOrScroll);
