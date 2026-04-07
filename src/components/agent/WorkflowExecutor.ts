@@ -15,9 +15,9 @@ const DEFAULT_POLLING_CONFIG: Required<PollingConfig> = {
   retryStatusCodes: [],
 };
 
-const parseJson = (jsonString?: any): Record<string, any> => {
-  if (typeof jsonString === 'object' && jsonString !== null && !Array.isArray(jsonString)) {
-    return jsonString;
+const parseJson = (jsonString?: any): any => {
+  if (typeof jsonString === 'object' && jsonString !== null) {
+    return jsonString; // уже объект или массив
   }
   if (typeof jsonString === 'string') {
     const trimmed = jsonString.trim();
@@ -26,7 +26,7 @@ const parseJson = (jsonString?: any): Record<string, any> => {
     }
     try {
       const parsed = JSON.parse(trimmed);
-      return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : {};
+      return parsed; // может быть массивом, числом и т.д.
     } catch {
       return {};
     }
@@ -48,7 +48,7 @@ export const executeEndpoint = async (
   onTrace?: (step: TraceStep) => void
 ): Promise<any> => {
   const path = resolveString(endpoint.path, context);
-  const url = `${baseUrl}${path}`;
+  const url = new URL(path, baseUrl).href;
 
   const endpointBodyObj = endpoint.body ? parseJson(endpoint.body) : {};
   const agentConfigObj = agentConfig ? parseJson(agentConfig) : {};
@@ -67,7 +67,6 @@ export const executeEndpoint = async (
   const mergedHeaders = mergeObjects(agentHeadersObj, endpointHeadersObj);
   const headers: HeadersInit = mergedHeaders as HeadersInit;
 
-  // Запись трейса запроса
   if (onTrace) {
     onTrace({
       type: 'request',
@@ -98,7 +97,6 @@ export const executeEndpoint = async (
 
   let data = await makeRequest();
 
-  // Запись трейса ответа
   if (onTrace) {
     onTrace({
       type: 'response',
@@ -153,10 +151,10 @@ export const executeEndpoint = async (
     if (data[polling.statusField] !== polling.successValue) {
       throw new Error(`Polling timeout after ${polling.maxAttempts} attempts`);
     }
+  }
 
-    if (polling.resultField && data[polling.resultField] !== undefined) {
-      data = data[polling.resultField];
-    }
+  if (endpoint.polling?.resultField && data[endpoint.polling.resultField] !== undefined) {
+    data = data[endpoint.polling.resultField];
   }
 
   // Извлечение reply
@@ -179,7 +177,6 @@ export const executeEndpoint = async (
     data.reply = replyText;
   }
 
-  // Сохранение в контекст
   const contextChanges: Record<string, any> = {};
   if (endpoint.saveToContext?.length) {
     for (const key of endpoint.saveToContext) {

@@ -6,6 +6,7 @@ export class AgentClient {
   private config: AgentConfig;
   private context: WorkflowContext = {};
   private initialized = false;
+  private isProcessing = false;
 
   constructor(config: AgentConfig) {
     this.config = config;
@@ -44,121 +45,150 @@ export class AgentClient {
     additionalContext: VariableContext = {},
     onTrace?: (step: TraceStep) => void
   ): Promise<string> {
-    const context = this.context;
-    context.user_input = userInput;
-    Object.assign(context, additionalContext);
-
-    if (this.config.endpoints?.length && this.config.workflow?.length) {
-      const endpointMap = new Map<string, EndpointConfig>(this.config.endpoints.map((ep) => [ep.operation, ep]));
-
-      const steps = this.config.workflow
-        .map((op) => {
-          const ep = endpointMap.get(op);
-          if (!ep) {
-            console.warn(`Operation "${op}" not found in endpoints, skipping`);
-            return null;
-          }
-          return { endpoint: ep };
-        })
-        .filter((step): step is { endpoint: EndpointConfig } => step !== null);
-
-      if (steps.length === 0) {
-        throw new Error('No valid steps in workflow');
-      }
-
+    // Защита от гонок (#6)
+    if (this.isProcessing) {
+      throw new Error('Agent is already processing a message. Please wait.');
+    }
+    this.isProcessing = true;
+  
+    try {
+      // ========== ИНИЦИАЛИЗАЦИЯ (без user_input) ==========
       if (this.config.startupOperation && !this.initialized) {
+        const endpointMap = new Map<string, EndpointConfig>(
+          this.config.endpoints?.map(ep => [ep.operation, ep]) ?? []
+        );
         const startupEndpoint = endpointMap.get(this.config.startupOperation);
         if (startupEndpoint) {
-          await this.runEndpoint(startupEndpoint, context, onTrace);
+          // Передаём текущий контекст (без user_input)
+          await this.runEndpoint(startupEndpoint, this.context, onTrace);
           this.initialized = true;
         }
       }
-
-      const lastResponse = await executeWorkflow(
-        steps,
-        context,
-        this.config.api,
-        this.config.config,
-        this.config.headers,
-        onTrace
-      );
-
-      return lastResponse.reply || lastResponse.result || JSON.stringify(lastResponse);
-    }
-
-    // Fallback: простой POST
-    let requestBody: any = { message: userInput };
-    if (this.config.config) {
-      try {
-        let configStr = this.config.config;
-        configStr = resolveString(configStr, context);
-        requestBody = { ...requestBody, ...JSON.parse(configStr) };
-      } catch (e) {
-        console.warn('Invalid agent config JSON, ignoring', e);
-      }
-    }
-
-    const headersObj: Record<string, string> = {};
-    if (this.config.headers) {
-      try {
-        const parsed = JSON.parse(this.config.headers);
-        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-          Object.assign(headersObj, parsed);
+  
+      // ========== ДОБАВЛЯЕМ ВХОДНЫЕ ДАННЫЕ В КОНТЕКСТ ==========
+      const context = this.context;
+      context.user_input = userInput;
+      Object.assign(context, additionalContext);
+  
+      // ========== ОСНОВНАЯ ЛОГИКА С WORKFLOW ==========
+      if (this.config.endpoints?.length && this.config.workflow?.length) {
+        const endpointMap = new Map<string, EndpointConfig>(
+          this.config.endpoints.map((ep) => [ep.operation, ep])
+        );
+  
+        const steps = this.config.workflow
+          .filter(op => op !== this.config.startupOperation)
+          .map((op) => {
+            const ep = endpointMap.get(op);
+            if (!ep) {
+              console.warn(`Operation "${op}" not found in endpoints, skipping`);
+              return null;
+            }
+            return { endpoint: ep };
+          })
+          .filter((step): step is { endpoint: EndpointConfig } => step !== null);
+  
+        if (steps.length === 0) {
+          throw new Error('No valid steps in workflow');
         }
-      } catch (e) {
-        console.warn('Invalid agent headers JSON, ignoring', e);
+  
+        const lastResponse = await executeWorkflow(
+          steps,
+          context,
+          this.config.api,
+          this.config.config,
+          this.config.headers,
+          onTrace
+        );
+  
+        return lastResponse.reply || lastResponse.result || JSON.stringify(lastResponse);
       }
-    }
-    if (!headersObj['Content-Type'] && !headersObj['content-type']) {
-      headersObj['Content-Type'] = 'application/json';
-    }
-
-    // Трейс для fallback запроса
-    if (onTrace) {
-      onTrace({
-        type: 'request',
-        timestamp: Date.now(),
-        url: this.config.api,
+  
+      // ========== FALLBACK: ПРОСТОЙ POST ==========
+      let requestBody: any = { message: userInput };
+      if (this.config.config) {
+        try {
+          let configStr = this.config.config;
+          configStr = resolveString(configStr, context);
+          requestBody = { ...requestBody, ...JSON.parse(configStr) };
+        } catch (e) {
+          console.warn('Invalid agent config JSON, ignoring', e);
+        }
+      }
+  
+      const headersObj: Record<string, string> = {};
+      if (this.config.headers) {
+        try {
+          let headersStr = this.config.headers;
+          headersStr = resolveString(headersStr, context);
+          const parsed = JSON.parse(headersStr);
+          if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+            for (const [k, v] of Object.entries(parsed)) {
+              if (typeof v === 'string') {
+                headersObj[k] = resolveString(v, context);
+              } else if (typeof v === 'number' || typeof v === 'boolean') {
+                headersObj[k] = String(v);
+              } else {
+                headersObj[k] = JSON.stringify(v);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Invalid agent headers JSON, ignoring', e);
+        }
+      }
+      if (!headersObj['Content-Type'] && !headersObj['content-type']) {
+        headersObj['Content-Type'] = 'application/json';
+      }
+  
+      if (onTrace) {
+        onTrace({
+          type: 'request',
+          timestamp: Date.now(),
+          url: this.config.api,
+          method: 'POST',
+          requestBody,
+        });
+      }
+  
+      const response = await fetch(this.config.api, {
         method: 'POST',
-        requestBody,
+        headers: headersObj,
+        body: JSON.stringify(requestBody),
       });
-    }
-
-    const response = await fetch(this.config.api, {
-      method: 'POST',
-      headers: headersObj,
-      body: JSON.stringify(requestBody),
-    });
-
-    let responseData;
-    if (!response.ok) {
-      let errorText = '';
-      try {
-        errorText = await response.text();
-      } catch {
-        errorText = 'Unable to read error body';
+  
+      let responseData;
+      if (!response.ok) {
+        let errorText = '';
+        try {
+          errorText = await response.text();
+        } catch {
+          errorText = 'Unable to read error body';
+        }
+        if (onTrace) {
+          onTrace({
+            type: 'response',
+            timestamp: Date.now(),
+            responseStatus: response.status,
+            responseBody: errorText,
+          });
+        }
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
       }
+  
+      responseData = await response.json();
       if (onTrace) {
         onTrace({
           type: 'response',
           timestamp: Date.now(),
           responseStatus: response.status,
-          responseBody: errorText,
+          responseBody: responseData,
         });
       }
-      throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+  
+      return responseData.reply || responseData.result || 'Ответ не получен';
+    } finally {
+      this.isProcessing = false;
     }
-
-    responseData = await response.json();
-    if (onTrace) {
-      onTrace({
-        type: 'response',
-        timestamp: Date.now(),
-        responseStatus: response.status,
-        responseBody: responseData,
-      });
-    }
-
-    return responseData.reply || responseData.result || 'Ответ не получен';
   }
 }
