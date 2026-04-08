@@ -1,4 +1,5 @@
-import { EndpointConfig, PollingConfig, TraceStep } from 'types';
+// WorkflowExecutor.ts
+import { EndpointConfig, PollingConfig, TraceStep, StreamingConfig } from 'types';
 import { VariableContext, resolveString, resolveObject } from './VariableResolver';
 
 export interface WorkflowContext extends VariableContext {
@@ -17,7 +18,7 @@ const DEFAULT_POLLING_CONFIG: Required<PollingConfig> = {
 
 const parseJson = (jsonString?: any): any => {
   if (typeof jsonString === 'object' && jsonString !== null) {
-    return jsonString; // уже объект или массив
+    return jsonString;
   }
   if (typeof jsonString === 'string') {
     const trimmed = jsonString.trim();
@@ -26,7 +27,7 @@ const parseJson = (jsonString?: any): any => {
     }
     try {
       const parsed = JSON.parse(trimmed);
-      return parsed; // может быть массивом, числом и т.д.
+      return parsed;
     } catch {
       return {};
     }
@@ -39,13 +40,29 @@ const mergeObjects = (base: Record<string, any>, override: Record<string, any>):
   ...override,
 });
 
+const extractValueByPath = (obj: any, path: string): any => {
+  if (!path) {
+    return obj;
+  }
+  return path.split('.').reduce((acc, key) => {
+    if (acc === undefined || acc === null) {
+      return undefined;
+    }
+    if (Array.isArray(acc) && /^\d+$/.test(key)) {
+      return acc[parseInt(key, 10)];
+    }
+    return acc[key];
+  }, obj);
+};
+
 export const executeEndpoint = async (
   endpoint: EndpointConfig,
   context: WorkflowContext,
   baseUrl: string,
   agentConfig?: string,
   agentHeaders?: string,
-  onTrace?: (step: TraceStep) => void
+  onTrace?: (step: TraceStep) => void,
+  onChunk?: (chunk: string) => void
 ): Promise<any> => {
   let resolvedBaseUrl = baseUrl;
 
@@ -96,6 +113,113 @@ export const executeEndpoint = async (
     });
   }
 
+  const streaming = endpoint.streaming === true || (endpoint.streaming as StreamingConfig)?.enabled === true;
+  let streamConfig: StreamingConfig | null = null;
+  if (streaming && typeof endpoint.streaming === 'object') {
+    streamConfig = endpoint.streaming as StreamingConfig;
+  } else if (streaming) {
+    streamConfig = { enabled: true };
+  }
+
+  // ---- СТРИМИНГ ----
+  if (streaming && streamConfig && onChunk) {
+    const response = await fetch(url, { method: endpoint.method, headers, body });
+    if (!response.ok) {
+      let errorBody = '';
+      try {
+        errorBody = await response.text();
+      } catch {
+        errorBody = 'Unable to read error body';
+      }
+      if (onTrace) {
+        onTrace({
+          type: 'response',
+          timestamp: Date.now(),
+          responseStatus: response.status,
+          responseBody: errorBody,
+        });
+      }
+      throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
+    }
+    if (!response.body) {
+      throw new Error('Response body is empty');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullResponse = '';
+    const delimiter = streamConfig.delimiter || '\n\n';
+    const dataPrefix = streamConfig.dataPrefix || 'data: ';
+    const textPath = streamConfig.textPath || 'choices[0].delta.content';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split(delimiter);
+      buffer = parts.pop() || '';
+
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (trimmed === '' || trimmed === 'data: [DONE]') {
+          continue;
+        }
+        let jsonStr = trimmed;
+        if (trimmed.startsWith(dataPrefix)) {
+          jsonStr = trimmed.slice(dataPrefix.length);
+        }
+        try {
+          const json = JSON.parse(jsonStr);
+          const chunkText = extractValueByPath(json, textPath);
+          if (chunkText) {
+            onChunk(chunkText);
+            fullResponse += chunkText;
+          }
+        } catch {
+          // ignore invalid JSON
+        }
+      }
+    }
+
+    const finalData = {
+      reply: fullResponse,
+      result: fullResponse,
+      choices: [{ message: { content: fullResponse } }],
+    };
+
+    // Приводим для безопасного доступа по строковым ключам
+    const dataAsRecord = finalData as Record<string, any>;
+
+    if (endpoint.saveToContext?.length) {
+      for (const key of endpoint.saveToContext) {
+        if (dataAsRecord[key] !== undefined) {
+          context[key] = dataAsRecord[key];
+        }
+      }
+    } else {
+      const exclude = ['reply', 'result', 'status'];
+      for (const [key, value] of Object.entries(dataAsRecord)) {
+        if (!exclude.includes(key)) {
+          context[key] = value;
+        }
+      }
+    }
+
+    if (onTrace) {
+      onTrace({
+        type: 'response',
+        timestamp: Date.now(),
+        responseStatus: 200,
+        responseBody: finalData,
+      });
+    }
+    return finalData;
+  }
+
+  // ---- ОБЫЧНЫЙ ЗАПРОС (не стриминг) ----
   const makeRequest = async (): Promise<any> => {
     const response = await fetch(url, { method: endpoint.method, headers, body });
     if (!response.ok) {
@@ -230,11 +354,23 @@ export const executeWorkflow = async (
   baseUrl: string,
   agentConfig?: string,
   agentHeaders?: string,
-  onTrace?: (step: TraceStep) => void
+  onTrace?: (step: TraceStep) => void,
+  onChunk?: (chunk: string) => void
 ): Promise<any> => {
   let lastResponse: any = null;
-  for (const step of steps) {
-    lastResponse = await executeEndpoint(step.endpoint, context, baseUrl, agentConfig, agentHeaders, onTrace);
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const isLast = i === steps.length - 1;
+    const chunkCallback = isLast && step.endpoint.streaming ? onChunk : undefined;
+    lastResponse = await executeEndpoint(
+      step.endpoint,
+      context,
+      baseUrl,
+      agentConfig,
+      agentHeaders,
+      onTrace,
+      chunkCallback
+    );
   }
   return lastResponse;
 };

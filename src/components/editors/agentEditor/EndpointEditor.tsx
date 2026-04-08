@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Input, TextArea, Field, Combobox, Switch, useTheme2, Collapse } from '@grafana/ui';
 import { css } from '@emotion/css';
-import { EndpointConfig, PollingConfig } from 'types';
+import { EndpointConfig, PollingConfig, StreamingConfig } from 'types';
 import { methodOptions } from './constants';
 
 const getEndpointEditorStyles = (theme: ReturnType<typeof useTheme2>) => ({
@@ -59,6 +59,48 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
     handleChange('polling', { ...current, [field]: val });
   };
 
+  const handleStreamingChange = (enabled: boolean) => {
+    if (enabled) {
+      if (!endpoint.streaming || typeof endpoint.streaming === 'boolean') {
+        handleChange('streaming', {
+          enabled: true,
+          textPath: 'choices[0].delta.content',
+          delimiter: '\n\n',
+          dataPrefix: 'data: ',
+        });
+      } else {
+        handleChange('streaming', { ...endpoint.streaming, enabled: true });
+      }
+    } else {
+      handleChange('streaming', false);
+    }
+  };
+
+  const handleStreamingFieldChange = (field: keyof StreamingConfig, val: any) => {
+    let current = endpoint.streaming;
+    if (!current || typeof current === 'boolean') {
+      current = { enabled: true };
+    }
+    handleChange('streaming', { ...current, [field]: val });
+  };
+
+  const isStreamingEnabled = () => {
+    if (!endpoint.streaming) {
+      return false;
+    }
+    if (typeof endpoint.streaming === 'boolean') {
+      return endpoint.streaming;
+    }
+    return endpoint.streaming.enabled === true;
+  };
+
+  const getStreamingConfig = (): StreamingConfig | null => {
+    if (!endpoint.streaming || typeof endpoint.streaming === 'boolean') {
+      return null;
+    }
+    return endpoint.streaming;
+  };
+
   const label = (
     <div className={styles.header}>
       <strong>
@@ -69,7 +111,7 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
         size="sm"
         icon="trash-alt"
         onClick={(e) => {
-          e.stopPropagation(); // чтобы не разворачивать/сворачивать при клике на кнопку
+          e.stopPropagation();
           onRemove(index);
         }}
         aria-label="Delete endpoint"
@@ -213,7 +255,10 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
                     onChange={(e) => handlePollingFieldChange('resultField', e.currentTarget.value)}
                   />
                 </Field>
-                <Field label="Retry HTTP statuses (optional)">
+                <Field
+                  label="Retry HTTP statuses (optional)"
+                  description="Receiving these HTTP statuses will continue polling (not treated as an error)."
+                >
                   <Input
                     value={endpoint.polling?.retryStatusCodes?.join(', ') || ''}
                     onChange={(e) => {
@@ -226,9 +271,40 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
                     placeholder="202, 404, 409"
                   />
                 </Field>
-                <div style={{ fontSize: '11px', color: theme.colors.text.disabled, marginTop: '-4px' }}>
-                  Receiving these HTTP statuses will continue polling (not treated as an error).
-                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Streaming */}
+          <div style={{ marginTop: '16px' }}>
+            <div
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}
+            >
+              <div style={{ fontSize: '13px', fontWeight: 500, color: theme.colors.text.secondary }}>
+                📡 Streaming (real-time output)
+              </div>
+              <Switch value={isStreamingEnabled()} onChange={(e) => handleStreamingChange(e.currentTarget.checked)} />
+            </div>
+            {isStreamingEnabled() && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+                <Field label="Text path" description="JSON path to text in each chunk">
+                  <Input
+                    value={getStreamingConfig()?.textPath ?? 'choices[0].delta.content'}
+                    onChange={(e) => handleStreamingFieldChange('textPath', e.currentTarget.value)}
+                  />
+                </Field>
+                <Field label="Delimiter" description="Event delimiter (default: `\n\n`)">
+                  <Input
+                    value={getStreamingConfig()?.delimiter ?? '\n\n'}
+                    onChange={(e) => handleStreamingFieldChange('delimiter', e.currentTarget.value)}
+                  />
+                </Field>
+                <Field label="Data prefix" description="Prefix before each JSON (default: `data: `)">
+                  <Input
+                    value={getStreamingConfig()?.dataPrefix ?? 'data: '}
+                    onChange={(e) => handleStreamingFieldChange('dataPrefix', e.currentTarget.value)}
+                  />
+                </Field>
               </div>
             )}
           </div>

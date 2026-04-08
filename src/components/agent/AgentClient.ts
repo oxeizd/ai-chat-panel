@@ -27,50 +27,54 @@ export class AgentClient {
   private async runEndpoint(
     endpoint: EndpointConfig,
     additionalContext: VariableContext,
-    onTrace?: (step: TraceStep) => void
+    onTrace?: (step: TraceStep) => void,
+    onChunk?: (chunk: string) => void
   ): Promise<any> {
-    const combinedContext: WorkflowContext = { ...this.context, ...additionalContext };
-    return executeEndpoint(
+    const mergedContext: WorkflowContext = { ...this.context, ...additionalContext };
+    const result = await executeEndpoint(
       endpoint,
-      combinedContext,
+      mergedContext,
       this.config.api,
       this.config.config,
       this.config.headers,
-      onTrace
+      onTrace,
+      onChunk
     );
+
+    this.context = mergedContext;
+    return result;
   }
 
   public async sendMessage(
     userInput: string,
     additionalContext: VariableContext = {},
-    onTrace?: (step: TraceStep) => void
+    onTrace?: (step: TraceStep) => void,
+    onChunk?: (chunk: string) => void
   ): Promise<string> {
-    // Защита от гонок (#6)
     if (this.isProcessing) {
       throw new Error('Agent is already processing a message. Please wait.');
     }
     this.isProcessing = true;
 
     try {
-      // ========== ИНИЦИАЛИЗАЦИЯ (без user_input) ==========
+      // 1. Добавляем user_input и дополнительные данные в контекст ДО инициализации
+      this.context.user_input = userInput;
+      Object.assign(this.context, additionalContext);
+
+      // 2. Инициализация, если требуется (теперь может использовать {user_input})
       if (this.config.startupOperation && !this.initialized) {
         const endpointMap = new Map<string, EndpointConfig>(
           this.config.endpoints?.map((ep) => [ep.operation, ep]) ?? []
         );
         const startupEndpoint = endpointMap.get(this.config.startupOperation);
         if (startupEndpoint) {
-          // Передаём текущий контекст (без user_input)
-          await this.runEndpoint(startupEndpoint, this.context, onTrace);
+          // Передаём пустой additionalContext, так как this.context уже содержит user_input
+          await this.runEndpoint(startupEndpoint, {}, onTrace);
           this.initialized = true;
         }
       }
 
-      // ========== ДОБАВЛЯЕМ ВХОДНЫЕ ДАННЫЕ В КОНТЕКСТ ==========
-      const context = this.context;
-      context.user_input = userInput;
-      Object.assign(context, additionalContext);
-
-      // ========== ОСНОВНАЯ ЛОГИКА С WORKFLOW ==========
+      // 3. Основной workflow
       if (this.config.endpoints?.length && this.config.workflow?.length) {
         const endpointMap = new Map<string, EndpointConfig>(this.config.endpoints.map((ep) => [ep.operation, ep]));
 
@@ -92,22 +96,23 @@ export class AgentClient {
 
         const lastResponse = await executeWorkflow(
           steps,
-          context,
+          this.context,
           this.config.api,
           this.config.config,
           this.config.headers,
-          onTrace
+          onTrace,
+          onChunk
         );
 
         return lastResponse.reply || lastResponse.result || JSON.stringify(lastResponse);
       }
 
-      // ========== FALLBACK: ПРОСТОЙ POST ==========
+      // ========== FALLBACK: ПРОСТОЙ POST (без workflow) ==========
       let requestBody: any = { message: userInput };
       if (this.config.config) {
         try {
           let configStr = this.config.config;
-          configStr = resolveString(configStr, context);
+          configStr = resolveString(configStr, this.context);
           requestBody = { ...requestBody, ...JSON.parse(configStr) };
         } catch (e) {
           console.warn('Invalid agent config JSON, ignoring', e);
@@ -118,12 +123,12 @@ export class AgentClient {
       if (this.config.headers) {
         try {
           let headersStr = this.config.headers;
-          headersStr = resolveString(headersStr, context);
+          headersStr = resolveString(headersStr, this.context);
           const parsed = JSON.parse(headersStr);
           if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
             for (const [k, v] of Object.entries(parsed)) {
               if (typeof v === 'string') {
-                headersObj[k] = resolveString(v, context);
+                headersObj[k] = resolveString(v, this.context);
               } else if (typeof v === 'number' || typeof v === 'boolean') {
                 headersObj[k] = String(v);
               } else {

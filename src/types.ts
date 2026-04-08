@@ -32,13 +32,21 @@ export interface PollingConfig {
 
 export interface EndpointConfig {
   operation: string;
-  method: string;
   path: string;
-  body?: string; // JSON строка с поддержкой переменных
-  headers?: string; // JSON строка с заголовками
-  saveToContext?: string[];
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  body?: any;
+  headers?: any;
   replyField?: string;
+  saveToContext?: string[];
   polling?: PollingConfig;
+  streaming?: boolean | StreamingConfig; // новое поле
+}
+
+export interface StreamingConfig {
+  enabled: boolean;
+  textPath?: string; // путь к тексту в JSON-фрагменте, по умолчанию 'choices[0].delta.content'
+  delimiter?: string; // разделитель событий, по умолчанию '\n\n'
+  dataPrefix?: string; // префикс данных, по умолчанию 'data: '
 }
 
 export interface AgentConfig {
