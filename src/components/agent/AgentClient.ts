@@ -1,4 +1,5 @@
-import { AgentConfig, EndpointConfig, TraceStep } from 'types';
+// AgentClient.ts
+import { AgentConfig, EndpointConfig, TraceStep } from '.';
 import { executeWorkflow, executeEndpoint, WorkflowContext } from './WorkflowExecutor';
 import { resolveString, VariableContext } from './VariableResolver';
 
@@ -40,7 +41,7 @@ export class AgentClient {
       onTrace,
       onChunk
     );
-
+    // Сохраняем изменения контекста (например, thread_id) обратно
     this.context = mergedContext;
     return result;
   }

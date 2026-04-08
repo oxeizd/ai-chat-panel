@@ -1,5 +1,4 @@
-// WorkflowExecutor.ts
-import { EndpointConfig, PollingConfig, TraceStep, StreamingConfig } from 'types';
+import { EndpointConfig, PollingConfig, TraceStep, StreamingConfig } from '.';
 import { VariableContext, resolveString, resolveObject } from './VariableResolver';
 
 export interface WorkflowContext extends VariableContext {
@@ -97,6 +96,21 @@ export const executeEndpoint = async (
     body = JSON.stringify(mergedBody);
   }
 
+  // ----- Conversation history management (before request) -----
+  if (endpoint.preserveConversationHistory) {
+    if (!context.messages || !Array.isArray(context.messages)) {
+      context.messages = [];
+    }
+    const userMsg = context.user_input;
+    if (userMsg && typeof userMsg === 'string') {
+      const last = context.messages[context.messages.length - 1];
+      if (!last || last.role !== 'user' || last.content !== userMsg) {
+        context.messages.push({ role: 'user', content: userMsg });
+      }
+    }
+  }
+  // -----------------------------------------------------------
+
   const endpointHeadersObj = endpoint.headers ? parseJson(endpoint.headers) : {};
   const agentHeadersObj = agentHeaders ? parseJson(agentHeaders) : {};
   const mergedHeaders = mergeObjects(agentHeadersObj, endpointHeadersObj);
@@ -190,22 +204,36 @@ export const executeEndpoint = async (
       choices: [{ message: { content: fullResponse } }],
     };
 
-    // Приводим для безопасного доступа по строковым ключам
-    const dataAsRecord = finalData as Record<string, any>;
+    // ✅ Исправленная часть: приведение к Record<string, unknown> для безопасного доступа
+    const record = finalData as Record<string, unknown>;
 
     if (endpoint.saveToContext?.length) {
       for (const key of endpoint.saveToContext) {
-        if (dataAsRecord[key] !== undefined) {
-          context[key] = dataAsRecord[key];
+        const val = record[key];
+        if (val !== undefined) {
+          context[key] = val;
         }
       }
     } else {
-      const exclude = ['reply', 'result', 'status'];
-      for (const [key, value] of Object.entries(dataAsRecord)) {
-        if (!exclude.includes(key)) {
-          context[key] = value;
+      const exclude = new Set(['reply', 'result', 'status']);
+      for (const [key, val] of Object.entries(record)) {
+        if (!exclude.has(key)) {
+          context[key] = val;
         }
       }
+    }
+
+    // Добавляем сообщение ассистента в историю для стриминга
+    if (endpoint.preserveConversationHistory && fullResponse) {
+      const assistantMsg: any = { role: 'assistant', content: fullResponse };
+      if (endpoint.assistantMessageFields?.length) {
+        for (const f of endpoint.assistantMessageFields) {
+          if (record[f] !== undefined) {
+            assistantMsg[f] = record[f];
+          }
+        }
+      }
+      context.messages.push(assistantMsg);
     }
 
     if (onTrace) {
@@ -317,6 +345,19 @@ export const executeEndpoint = async (
   }
   if (replyText !== undefined) {
     data.reply = replyText;
+  }
+
+  // Добавляем ответ ассистента в историю (для обычного запроса)
+  if (endpoint.preserveConversationHistory && replyText) {
+    const assistantMsg: any = { role: 'assistant', content: replyText };
+    if (endpoint.assistantMessageFields?.length) {
+      for (const f of endpoint.assistantMessageFields) {
+        if (data[f] !== undefined) {
+          assistantMsg[f] = data[f];
+        }
+      }
+    }
+    context.messages.push(assistantMsg);
   }
 
   const contextChanges: Record<string, any> = {};

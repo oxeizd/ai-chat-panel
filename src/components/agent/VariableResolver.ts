@@ -1,13 +1,45 @@
-// VariableResolver.ts
 export type VariableContext = Record<string, any>;
 
 /**
+ * Generates a random UUID v4.
+ */
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+/**
  * Replaces all occurrences of {variable} in a string with values from context.
+ * Supports special functions:
+ *   {uuid4}         – generates a new UUID and stores it in context as 'uuid4'
+ *   {uuid4:name}    – generates a new UUID and stores it in context as 'name'
  * Leaves the placeholder unchanged if the variable is not found.
  */
 export const resolveString = (str: string, context: VariableContext): string => {
   return str.replace(/\{([^}]+)\}/g, (match, key) => {
-    const value = context[key.trim()];
+    const trimmed = key.trim();
+
+    // Обработка uuid4
+    if (trimmed === 'uuid4') {
+      const uuid = generateUUID();
+      context.uuid4 = uuid;
+      return uuid;
+    }
+    if (trimmed.startsWith('uuid4:')) {
+      const varName = trimmed.substring(6).trim();
+      if (varName) {
+        const uuid = generateUUID();
+        context[varName] = uuid;
+        return uuid;
+      }
+      return match;
+    }
+
+    // Обычная переменная из контекста
+    const value = context[trimmed];
     return value !== undefined ? String(value) : match;
   });
 };

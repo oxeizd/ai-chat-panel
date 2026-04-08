@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Input, TextArea, Field, Combobox, Switch, useTheme2, Collapse } from '@grafana/ui';
 import { css } from '@emotion/css';
-import { EndpointConfig, PollingConfig, StreamingConfig } from 'types';
+import { EndpointConfig, PollingConfig, StreamingConfig } from 'components/agent/index';
 import { methodOptions } from './constants';
 
 const getEndpointEditorStyles = (theme: ReturnType<typeof useTheme2>) => ({
@@ -306,6 +306,39 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
                   />
                 </Field>
               </div>
+            )}
+          </div>
+
+          {/* Conversation History */}
+          <div style={{ marginTop: '16px' }}>
+            <div
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}
+            >
+              <div style={{ fontSize: '13px', fontWeight: 500, color: theme.colors.text.secondary }}>
+                💬 Conversation History
+              </div>
+              <Switch
+                value={endpoint.preserveConversationHistory || false}
+                onChange={(e) => handleChange('preserveConversationHistory', e.currentTarget.checked)}
+              />
+            </div>
+            {endpoint.preserveConversationHistory && (
+              <Field
+                label="Assistant extra fields (comma separated)"
+                description="Fields from response to save with assistant message, e.g., reasoning_details"
+              >
+                <Input
+                  value={endpoint.assistantMessageFields?.join(', ') || ''}
+                  onChange={(e) => {
+                    const fields = e.currentTarget.value
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean);
+                    handleChange('assistantMessageFields', fields);
+                  }}
+                  placeholder="reasoning_details, tool_calls"
+                />
+              </Field>
             )}
           </div>
         </div>

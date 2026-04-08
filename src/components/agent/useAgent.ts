@@ -1,6 +1,6 @@
 // useAgent.ts
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { AgentConfig, TraceStep } from 'types';
+import { AgentConfig, TraceStep } from '.';
 import { AgentClient } from './AgentClient';
 
 export const useAgent = (agentConfig: AgentConfig | null) => {

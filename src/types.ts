@@ -40,6 +40,8 @@ export interface EndpointConfig {
   saveToContext?: string[];
   polling?: PollingConfig;
   streaming?: boolean | StreamingConfig; // новое поле
+  preserveConversationHistory?: boolean; // включать ли историю сообщений
+  assistantMessageFields?: string[]; // какие поля из ответа сохранить вместе с сообщением ассистента (например, ['reasoning_details'])
 }
 
 export interface StreamingConfig {

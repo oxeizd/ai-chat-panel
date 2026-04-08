@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, Button, useTheme2 } from '@grafana/ui';
-import { DebugTrace } from 'types';
+import { DebugTrace } from 'components/agent/index';
 import { css } from '@emotion/css';
 
 interface DebugTraceModalProps {
