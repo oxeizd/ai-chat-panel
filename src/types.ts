@@ -42,7 +42,12 @@ export interface EndpointConfig {
   replyField?: string;
   streaming?: boolean | StreamingConfig;
   preserveConversationHistory?: boolean;
-  assistantMessageFields?: string[];
+  userMessageFields?: string[]; // поля из контекста для сообщения пользователя (например, ["id"])
+  assistantMessageFields?: string[]; // поля из ответа для сообщения ассистента
+  historySync?: {
+    eventType: string; // тип события-снимка (например, "MESSAGES_SNAPSHOT")
+    messagesPath: string; // путь к массиву сообщений в событии (например, "messages")
+  };
 }
 
 export interface PollingConfig {

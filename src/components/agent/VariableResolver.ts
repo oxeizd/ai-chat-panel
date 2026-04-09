@@ -22,16 +22,18 @@ export const resolveString = (str: string, context: VariableContext): string => 
   return str.replace(/\{([^}]+)\}/g, (match, key) => {
     const trimmed = key.trim();
 
-    // Обработка uuid4
+    // Всегда новый UUID, не сохраняется в контекст
     if (trimmed === '$uuid4') {
-      const uuid = generateUUID();
-      context.uuid4 = uuid;
-      return uuid;
+      return generateUUID();
     }
 
+    // Условная генерация: если переменная уже есть в контексте – используем её
     if (trimmed.startsWith('$uuid4:')) {
       const varName = trimmed.substring(6).trim();
       if (varName) {
+        if (context[varName] !== undefined) {
+          return context[varName];
+        }
         const uuid = generateUUID();
         context[varName] = uuid;
         return uuid;
@@ -39,7 +41,7 @@ export const resolveString = (str: string, context: VariableContext): string => 
       return match;
     }
 
-    // Обычная переменная из контекста
+    // Обычная переменная
     const value = context[trimmed];
     return value !== undefined ? String(value) : match;
   });

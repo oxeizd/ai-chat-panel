@@ -436,19 +436,65 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
               />
             </div>
             {endpoint.preserveConversationHistory && (
-              <Field label="Assistant extra fields">
-                <Input
-                  value={endpoint.assistantMessageFields?.join(', ') || ''}
-                  onChange={(e) => {
-                    const fields = e.currentTarget.value
-                      .split(',')
-                      .map((s) => s.trim())
-                      .filter(Boolean);
-                    handleChange('assistantMessageFields', fields);
-                  }}
-                  placeholder="reasoning_details, tool_calls"
-                />
-              </Field>
+              <>
+                <Field label="User message fields (comma‑separated)">
+                  <Input
+                    value={endpoint.userMessageFields?.join(', ') || ''}
+                    onChange={(e) => {
+                      const fields = e.currentTarget.value
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                      handleChange('userMessageFields', fields);
+                    }}
+                    placeholder="id, sessionID"
+                  />
+                </Field>
+                <Field label="Assistant message fields (comma‑separated)">
+                  <Input
+                    value={endpoint.assistantMessageFields?.join(', ') || ''}
+                    onChange={(e) => {
+                      const fields = e.currentTarget.value
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                      handleChange('assistantMessageFields', fields);
+                    }}
+                    placeholder="id, reasoning_details, tool_calls"
+                  />
+                </Field>
+              </>
+            )}
+
+            {endpoint.preserveConversationHistory && (
+              <>
+                <Field label="History sync event type">
+                  <Input
+                    value={endpoint.historySync?.eventType || ''}
+                    onChange={(e) =>
+                      handleChange('historySync', {
+                        ...endpoint.historySync,
+                        eventType: e.currentTarget.value,
+                        messagesPath: endpoint.historySync?.messagesPath || 'messages',
+                      })
+                    }
+                    placeholder="MESSAGES_SNAPSHOT"
+                  />
+                </Field>
+                <Field label="Messages path in event">
+                  <Input
+                    value={endpoint.historySync?.messagesPath || ''}
+                    onChange={(e) =>
+                      handleChange('historySync', {
+                        ...endpoint.historySync,
+                        eventType: endpoint.historySync?.eventType || 'MESSAGES_SNAPSHOT',
+                        messagesPath: e.currentTarget.value,
+                      })
+                    }
+                    placeholder="messages"
+                  />
+                </Field>
+              </>
             )}
           </div>
         </div>

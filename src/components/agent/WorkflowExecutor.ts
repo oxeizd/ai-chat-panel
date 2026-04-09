@@ -24,7 +24,6 @@ const extractValueByPath = (obj: any, path: string): any => {
   if (!path) {
     return obj;
   }
-  // Support 'choices.0.delta.content' and 'choices[0].delta.content'
   const normalized = path.replace(/\[(\d+)\]/g, '.$1');
   return normalized.split('.').reduce((acc, key) => {
     if (acc === undefined || acc === null) {
@@ -38,116 +37,69 @@ const extractValueByPath = (obj: any, path: string): any => {
 };
 
 /**
- * Собирает строки SSE и возвращает массив нормализованных data-строк.
- * Поддерживает как "data: {...}", так и сырые JSON-строки.
- * Игнорирует комментарии (строки, начинающиеся с ':').
- */
-function extractDataLines(s: string): string[] {
-  const lines = s.split(/\r?\n/);
-  const dataLines: string[] = [];
-  for (const line of lines) {
-    const t = line.trim();
-    if (!t) {
-      continue;
-    }
-    if (t.startsWith(':')) {
-      continue;
-    } // Игнорируем комментарии SSE
-    if (t === 'data: [DONE]' || t === '[DONE]') {
-      dataLines.push('[DONE]');
-      continue;
-    }
-    if (t.startsWith('data:')) {
-      dataLines.push(t.slice(5).trim());
-    } else {
-      dataLines.push(t);
-    }
-  }
-  return dataLines;
-}
-
-/**
- * Парсит SSE-поток из response.body, собирая многострочные data: блоки,
- * парся их в JSON и извлекая текстовые части по known paths или кастомному textPath.
- * Возвращает полный собранный текст, финальное мета-событие (usage/reasoning) и массив всех сырых событий.
+ * Парсит SSE поток, извлекая текст из событий TEXT_MESSAGE_CONTENT,
+ * а также обрабатывает кастомные события синхронизации истории (historySync).
  */
 async function parseSSEStream(
   response: Response,
   textPath: string,
   onChunk?: (chunk: string) => void,
-  onTraceEvent?: (event: any) => void // опциональный колбэк для логирования каждого события
+  onHistorySync?: (event: any) => void
 ): Promise<{ fullText: string; finalEvent?: any; rawEvents: any[] }> {
   if (!response.body) {
     throw new Error('Response body is empty');
   }
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-  let acc = '';
+  let buffer = '';
   let fullResponse = '';
   let finalEvent: any = undefined;
   const rawEvents: any[] = [];
-
-  let pendingDataBlocks: string[] = [];
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) {
       break;
     }
-    acc += decoder.decode(value, { stream: true });
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
 
-    const parts = acc.split(/\r?\n/);
-    acc = parts.pop() || '';
-
-    for (const rawLine of parts) {
-      const line = rawLine.trim();
-      if (!line) {
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) {
         continue;
       }
-      if (line.startsWith(':')) {
+      if (trimmed.startsWith(':')) {
         continue;
-      } // Игнорируем комментарии
-
-      if (line === 'data: [DONE]' || line === '[DONE]') {
-        // Конец потока
+      }
+      if (trimmed === 'data: [DONE]' || trimmed === '[DONE]') {
         return { fullText: fullResponse, finalEvent, rawEvents };
       }
 
-      if (line.startsWith('data:')) {
-        pendingDataBlocks.push(line.slice(5).trim());
-      } else {
-        pendingDataBlocks.push(line);
+      let jsonStr = trimmed;
+      if (trimmed.startsWith('data:')) {
+        jsonStr = trimmed.slice(5).trim();
       }
 
-      const combined = pendingDataBlocks.join('');
       try {
-        const event = JSON.parse(combined);
+        const event = JSON.parse(jsonStr);
         rawEvents.push(event);
-        if (onTraceEvent) {
-          onTraceEvent(event);
+
+        if (onHistorySync) {
+          onHistorySync(event);
         }
 
-        // Сохранить последнее событие (может содержать usage/reasoning)
         finalEvent = event;
 
-        // Извлекаем текстовый чанк
         let chunkText: string | undefined;
-
-        // OpenAI/OpenRouter style: choices[0].delta.content or choices[0].message.content
         if (event.choices && Array.isArray(event.choices)) {
           const ch = event.choices[0];
           chunkText = ch?.delta?.content ?? ch?.message?.content ?? undefined;
-          if (!chunkText && typeof ch?.delta === 'string') {
-            chunkText = ch.delta;
-          }
         }
-
-        // AG UI style
         if (!chunkText && event.type === 'TEXT_MESSAGE_CONTENT' && event.delta) {
           chunkText = event.delta;
         }
-
-        // Кастомный textPath
         if (!chunkText && textPath) {
           const maybe = extractValueByPath(event, textPath);
           if (maybe !== undefined && maybe !== null) {
@@ -161,46 +113,11 @@ async function parseSSEStream(
             onChunk(chunkText);
           }
         }
-
-        pendingDataBlocks = [];
       } catch (e) {
-        // Невалидный JSON — ждём следующих data: частей
+        // Невалидный JSON – пропускаем
       }
     }
   }
-
-  // После конца потока обрабатываем остатки
-  const leftover = (pendingDataBlocks.length ? pendingDataBlocks.join('') : '') + acc;
-  if (leftover) {
-    const lines = extractDataLines(leftover);
-    for (const jsonStr of lines) {
-      if (jsonStr === '[DONE]') {
-        break;
-      }
-      try {
-        const event = JSON.parse(jsonStr);
-        rawEvents.push(event);
-        if (onTraceEvent) {
-          onTraceEvent(event);
-        }
-        finalEvent = event;
-        const chunkText =
-          event?.choices?.[0]?.delta?.content ??
-          event?.choices?.[0]?.message?.content ??
-          (event.type === 'TEXT_MESSAGE_CONTENT' ? event.delta : undefined) ??
-          (textPath ? extractValueByPath(event, textPath) : undefined);
-        if (chunkText) {
-          fullResponse += chunkText;
-          if (onChunk) {
-            onChunk(chunkText);
-          }
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
-  }
-
   return { fullText: fullResponse, finalEvent, rawEvents };
 }
 
@@ -213,7 +130,7 @@ export const executeEndpoint = async (
   onTrace?: (step: TraceStep) => void,
   onChunk?: (chunk: string) => void
 ): Promise<any> => {
-  // 1. Формирование URL
+  // 1. URL
   let resolvedBaseUrl = baseUrl;
   if (!resolvedBaseUrl) {
     resolvedBaseUrl = typeof window !== 'undefined' ? window.location.origin : '';
@@ -232,16 +149,7 @@ export const executeEndpoint = async (
   };
   const url = combine(resolvedBaseUrl, path);
 
-  // 2. Тело запроса
-  const resolvedAgentConfig = agentConfig ? resolveObject(agentConfig, context) : {};
-  const resolvedEndpointBody = endpoint.body ? resolveObject(endpoint.body, context) : {};
-  const mergedBody = mergeObjects(resolvedAgentConfig, resolvedEndpointBody);
-  let body: string | undefined = undefined;
-  if (Object.keys(mergedBody).length > 0) {
-    body = JSON.stringify(mergedBody);
-  }
-
-  // 3. История сообщений
+  // 2. Автоматическое добавление сообщения пользователя в историю (если включено)
   if (endpoint.preserveConversationHistory) {
     if (!context.messages || !Array.isArray(context.messages)) {
       context.messages = [];
@@ -250,17 +158,40 @@ export const executeEndpoint = async (
     if (userMsg && typeof userMsg === 'string') {
       const last = context.messages[context.messages.length - 1];
       if (!last || last.role !== 'user' || last.content !== userMsg) {
-        context.messages.push({ role: 'user', content: userMsg });
+        const userMessageObj: any = { role: 'user', content: userMsg };
+        // Копируем только указанные поля из контекста
+        if (endpoint.userMessageFields?.length) {
+          for (const field of endpoint.userMessageFields) {
+            if (context[field] !== undefined) {
+              userMessageObj[field] = context[field];
+            }
+          }
+        }
+        context.messages.push(userMessageObj);
       }
     }
   }
 
-  // 4. Заголовки
+  // 3. Подготовка тела запроса (с подстановкой переменных)
+  const resolvedAgentConfig = agentConfig ? resolveObject(agentConfig, context) : {};
+  const resolvedEndpointBody = endpoint.body ? resolveObject(endpoint.body, context) : {};
+  let mergedBody = mergeObjects(resolvedAgentConfig, resolvedEndpointBody);
+
+  // 4. Автоматическая подстановка истории в поле messages (если включена история)
+  if (endpoint.preserveConversationHistory && context.messages && Array.isArray(context.messages)) {
+    mergedBody.messages = context.messages;
+  }
+
+  let body: string | undefined = undefined;
+  if (Object.keys(mergedBody).length > 0) {
+    body = JSON.stringify(mergedBody);
+  }
+
+  // 5. Заголовки
   const mergedHeaders = mergeObjects(agentHeaders || {}, endpoint.headers || {});
   const resolvedHeaders = resolveObject(mergedHeaders, context);
   const headers: HeadersInit = resolvedHeaders as HeadersInit;
 
-  // Трейс запроса
   if (onTrace) {
     onTrace({
       type: 'request',
@@ -272,10 +203,8 @@ export const executeEndpoint = async (
     });
   }
 
-  // 5. Выполняем запрос
+  // 6. Выполнение запроса
   const response = await fetch(url, { method: endpoint.method, headers, body });
-
-  // 6. Обработка ошибок HTTP
   if (!response.ok) {
     let errorBody = '';
     try {
@@ -294,7 +223,7 @@ export const executeEndpoint = async (
     throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
   }
 
-  // 7. Определяем, нужно ли использовать streaming
+  // 7. Определение режима streaming
   const streamingEnabled = endpoint.streaming === true || (endpoint.streaming as StreamingConfig)?.enabled === true;
   const defaultTextPath = 'choices.0.delta.content';
   const streamConfig =
@@ -321,28 +250,36 @@ export const executeEndpoint = async (
     }
   }
 
-  // 8. Обработка SSE
+  // 8. Обработка SSE (streaming)
   if (isSSE) {
     const textPath = streamConfig && streamConfig.textPath ? streamConfig.textPath : defaultTextPath;
 
-    // Вспомогательная функция для отправки событий в trace (каждое сырое событие)
-    const traceRawEvent = (event: any) => {
-      if (onTrace) {
-        onTrace({
-          type: 'response', // можно было бы создать отдельный тип 'sse_event', но для простоты используем response
-          timestamp: Date.now(),
-          responseBody: { sseEvent: event },
-        });
+    let syncedFromSnapshot = false;
+
+    const onHistorySync = (event: any) => {
+      if (endpoint.historySync && event.type === endpoint.historySync.eventType) {
+        const snapshotMessages = extractValueByPath(event, endpoint.historySync.messagesPath);
+        if (Array.isArray(snapshotMessages)) {
+          context.messages = snapshotMessages;
+          syncedFromSnapshot = true;
+          if (onTrace) {
+            onTrace({
+              type: 'context_update',
+              timestamp: Date.now(),
+              contextChanges: { messages_snapshot: snapshotMessages },
+            });
+          }
+        }
       }
     };
 
-    const { fullText, finalEvent, rawEvents } = await parseSSEStream(response, textPath, onChunk, traceRawEvent);
+    const { fullText, finalEvent, rawEvents } = await parseSSEStream(response, textPath, onChunk, onHistorySync);
 
     const finalData: any = {
       reply: fullText,
       result: fullText,
       finalMetadata: finalEvent,
-      rawEvents: rawEvents, // сохраняем все сырые события
+      rawEvents,
     };
 
     if (onTrace) {
@@ -350,37 +287,37 @@ export const executeEndpoint = async (
         type: 'response',
         timestamp: Date.now(),
         responseStatus: response.status,
-        responseBody: finalData, // здесь будет reply, result, rawEvents
+        responseBody: finalData,
       });
     }
 
-    // Сохраняем в контекст
+    // Если синхронизация из snapshot не произошла, добавляем сообщение ассистента вручную
+    if (endpoint.preserveConversationHistory && fullText && !syncedFromSnapshot) {
+      const assistantMsg: any = { role: 'assistant', content: fullText };
+      if (endpoint.assistantMessageFields?.length) {
+        for (const field of endpoint.assistantMessageFields) {
+          if (finalData[field] !== undefined) {
+            assistantMsg[field] = finalData[field];
+          }
+        }
+      }
+      context.messages.push(assistantMsg);
+    }
+
+    // Сохранение в контекст (кроме messages)
     if (endpoint.saveToContext?.length) {
       for (const key of endpoint.saveToContext) {
-        if (finalData[key] !== undefined) {
+        if (finalData[key] !== undefined && key !== 'messages') {
           context[key] = finalData[key];
         }
       }
     } else {
-      const exclude = new Set(['reply', 'result', 'status']);
+      const exclude = new Set(['reply', 'result', 'status', 'messages']);
       for (const [key, val] of Object.entries(finalData)) {
         if (!exclude.has(key)) {
           context[key] = val;
         }
       }
-    }
-
-    // Сохраняем историю
-    if (endpoint.preserveConversationHistory && fullText) {
-      const assistantMsg: any = { role: 'assistant', content: fullText };
-      if (endpoint.assistantMessageFields?.length) {
-        for (const f of endpoint.assistantMessageFields) {
-          if (finalData[f] !== undefined) {
-            assistantMsg[f] = finalData[f];
-          }
-        }
-      }
-      context.messages.push(assistantMsg);
     }
 
     return finalData;
@@ -389,16 +326,7 @@ export const executeEndpoint = async (
   // 9. Обычный JSON (не SSE)
   let data: any;
   if (rawText !== null) {
-    try {
-      data = JSON.parse(rawText);
-    } catch (e) {
-      const txt = rawText.trim();
-      if (!txt) {
-        data = {};
-      } else {
-        throw e;
-      }
-    }
+    data = JSON.parse(rawText);
   } else {
     data = await response.json();
   }
@@ -412,7 +340,7 @@ export const executeEndpoint = async (
     });
   }
 
-  // 10. Polling (если настроен)
+  // 10. Polling
   const polling = endpoint.polling ? { ...DEFAULT_POLLING_CONFIG, ...endpoint.polling } : null;
   if (polling?.enabled) {
     let attempts = 1;
@@ -490,28 +418,28 @@ export const executeEndpoint = async (
     data.reply = replyText;
   }
 
-  // 12. Сохранение истории
+  // 12. Добавление в историю (для JSON)
   if (endpoint.preserveConversationHistory && replyText) {
     const assistantMsg: any = { role: 'assistant', content: replyText };
     if (endpoint.assistantMessageFields?.length) {
-      for (const f of endpoint.assistantMessageFields) {
-        if (data[f] !== undefined) {
-          assistantMsg[f] = data[f];
+      for (const field of endpoint.assistantMessageFields) {
+        if (data[field] !== undefined) {
+          assistantMsg[field] = data[field];
         }
       }
     }
     context.messages.push(assistantMsg);
   }
 
-  // 13. Сохранение в контекст
+  // 13. Сохранение в контекст (кроме messages)
   if (endpoint.saveToContext?.length) {
     for (const key of endpoint.saveToContext) {
-      if (data[key] !== undefined) {
+      if (data[key] !== undefined && key !== 'messages') {
         context[key] = data[key];
       }
     }
   } else {
-    const exclude = ['reply', 'result', 'status'];
+    const exclude = ['reply', 'result', 'status', 'messages'];
     for (const [key, value] of Object.entries(data)) {
       if (!exclude.includes(key)) {
         context[key] = value;
@@ -519,13 +447,6 @@ export const executeEndpoint = async (
     }
   }
 
-  if (onTrace && Object.keys(data).length > 0) {
-    onTrace({
-      type: 'context_update',
-      timestamp: Date.now(),
-      contextChanges: data,
-    });
-  }
   return data;
 };
 
