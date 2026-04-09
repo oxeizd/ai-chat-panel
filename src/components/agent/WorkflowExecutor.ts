@@ -1,4 +1,4 @@
-import { EndpointConfig, PollingConfig, TraceStep, StreamingConfig } from '.';
+import { EndpointConfig, PollingConfig, TraceStep, StreamingConfig } from 'types';
 import { VariableContext, resolveString, resolveObject } from './VariableResolver';
 
 export interface WorkflowContext extends VariableContext {
@@ -13,33 +13,6 @@ const DEFAULT_POLLING_CONFIG: Required<PollingConfig> = {
   successValue: 'completed',
   resultField: 'result',
   retryStatusCodes: [],
-};
-
-const parseJson = (jsonString?: any): any => {
-  if (typeof jsonString === 'object' && jsonString !== null) {
-    return jsonString;
-  }
-  if (typeof jsonString !== 'string') {
-    return {};
-  }
-  let current = jsonString.trim();
-  if (current === '') {
-    return {};
-  }
-  let maxDepth = 10;
-  while (maxDepth-- > 0) {
-    try {
-      const parsed = JSON.parse(current);
-      if (typeof parsed === 'string') {
-        current = parsed.trim();
-        continue;
-      }
-      return parsed;
-    } catch {
-      return {};
-    }
-  }
-  return {};
 };
 
 const mergeObjects = (base: Record<string, any>, override: Record<string, any>): Record<string, any> => ({
@@ -66,13 +39,12 @@ export const executeEndpoint = async (
   endpoint: EndpointConfig,
   context: WorkflowContext,
   baseUrl: string,
-  agentConfig?: string,
-  agentHeaders?: string,
+  agentConfig?: Record<string, any>,
+  agentHeaders?: Record<string, string>,
   onTrace?: (step: TraceStep) => void,
   onChunk?: (chunk: string) => void
 ): Promise<any> => {
   let resolvedBaseUrl = baseUrl;
-
   if (!resolvedBaseUrl) {
     resolvedBaseUrl = typeof window !== 'undefined' ? window.location.origin : '';
   } else if (resolvedBaseUrl.startsWith('/')) {
@@ -80,7 +52,6 @@ export const executeEndpoint = async (
   }
 
   const path = resolveString(endpoint.path, context);
-
   const combine = (base: string, relative: string) => {
     if (!relative) {
       return base;
@@ -89,22 +60,18 @@ export const executeEndpoint = async (
     const relativeClean = relative.startsWith('/') ? relative : '/' + relative;
     return baseClean + relativeClean;
   };
-
   const url = combine(resolvedBaseUrl, path);
 
-  const endpointBodyObj = endpoint.body ? parseJson(endpoint.body) : {};
-  const agentConfigObj = agentConfig ? parseJson(agentConfig) : {};
-
-  const resolvedAgentConfig = resolveObject(agentConfigObj, context);
-  const resolvedEndpointBody = resolveObject(endpointBodyObj, context);
-
+  // Подстановка переменных в объектах (без парсинга строк)
+  const resolvedAgentConfig = agentConfig ? resolveObject(agentConfig, context) : {};
+  const resolvedEndpointBody = endpoint.body ? resolveObject(endpoint.body, context) : {};
   const mergedBody = mergeObjects(resolvedAgentConfig, resolvedEndpointBody);
-  let body: string | undefined;
+  let body: string | undefined = undefined;
   if (Object.keys(mergedBody).length > 0) {
     body = JSON.stringify(mergedBody);
   }
 
-  // ----- Conversation history management (before request) -----
+  // Conversation history
   if (endpoint.preserveConversationHistory) {
     if (!context.messages || !Array.isArray(context.messages)) {
       context.messages = [];
@@ -117,12 +84,10 @@ export const executeEndpoint = async (
       }
     }
   }
-  // -----------------------------------------------------------
 
-  const endpointHeadersObj = endpoint.headers ? parseJson(endpoint.headers) : {};
-  const agentHeadersObj = agentHeaders ? parseJson(agentHeaders) : {};
-  const mergedHeaders = mergeObjects(agentHeadersObj, endpointHeadersObj);
-  const headers: HeadersInit = mergedHeaders as HeadersInit;
+  const mergedHeaders = mergeObjects(agentHeaders || {}, endpoint.headers || {});
+  const resolvedHeaders = resolveObject(mergedHeaders, context);
+  const headers: HeadersInit = resolvedHeaders as HeadersInit;
 
   if (onTrace) {
     onTrace({
@@ -183,7 +148,6 @@ export const executeEndpoint = async (
       buffer += decoder.decode(value, { stream: true });
       const parts = buffer.split(delimiter);
       buffer = parts.pop() || '';
-
       for (const part of parts) {
         const trimmed = part.trim();
         if (trimmed === '' || trimmed === 'data: [DONE]') {
@@ -210,34 +174,30 @@ export const executeEndpoint = async (
       reply: fullResponse,
       result: fullResponse,
       choices: [{ message: { content: fullResponse } }],
-    };
-
-    // ✅ Исправленная часть: приведение к Record<string, unknown> для безопасного доступа
-    const record = finalData as Record<string, unknown>;
+    } as Record<string, unknown>;
 
     if (endpoint.saveToContext?.length) {
       for (const key of endpoint.saveToContext) {
-        const val = record[key];
+        const val = finalData[key];
         if (val !== undefined) {
           context[key] = val;
         }
       }
     } else {
       const exclude = new Set(['reply', 'result', 'status']);
-      for (const [key, val] of Object.entries(record)) {
+      for (const [key, val] of Object.entries(finalData)) {
         if (!exclude.has(key)) {
           context[key] = val;
         }
       }
     }
 
-    // Добавляем сообщение ассистента в историю для стриминга
     if (endpoint.preserveConversationHistory && fullResponse) {
       const assistantMsg: any = { role: 'assistant', content: fullResponse };
       if (endpoint.assistantMessageFields?.length) {
         for (const f of endpoint.assistantMessageFields) {
-          if (record[f] !== undefined) {
-            assistantMsg[f] = record[f];
+          if (finalData[f] !== undefined) {
+            assistantMsg[f] = finalData[f];
           }
         }
       }
@@ -255,14 +215,14 @@ export const executeEndpoint = async (
     return finalData;
   }
 
-  // ---- ОБЫЧНЫЙ ЗАПРОС (не стриминг) ----
+  // ---- ОБЫЧНЫЙ ЗАПРОС ----
   const makeRequest = async (): Promise<any> => {
     const response = await fetch(url, { method: endpoint.method, headers, body });
     if (!response.ok) {
       let errorBody = '';
       try {
         errorBody = await response.text();
-      } catch (e) {
+      } catch {
         errorBody = 'Unable to read error body';
       }
       const error: any = new Error(`HTTP ${response.status} on ${endpoint.method} ${url}`);
@@ -274,7 +234,6 @@ export const executeEndpoint = async (
   };
 
   let data = await makeRequest();
-
   if (onTrace) {
     onTrace({
       type: 'response',
@@ -285,21 +244,16 @@ export const executeEndpoint = async (
   }
 
   const polling = endpoint.polling ? { ...DEFAULT_POLLING_CONFIG, ...endpoint.polling } : null;
-
   if (polling?.enabled) {
     let attempts = 1;
     const retryCodes = new Set(polling.retryStatusCodes ?? []);
-
     while (attempts < polling.maxAttempts) {
       if (data[polling.statusField] === polling.successValue) {
         break;
       }
-
       await new Promise((resolve) => setTimeout(resolve, polling.intervalMs));
-
       try {
         data = await makeRequest();
-
         if (onTrace) {
           onTrace({
             type: 'polling',
@@ -325,7 +279,6 @@ export const executeEndpoint = async (
       }
       attempts++;
     }
-
     if (data[polling.statusField] !== polling.successValue) {
       throw new Error(`Polling timeout after ${polling.maxAttempts} attempts`);
     }
@@ -335,7 +288,6 @@ export const executeEndpoint = async (
     data = data[endpoint.polling.resultField];
   }
 
-  // Извлечение reply
   let replyText: string | undefined;
   if (endpoint.replyField) {
     const replyValue = data[endpoint.replyField];
@@ -355,7 +307,6 @@ export const executeEndpoint = async (
     data.reply = replyText;
   }
 
-  // Добавляем ответ ассистента в историю (для обычного запроса)
   if (endpoint.preserveConversationHistory && replyText) {
     const assistantMsg: any = { role: 'assistant', content: replyText };
     if (endpoint.assistantMessageFields?.length) {
@@ -368,11 +319,9 @@ export const executeEndpoint = async (
     context.messages.push(assistantMsg);
   }
 
-  const contextChanges: Record<string, any> = {};
   if (endpoint.saveToContext?.length) {
     for (const key of endpoint.saveToContext) {
       if (data[key] !== undefined) {
-        contextChanges[key] = data[key];
         context[key] = data[key];
       }
     }
@@ -380,20 +329,18 @@ export const executeEndpoint = async (
     const exclude = ['reply', 'result', 'status'];
     for (const [key, value] of Object.entries(data)) {
       if (!exclude.includes(key)) {
-        contextChanges[key] = value;
         context[key] = value;
       }
     }
   }
 
-  if (onTrace && Object.keys(contextChanges).length > 0) {
+  if (onTrace && Object.keys(data).length > 0) {
     onTrace({
       type: 'context_update',
       timestamp: Date.now(),
-      contextChanges,
+      contextChanges: data,
     });
   }
-
   return data;
 };
 
@@ -401,8 +348,8 @@ export const executeWorkflow = async (
   steps: Array<{ endpoint: EndpointConfig }>,
   context: WorkflowContext,
   baseUrl: string,
-  agentConfig?: string,
-  agentHeaders?: string,
+  agentConfig?: Record<string, any>,
+  agentHeaders?: Record<string, string>,
   onTrace?: (step: TraceStep) => void,
   onChunk?: (chunk: string) => void
 ): Promise<any> => {

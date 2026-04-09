@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Button, Input, TextArea, Field, Combobox, Switch, useTheme2, Collapse } from '@grafana/ui';
 import { css } from '@emotion/css';
-import { EndpointConfig, PollingConfig, StreamingConfig } from 'components/agent/index';
+import { EndpointConfig, PollingConfig, StreamingConfig } from 'types';
 import { methodOptions } from './constants';
 
 const getEndpointEditorStyles = (theme: ReturnType<typeof useTheme2>) => ({
@@ -31,6 +31,10 @@ const getEndpointEditorStyles = (theme: ReturnType<typeof useTheme2>) => ({
   `,
 });
 
+export interface EndpointEditorHandle {
+  getCurrentValue: () => { body: Record<string, any>; headers: Record<string, string> };
+}
+
 interface EndpointEditorProps {
   endpoint: EndpointConfig;
   index: number;
@@ -38,16 +42,118 @@ interface EndpointEditorProps {
   onRemove: (index: number) => void;
 }
 
-export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index, onChange, onRemove }) => {
+export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorProps>(function EndpointEditor(
+  { endpoint, index, onChange, onRemove },
+  ref
+) {
   const theme = useTheme2();
   const styles = getEndpointEditorStyles(theme);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Для поля saveToContext используем строку (однострочный Input)
+  const [bodyStr, setBodyStr] = useState('');
+  const [headersStr, setHeadersStr] = useState('');
+  const [bodyError, setBodyError] = useState<string | null>(null);
+  const [headersError, setHeadersError] = useState<string | null>(null);
   const [saveToContextRaw, setSaveToContextRaw] = useState(endpoint.saveToContext?.join(', ') || '');
+
+  const lastValidBodyRef = useRef<Record<string, any>>(endpoint.body || {});
+  const lastValidHeadersRef = useRef<Record<string, string>>(endpoint.headers || {});
+
+  useEffect(() => {
+    setBodyStr(endpoint.body ? JSON.stringify(endpoint.body, null, 2) : '');
+    lastValidBodyRef.current = endpoint.body || {};
+    setBodyError(null);
+  }, [endpoint.body]);
+
+  useEffect(() => {
+    setHeadersStr(endpoint.headers ? JSON.stringify(endpoint.headers, null, 2) : '');
+    lastValidHeadersRef.current = endpoint.headers || {};
+    setHeadersError(null);
+  }, [endpoint.headers]);
+
+  useImperativeHandle(ref, () => ({
+    getCurrentValue: () => ({
+      body: bodyError ? {} : (lastValidBodyRef.current ?? {}),
+      headers: headersError ? {} : (lastValidHeadersRef.current ?? {}),
+    }),
+  }));
 
   const handleChange = (field: keyof EndpointConfig, val: any) => {
     onChange(index, { ...endpoint, [field]: val });
+  };
+
+  // Body
+  const handleBodyChange = (value: string) => {
+    setBodyStr(value);
+    if (value.trim() === '') {
+      setBodyError(null);
+      return;
+    }
+    try {
+      JSON.parse(value);
+      setBodyError(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setBodyError(errorMessage);
+    }
+  };
+
+  const handleBodyBlur = () => {
+    const value = bodyStr.trim();
+    if (value === '') {
+      setBodyError(null);
+      lastValidBodyRef.current = {};
+      handleChange('body', {});
+      return;
+    }
+    try {
+      const parsed = JSON.parse(value);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        throw new Error('Body must be a JSON object');
+      }
+      setBodyError(null);
+      lastValidBodyRef.current = parsed;
+      handleChange('body', parsed);
+    } catch (err) {
+      // ошибка уже показана
+    }
+  };
+
+  // Headers
+  const handleHeadersChange = (value: string) => {
+    setHeadersStr(value);
+    if (value.trim() === '') {
+      setHeadersError(null);
+      return;
+    }
+    try {
+      JSON.parse(value);
+      setHeadersError(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setHeadersError(errorMessage);
+    }
+  };
+
+  const handleHeadersBlur = () => {
+    const value = headersStr.trim();
+    if (value === '') {
+      setHeadersError(null);
+      lastValidHeadersRef.current = {};
+      handleChange('headers', {});
+      return;
+    }
+    try {
+      const parsed = JSON.parse(value);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        throw new Error('Headers must be a JSON object');
+      }
+      setHeadersError(null);
+      lastValidHeadersRef.current = parsed;
+      handleChange('headers', parsed);
+    } catch (err) {
+      // ошибка уже показана
+    }
   };
 
   const handleSaveToContextBlur = () => {
@@ -139,7 +245,7 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
               <Input
                 value={endpoint.operation}
                 onChange={(e) => handleChange('operation', e.currentTarget.value)}
-                placeholder="e.g.: ask, new_session, get_status"
+                placeholder="e.g.: ask"
               />
             </Field>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px' }}>
@@ -162,28 +268,32 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
 
           {/* Headers */}
           <div style={{ marginBottom: '16px' }}>
-            <Field label="Headers">
+            <Field label="Headers (JSON object)" invalid={!!headersError} error={headersError}>
               <TextArea
-                value={endpoint.headers || ''}
-                onChange={(e) => handleChange('headers', e.currentTarget.value)}
-                placeholder='{"Authorization": "Bearer token", "X-API-Key": "key"}'
-                rows={2}
+                value={headersStr}
+                onChange={(e) => handleHeadersChange(e.currentTarget.value)}
+                onBlur={handleHeadersBlur}
+                placeholder='{"Authorization": "Bearer token"}'
+                rows={3}
+                style={{ fontFamily: 'monospace', fontSize: '12px' }}
               />
             </Field>
           </div>
 
           {/* Request body */}
           <div style={{ marginBottom: '16px' }}>
-            <Field label="Body">
+            <Field label="Body (JSON object with variables)" invalid={!!bodyError} error={bodyError}>
               <TextArea
-                value={endpoint.body || ''}
-                onChange={(e) => handleChange('body', e.currentTarget.value)}
+                value={bodyStr}
+                onChange={(e) => handleBodyChange(e.currentTarget.value)}
+                onBlur={handleBodyBlur}
                 placeholder='{"message": "{user_input}", "temperature": 0.7}'
-                rows={3}
+                rows={6}
+                style={{ fontFamily: 'monospace', fontSize: '12px' }}
               />
             </Field>
             <div style={{ fontSize: '11px', color: theme.colors.text.disabled }}>
-              default variables: {'{user_input}'}, etc.
+              Use {'{variable}'} for substitution from context.
             </div>
           </div>
 
@@ -194,7 +304,6 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
             >
               Response handling
             </div>
-            {/* Save fields to context – теперь однострочный Input */}
             <Field label="Save fields to context">
               <Input
                 value={saveToContextRaw}
@@ -215,9 +324,6 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
                 placeholder="text, message, content"
               />
             </Field>
-            <div style={{ fontSize: '11px', color: theme.colors.text.disabled, marginTop: '-4px' }}>
-              If not specified, it is detected automatically
-            </div>
           </div>
 
           {/* Polling */}
@@ -267,10 +373,7 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
                     onChange={(e) => handlePollingFieldChange('resultField', e.currentTarget.value)}
                   />
                 </Field>
-                <Field
-                  label="Retry HTTP statuses (optional)"
-                  description="Receiving these HTTP statuses will continue polling (not treated as an error)."
-                >
+                <Field label="Retry HTTP statuses">
                   <Input
                     value={endpoint.polling?.retryStatusCodes?.join(', ') || ''}
                     onChange={(e) => {
@@ -292,26 +395,24 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
             <div
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}
             >
-              <div style={{ fontSize: '13px', fontWeight: 500, color: theme.colors.text.secondary }}>
-                 Streaming (real-time output)
-              </div>
+              <div style={{ fontSize: '13px', fontWeight: 500, color: theme.colors.text.secondary }}>📡 Streaming</div>
               <Switch value={isStreamingEnabled()} onChange={(e) => handleStreamingChange(e.currentTarget.checked)} />
             </div>
             {isStreamingEnabled() && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
-                <Field label="Text path" description="JSON path to text in each chunk">
+                <Field label="Text path">
                   <Input
                     value={getStreamingConfig()?.textPath ?? 'choices[0].delta.content'}
                     onChange={(e) => handleStreamingFieldChange('textPath', e.currentTarget.value)}
                   />
                 </Field>
-                <Field label="Delimiter" description="Event delimiter (default: `\n\n`)">
+                <Field label="Delimiter">
                   <Input
                     value={getStreamingConfig()?.delimiter ?? '\n\n'}
                     onChange={(e) => handleStreamingFieldChange('delimiter', e.currentTarget.value)}
                   />
                 </Field>
-                <Field label="Data prefix" description="Prefix before each JSON (default: `data: `)">
+                <Field label="Data prefix">
                   <Input
                     value={getStreamingConfig()?.dataPrefix ?? 'data: '}
                     onChange={(e) => handleStreamingFieldChange('dataPrefix', e.currentTarget.value)}
@@ -327,7 +428,7 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}
             >
               <div style={{ fontSize: '13px', fontWeight: 500, color: theme.colors.text.secondary }}>
-                 Conversation History
+                💬 Conversation History
               </div>
               <Switch
                 value={endpoint.preserveConversationHistory || false}
@@ -335,10 +436,7 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
               />
             </div>
             {endpoint.preserveConversationHistory && (
-              <Field
-                label="Assistant extra fields (comma separated)"
-                description="Fields from response to save with assistant message, e.g., reasoning_details"
-              >
+              <Field label="Assistant extra fields">
                 <Input
                   value={endpoint.assistantMessageFields?.join(', ') || ''}
                   onChange={(e) => {
@@ -357,4 +455,4 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
       </Collapse>
     </div>
   );
-};
+});

@@ -20,8 +20,33 @@ export interface PanelOptions {
   debug?: boolean;
 }
 
+export interface AgentConfig {
+  name: string;
+  api: string;
+  default: boolean;
+  config?: Record<string, any>; // объект, не строка
+  headers?: Record<string, string>; // объект, не строка
+  endpoints: EndpointConfig[];
+  workflow: string[];
+  startupOperation: string;
+}
+
+export interface EndpointConfig {
+  operation: string;
+  method: string;
+  path: string;
+  body?: Record<string, any>; // объект, не строка
+  saveToContext: string[];
+  polling?: PollingConfig;
+  headers?: Record<string, string>; // объект, не строка
+  replyField?: string;
+  streaming?: boolean | StreamingConfig;
+  preserveConversationHistory?: boolean;
+  assistantMessageFields?: string[];
+}
+
 export interface PollingConfig {
-  enabled: boolean;
+  enabled?: boolean;
   intervalMs?: number;
   maxAttempts?: number;
   statusField?: string;
@@ -30,36 +55,11 @@ export interface PollingConfig {
   retryStatusCodes?: number[];
 }
 
-export interface EndpointConfig {
-  operation: string;
-  path: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  body?: any;
-  headers?: any;
-  replyField?: string;
-  saveToContext?: string[];
-  polling?: PollingConfig;
-  streaming?: boolean | StreamingConfig; // новое поле
-  preserveConversationHistory?: boolean; // включать ли историю сообщений
-  assistantMessageFields?: string[]; // какие поля из ответа сохранить вместе с сообщением ассистента (например, ['reasoning_details'])
-}
-
 export interface StreamingConfig {
   enabled: boolean;
-  textPath?: string; // путь к тексту в JSON-фрагменте, по умолчанию 'choices[0].delta.content'
-  delimiter?: string; // разделитель событий, по умолчанию '\n\n'
-  dataPrefix?: string; // префикс данных, по умолчанию 'data: '
-}
-
-export interface AgentConfig {
-  name: string;
-  api: string; // базовый URL
-  default?: boolean;
-  config?: string; // общие параметры для тела запроса (JSON)
-  headers?: string; // общие заголовки для всех запросов (JSON)
-  endpoints?: EndpointConfig[];
-  workflow?: string[];
-  startupOperation?: string;
+  textPath?: string;
+  delimiter?: string;
+  dataPrefix?: string;
 }
 
 export interface Message {

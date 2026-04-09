@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button, Input, TextArea, Checkbox, Modal, Field, Combobox, Collapse } from '@grafana/ui';
 import { AgentConfig, EndpointConfig } from 'types';
-import { EndpointEditor } from './EndpointEditor';
+import { EndpointEditor, EndpointEditorHandle } from './EndpointEditor';
 
 interface AgentEditModalProps {
   isOpen: boolean;
@@ -10,26 +10,115 @@ interface AgentEditModalProps {
   onSave: (agent: AgentConfig) => void;
 }
 
-export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, onDismiss, onSave }) => {
-  const [editedAgent, setEditedAgent] = useState<AgentConfig>(
-    () =>
-      agent || {
-        name: '',
-        api: '',
-        default: false,
-        config: '',
-        headers: '',
-        endpoints: [],
-        workflow: [],
-        startupOperation: '',
-      }
-  );
+const emptyAgent = (): AgentConfig => ({
+  name: '',
+  api: '',
+  default: false,
+  config: {},
+  headers: {},
+  endpoints: [],
+  workflow: [],
+  startupOperation: '',
+});
 
+export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, onDismiss, onSave }) => {
+  const [editedAgent, setEditedAgent] = useState<AgentConfig>(emptyAgent());
+  const [configStr, setConfigStr] = useState('');
+  const [headersStr, setHeadersStr] = useState('');
+  const [configError, setConfigError] = useState<string | null>(null);
+  const [headersError, setHeadersError] = useState<string | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isHeadersOpen, setIsHeadersOpen] = useState(false);
 
+  const endpointRefs = useRef<Array<EndpointEditorHandle | null>>([]);
+
+  useEffect(() => {
+    if (agent) {
+      setEditedAgent(agent);
+      setConfigStr(agent.config ? JSON.stringify(agent.config, null, 2) : '');
+      setHeadersStr(agent.headers ? JSON.stringify(agent.headers, null, 2) : '');
+    } else {
+      setEditedAgent(emptyAgent());
+      setConfigStr('');
+      setHeadersStr('');
+    }
+    setConfigError(null);
+    setHeadersError(null);
+    endpointRefs.current = [];
+  }, [agent]);
+
   const updateField = (field: keyof AgentConfig, value: any) => {
     setEditedAgent((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Config (общее тело)
+  const handleConfigChange = (value: string) => {
+    setConfigStr(value);
+    if (value.trim() === '') {
+      setConfigError(null);
+      return;
+    }
+    try {
+      JSON.parse(value);
+      setConfigError(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setConfigError(errorMessage);
+    }
+  };
+
+  const handleConfigBlur = () => {
+    const value = configStr.trim();
+    if (value === '') {
+      setConfigError(null);
+      updateField('config', {});
+      return;
+    }
+    try {
+      const parsed = JSON.parse(value);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        throw new Error('Config must be a JSON object');
+      }
+      setConfigError(null);
+      updateField('config', parsed);
+    } catch (err) {
+      // ошибка уже показана
+    }
+  };
+
+  // Headers (общие заголовки)
+  const handleHeadersChange = (value: string) => {
+    setHeadersStr(value);
+    if (value.trim() === '') {
+      setHeadersError(null);
+      return;
+    }
+    try {
+      JSON.parse(value);
+      setHeadersError(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setHeadersError(errorMessage);
+    }
+  };
+
+  const handleHeadersBlur = () => {
+    const value = headersStr.trim();
+    if (value === '') {
+      setHeadersError(null);
+      updateField('headers', {});
+      return;
+    }
+    try {
+      const parsed = JSON.parse(value);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        throw new Error('Headers must be a JSON object');
+      }
+      setHeadersError(null);
+      updateField('headers', parsed);
+    } catch (err) {
+      // ошибка уже показана
+    }
   };
 
   const addEndpoint = () => {
@@ -37,10 +126,10 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
       operation: '',
       method: 'POST',
       path: '',
-      body: '',
+      body: {},
       saveToContext: [],
       polling: { enabled: false },
-      headers: '',
+      headers: {},
       replyField: '',
     };
     setEditedAgent((prev) => ({
@@ -66,7 +155,30 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
   };
 
   const handleSave = () => {
-    onSave(editedAgent);
+    const updatedEndpoints = editedAgent.endpoints.map((ep, idx) => {
+      const ref = endpointRefs.current[idx];
+      if (ref) {
+        const { body, headers } = ref.getCurrentValue();
+        return { ...ep, body, headers };
+      }
+      return ep;
+    });
+
+    let agentToSave = { ...editedAgent, endpoints: updatedEndpoints };
+    if (configError) {
+      agentToSave.config = {};
+    }
+    if (headersError) {
+      agentToSave.headers = {};
+    }
+    if (!agentToSave.config) {
+      agentToSave.config = {};
+    }
+    if (!agentToSave.headers) {
+      agentToSave.headers = {};
+    }
+
+    onSave(agentToSave);
     onDismiss();
   };
 
@@ -101,15 +213,17 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
 
       <Collapse label="Common headers" isOpen={isHeadersOpen} onToggle={() => setIsHeadersOpen(!isHeadersOpen)}>
         <div style={{ marginTop: '8px' }}>
-          <Field label="Headers (JSON)">
+          <Field label="Headers (JSON object)" invalid={!!headersError} error={headersError}>
             <TextArea
-              value={editedAgent.headers || ''}
-              onChange={(e) => updateField('headers', e.currentTarget.value)}
-              placeholder='{"Authorization": "Bearer token", "X-API-Key": "key"}'
-              rows={2}
+              value={headersStr}
+              onChange={(e) => handleHeadersChange(e.currentTarget.value)}
+              onBlur={handleHeadersBlur}
+              placeholder='{"Authorization": "Bearer token"}'
+              rows={3}
+              style={{ fontFamily: 'monospace', fontSize: '12px' }}
             />
           </Field>
-          <div style={{ fontSize: '12px', color: '#888', marginTop: '4px', marginBottom: '4px' }}>
+          <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
             These headers will be added to every request (unless overridden in the endpoint).
           </div>
         </div>
@@ -117,12 +231,14 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
 
       <Collapse label="Common body" isOpen={isConfigOpen} onToggle={() => setIsConfigOpen(!isConfigOpen)}>
         <div style={{ marginTop: '8px' }}>
-          <Field label="Parameters (JSON with variables)">
+          <Field label="Parameters (JSON object with variables)" invalid={!!configError} error={configError}>
             <TextArea
-              value={editedAgent.config || ''}
-              onChange={(e) => updateField('config', e.currentTarget.value)}
+              value={configStr}
+              onChange={(e) => handleConfigChange(e.currentTarget.value)}
+              onBlur={handleConfigBlur}
               placeholder='{"model": "gpt-4", "temperature": 0.7, "id": "${id}"}'
-              rows={3}
+              rows={4}
+              style={{ fontFamily: 'monospace', fontSize: '12px' }}
             />
           </Field>
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>
@@ -152,10 +268,11 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
         {(editedAgent.endpoints || []).map((endpoint, epIdx) => (
           <EndpointEditor
             key={epIdx}
+            ref={(el) => (endpointRefs.current[epIdx] = el)}
             endpoint={endpoint}
             index={epIdx}
-            onChange={(i, updated) => updateEndpoint(i, updated)}
-            onRemove={(i) => removeEndpoint(i)}
+            onChange={updateEndpoint}
+            onRemove={removeEndpoint}
           />
         ))}
       </div>
