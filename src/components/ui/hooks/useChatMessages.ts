@@ -52,6 +52,18 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       };
       setMessages((prev) => [...prev, userMessage]);
 
+      // Создаём пустое сообщение ассистента для накопления чанков
+      const assistantMessageId = generateMessageId();
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantMessageId,
+          text: '',
+          sender: 'ai',
+          timestamp: Date.now(),
+        },
+      ]);
+
       let trace: DebugTrace | undefined;
       if (debug) {
         trace = {
@@ -70,6 +82,24 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
         setTraces((prev) => new Map(prev).set(userMessageId, trace));
       };
 
+      // Обработчик чанков (стриминг)
+      const handleChunk = (chunk: string) => {
+        if (!chunk) {
+          return;
+        }
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          const assistantIndex = newMessages.findIndex((m) => m.id === assistantMessageId);
+          if (assistantIndex !== -1) {
+            newMessages[assistantIndex] = {
+              ...newMessages[assistantIndex],
+              text: newMessages[assistantIndex].text + chunk,
+            };
+          }
+          return newMessages;
+        });
+      };
+
       try {
         const additionalContext: Record<string, any> = {
           sessionID: sessionIdRef.current,
@@ -81,22 +111,35 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
           additionalContext.userName = user.name;
         }
 
-        const reply = await agentSendMessage(text, additionalContext, addTraceStep);
+        // Передаём handleChunk как четвёртый аргумент (onChunk)
+        const reply = await agentSendMessage(text, additionalContext, addTraceStep, handleChunk);
 
         if (debug && trace) {
           trace.finalReply = reply;
           setTraces((prev) => new Map(prev).set(userMessageId, trace));
         }
 
-        const aiMessage: Message = {
-          id: generateMessageId(),
-          text: reply,
-          sender: 'ai',
-          timestamp: Date.now(),
-        };
-        setMessages((prev) => [...prev, aiMessage]);
+        // Финальная синхронизация (на случай, если последний чанк не пришёл или reply полнее)
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          const assistantIndex = newMessages.findIndex((m) => m.id === assistantMessageId);
+          if (assistantIndex !== -1) {
+            const currentText = newMessages[assistantIndex].text;
+            if (reply !== currentText) {
+              newMessages[assistantIndex] = {
+                ...newMessages[assistantIndex],
+                text: reply,
+              };
+            }
+          }
+          return newMessages;
+        });
+
         return true;
       } catch (error: any) {
+        // Удаляем пустое сообщение ассистента, если оно есть
+        setMessages((prev) => prev.filter((m) => m.id !== assistantMessageId));
+
         let statusCode: number | undefined;
         let errorMessage = MESSAGES.errorResponse;
         let rawError = '';
