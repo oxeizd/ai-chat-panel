@@ -23,12 +23,13 @@ export const resolveString = (str: string, context: VariableContext): string => 
     const trimmed = key.trim();
 
     // Обработка uuid4
-    if (trimmed === 'uuid4') {
+    if (trimmed === '$uuid4') {
       const uuid = generateUUID();
       context.uuid4 = uuid;
       return uuid;
     }
-    if (trimmed.startsWith('uuid4:')) {
+
+    if (trimmed.startsWith('$uuid4:')) {
       const varName = trimmed.substring(6).trim();
       if (varName) {
         const uuid = generateUUID();

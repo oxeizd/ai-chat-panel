@@ -1,7 +1,6 @@
-// AgentClient.ts
 import { AgentConfig, EndpointConfig, TraceStep } from '.';
-import { executeWorkflow, executeEndpoint, WorkflowContext } from './WorkflowExecutor';
 import { resolveString, VariableContext } from './VariableResolver';
+import { executeWorkflow, executeEndpoint, WorkflowContext } from './WorkflowExecutor';
 
 export class AgentClient {
   private config: AgentConfig;
@@ -14,6 +13,9 @@ export class AgentClient {
   }
 
   public async resetSession(): Promise<void> {
+    if (this.isProcessing) {
+      throw new Error('Cannot reset session while processing a message');
+    }
     this.context = {};
     this.initialized = false;
     if (this.config.startupOperation && this.config.endpoints) {
@@ -41,7 +43,7 @@ export class AgentClient {
       onTrace,
       onChunk
     );
-    // Сохраняем изменения контекста (например, thread_id) обратно
+
     this.context = mergedContext;
     return result;
   }

@@ -19,13 +19,21 @@ const parseJson = (jsonString?: any): any => {
   if (typeof jsonString === 'object' && jsonString !== null) {
     return jsonString;
   }
-  if (typeof jsonString === 'string') {
-    const trimmed = jsonString.trim();
-    if (trimmed === '') {
-      return {};
-    }
+  if (typeof jsonString !== 'string') {
+    return {};
+  }
+  let current = jsonString.trim();
+  if (current === '') {
+    return {};
+  }
+  let maxDepth = 10;
+  while (maxDepth-- > 0) {
     try {
-      const parsed = JSON.parse(trimmed);
+      const parsed = JSON.parse(current);
+      if (typeof parsed === 'string') {
+        current = parsed.trim();
+        continue;
+      }
       return parsed;
     } catch {
       return {};
