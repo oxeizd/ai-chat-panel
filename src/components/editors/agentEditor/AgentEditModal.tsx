@@ -115,11 +115,7 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
         </div>
       </Collapse>
 
-      <Collapse
-        label="Common body (additional parameters for all requests)"
-        isOpen={isConfigOpen}
-        onToggle={() => setIsConfigOpen(!isConfigOpen)}
-      >
+      <Collapse label="Common body" isOpen={isConfigOpen} onToggle={() => setIsConfigOpen(!isConfigOpen)}>
         <div style={{ marginTop: '8px' }}>
           <Field label="Parameters (JSON with variables)">
             <TextArea

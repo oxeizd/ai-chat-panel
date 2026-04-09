@@ -10,13 +10,19 @@ const getEndpointEditorStyles = (theme: ReturnType<typeof useTheme2>) => ({
     border-radius: ${theme.shape.radius.default};
     margin-bottom: ${theme.spacing(2)};
     background: ${theme.colors.background.secondary};
+    position: relative;
   `,
   header: css`
     display: flex;
-    justify-content: space-between;
     align-items: center;
     width: 100%;
-    padding-right: ${theme.spacing(1)};
+    position: relative;
+  `,
+  deleteButton: css`
+    position: absolute;
+    right: ${theme.spacing(1)};
+    top: 50%;
+    transform: translateY(-50%);
   `,
   content: css`
     padding: ${theme.spacing(1)};
@@ -37,12 +43,15 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
   const styles = getEndpointEditorStyles(theme);
   const [isOpen, setIsOpen] = useState(false);
 
+  // Для поля saveToContext используем строку (однострочный Input)
+  const [saveToContextRaw, setSaveToContextRaw] = useState(endpoint.saveToContext?.join(', ') || '');
+
   const handleChange = (field: keyof EndpointConfig, val: any) => {
     onChange(index, { ...endpoint, [field]: val });
   };
 
-  const handleSaveToContextChange = (val: string) => {
-    const fields = val
+  const handleSaveToContextBlur = () => {
+    const fields = saveToContextRaw
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
@@ -115,6 +124,7 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
           onRemove(index);
         }}
         aria-label="Delete endpoint"
+        className={styles.deleteButton}
       />
     </div>
   );
@@ -172,8 +182,8 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
                 rows={3}
               />
             </Field>
-            <div style={{ fontSize: '11px', color: theme.colors.text.disabled, marginTop: '4px' }}>
-              Supports variables: {'{user_input}'}, {'{thread}'}, etc.
+            <div style={{ fontSize: '11px', color: theme.colors.text.disabled }}>
+              default variables: {'{user_input}'}, etc.
             </div>
           </div>
 
@@ -184,11 +194,13 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
             >
               Response handling
             </div>
+            {/* Save fields to context – теперь однострочный Input */}
             <Field label="Save fields to context">
               <Input
-                value={endpoint.saveToContext?.join(', ') || ''}
-                onChange={(e) => handleSaveToContextChange(e.currentTarget.value)}
-                placeholder="thread, session_id, user_id"
+                value={saveToContextRaw}
+                onChange={(e) => setSaveToContextRaw(e.currentTarget.value)}
+                onBlur={handleSaveToContextBlur}
+                placeholder="thread_id, run_id, user_id"
               />
             </Field>
             <div
@@ -281,7 +293,7 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}
             >
               <div style={{ fontSize: '13px', fontWeight: 500, color: theme.colors.text.secondary }}>
-                📡 Streaming (real-time output)
+                 Streaming (real-time output)
               </div>
               <Switch value={isStreamingEnabled()} onChange={(e) => handleStreamingChange(e.currentTarget.checked)} />
             </div>
@@ -315,7 +327,7 @@ export const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpoint, index,
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}
             >
               <div style={{ fontSize: '13px', fontWeight: 500, color: theme.colors.text.secondary }}>
-                💬 Conversation History
+                 Conversation History
               </div>
               <Switch
                 value={endpoint.preserveConversationHistory || false}
