@@ -51,63 +51,73 @@ async function parseSSEStream(
   let fullResponse = '';
   let finalEvent: any = undefined;
   const rawEvents: any[] = [];
+  let streamClosed = false;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith(':')) {
-        continue;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        streamClosed = true;
+        break;
       }
-      if (trimmed === 'data: [DONE]' || trimmed === '[DONE]') {
-        return { fullText: fullResponse, finalEvent, rawEvents };
-      }
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
 
-      let jsonStr = trimmed;
-      if (trimmed.startsWith('data:')) {
-        jsonStr = trimmed.slice(5).trim();
-      }
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith(':')) {
+          continue;
+        }
+        if (trimmed === 'data: [DONE]' || trimmed === '[DONE]') {
+          streamClosed = true;
+          return { fullText: fullResponse, finalEvent, rawEvents };
+        }
 
-      try {
-        const event = JSON.parse(jsonStr);
-        rawEvents.push(event);
-        if (onHistorySync) {
-          onHistorySync(event);
+        let jsonStr = trimmed;
+        if (trimmed.startsWith('data:')) {
+          jsonStr = trimmed.slice(5).trim();
         }
-        finalEvent = event;
 
-        let chunkText: string | undefined;
-        if (event.choices?.[0]) {
-          chunkText = event.choices[0].delta?.content ?? event.choices[0].message?.content;
-        }
-        if (!chunkText && event.type === 'TEXT_MESSAGE_CONTENT' && event.delta) {
-          chunkText = event.delta;
-        }
-        if (!chunkText && textPath) {
-          const maybe = extractValueByPath(event, textPath);
-          if (maybe !== undefined && maybe !== null) {
-            chunkText = String(maybe);
+        try {
+          const event = JSON.parse(jsonStr);
+          rawEvents.push(event);
+          if (onHistorySync) {
+            onHistorySync(event);
           }
-        }
-        if (chunkText) {
-          fullResponse += chunkText;
-          if (onChunk) {
-            onChunk(chunkText);
+          finalEvent = event;
+
+          let chunkText: string | undefined;
+          if (event.choices?.[0]) {
+            chunkText = event.choices[0].delta?.content ?? event.choices[0].message?.content;
           }
-        }
-      } catch (e) {
-        // Невалидный JSON – пропускаем
+          if (!chunkText && event.type === 'TEXT_MESSAGE_CONTENT' && event.delta) {
+            chunkText = event.delta;
+          }
+          if (!chunkText && textPath) {
+            const maybe = extractValueByPath(event, textPath);
+            if (maybe !== undefined && maybe !== null) {
+              chunkText = String(maybe);
+            }
+          }
+          if (chunkText) {
+            fullResponse += chunkText;
+            if (onChunk) {
+              onChunk(chunkText);
+            }
+          }
+        } catch (e) {}
       }
     }
+    return { fullText: fullResponse, finalEvent, rawEvents };
+  } catch (err) {
+    if (!streamClosed) {
+      await response.body?.cancel().catch(() => {});
+    }
+    throw err;
+  } finally {
+    reader.releaseLock();
   }
-  return { fullText: fullResponse, finalEvent, rawEvents };
 }
 
 export const executeEndpoint = async (
