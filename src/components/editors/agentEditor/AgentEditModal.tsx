@@ -1,5 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Input, TextArea, Checkbox, Modal, Field, Combobox, Collapse } from '@grafana/ui';
+import {
+  Button,
+  Input,
+  TextArea,
+  Checkbox,
+  Modal,
+  Field,
+  Combobox,
+  Collapse,
+  MultiCombobox,
+  ComboboxOption,
+} from '@grafana/ui';
 import { AgentConfig, EndpointConfig } from 'types';
 import { EndpointEditor, EndpointEditorHandle } from './EndpointEditor';
 
@@ -27,8 +38,7 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
   const [headersStr, setHeadersStr] = useState('');
   const [configError, setConfigError] = useState<string | null>(null);
   const [headersError, setHeadersError] = useState<string | null>(null);
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [isHeadersOpen, setIsHeadersOpen] = useState(false);
+  const [isCommonOpen, setIsCommonOpen] = useState(false);
 
   const endpointRefs = useRef<Array<EndpointEditorHandle | null>>([]);
 
@@ -182,12 +192,23 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
     onDismiss();
   };
 
-  const operationOptions = (editedAgent.endpoints || [])
+  // Опции для операций (на основе существующих endpoint.operation) - используем ComboboxOption
+  const operationOptions: Array<ComboboxOption<string>> = (editedAgent.endpoints || [])
     .map((ep) => ep.operation || '')
     .filter(Boolean)
     .map((value) => ({ label: value, value }));
 
   const selectedStartup = operationOptions.find((opt) => opt.value === editedAgent.startupOperation) || null;
+
+  // Мультиселект для workflow с использованием MultiCombobox
+  const selectedWorkflow: Array<ComboboxOption<string>> = (editedAgent.workflow || [])
+    .map((op) => operationOptions.find((opt) => opt.value === op))
+    .filter((opt): opt is ComboboxOption<string> => opt !== undefined);
+
+  const handleWorkflowChange = (selected: Array<ComboboxOption<string>>) => {
+    const workflow = selected.map((opt) => opt.value).filter(Boolean) as string[];
+    updateField('workflow', workflow);
+  };
 
   return (
     <Modal title={agent ? 'Edit Agent' : 'New Agent'} isOpen={isOpen} onDismiss={onDismiss}>
@@ -211,9 +232,10 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
         </Field>
       </div>
 
-      <Collapse label="Common headers" isOpen={isHeadersOpen} onToggle={() => setIsHeadersOpen(!isHeadersOpen)}>
+      {/* Единый Collapse для общих заголовков и тела */}
+      <Collapse label="Common configuration" isOpen={isCommonOpen} onToggle={() => setIsCommonOpen(!isCommonOpen)}>
         <div style={{ marginTop: '8px' }}>
-          <Field label="Headers (JSON object)" invalid={!!headersError} error={headersError}>
+          <Field label="Headers" invalid={!!headersError} error={headersError}>
             <TextArea
               value={headersStr}
               onChange={(e) => handleHeadersChange(e.currentTarget.value)}
@@ -223,14 +245,10 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
               style={{ fontFamily: 'monospace', fontSize: '12px' }}
             />
           </Field>
-          <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: '#888', marginTop: '4px', marginBottom: '16px' }}>
             These headers will be added to every request (unless overridden in the endpoint).
           </div>
-        </div>
-      </Collapse>
 
-      <Collapse label="Common body" isOpen={isConfigOpen} onToggle={() => setIsConfigOpen(!isConfigOpen)}>
-        <div style={{ marginTop: '8px' }}>
           <Field label="Parameters (JSON object with variables)" invalid={!!configError} error={configError}>
             <TextArea
               value={configStr}
@@ -293,22 +311,17 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
       </div>
 
       <div style={{ marginBottom: '16px', marginTop: '16px' }}>
-        <Field label="Workflow (comma-separated operation order)">
-          <Input
-            value={editedAgent.workflow ? editedAgent.workflow.join(', ') : ''}
-            onChange={(e) => {
-              const workflowStr = e.currentTarget.value;
-              const workflow = workflowStr
-                .split(',')
-                .map((s) => s.trim())
-                .filter(Boolean);
-              updateField('workflow', workflow);
-            }}
-            placeholder="new_thread, ask, run_result"
+        <Field label="Workflow (order of operations)">
+          <MultiCombobox
+            options={operationOptions}
+            value={selectedWorkflow}
+            onChange={handleWorkflowChange}
+            placeholder="Select operations..."
+            isClearable
           />
         </Field>
         <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-          Operation names (from the endpoint list) in execution order.
+          Operations will be executed in the selected order.
         </div>
       </div>
 

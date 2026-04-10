@@ -10,19 +10,12 @@ const getEndpointEditorStyles = (theme: ReturnType<typeof useTheme2>) => ({
     border-radius: ${theme.shape.radius.default};
     margin-bottom: ${theme.spacing(2)};
     background: ${theme.colors.background.secondary};
-    position: relative;
   `,
   header: css`
     display: flex;
+    justify-content: space-between;
     align-items: center;
     width: 100%;
-    position: relative;
-  `,
-  deleteButton: css`
-    position: absolute;
-    right: ${theme.spacing(1)};
-    top: 50%;
-    transform: translateY(-50%);
   `,
   content: css`
     padding: ${theme.spacing(1)};
@@ -56,8 +49,32 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
   const [headersError, setHeadersError] = useState<string | null>(null);
   const [saveToContextRaw, setSaveToContextRaw] = useState(endpoint.saveToContext?.join(', ') || '');
 
+  // Локальные состояния для comma-separated полей (исправление бага с запятыми)
+  const [userMessageFieldsRaw, setUserMessageFieldsRaw] = useState(endpoint.userMessageFields?.join(', ') || '');
+  const [assistantMessageFieldsRaw, setAssistantMessageFieldsRaw] = useState(
+    endpoint.assistantMessageFields?.join(', ') || ''
+  );
+  const [retryStatusCodesRaw, setRetryStatusCodesRaw] = useState(endpoint.polling?.retryStatusCodes?.join(', ') || '');
+
   const lastValidBodyRef = useRef<Record<string, any>>(endpoint.body || {});
   const lastValidHeadersRef = useRef<Record<string, string>>(endpoint.headers || {});
+
+  // Синхронизация локальных строк с пропсами при внешнем изменении
+  useEffect(() => {
+    setSaveToContextRaw(endpoint.saveToContext?.join(', ') || '');
+  }, [endpoint.saveToContext]);
+
+  useEffect(() => {
+    setUserMessageFieldsRaw(endpoint.userMessageFields?.join(', ') || '');
+  }, [endpoint.userMessageFields]);
+
+  useEffect(() => {
+    setAssistantMessageFieldsRaw(endpoint.assistantMessageFields?.join(', ') || '');
+  }, [endpoint.assistantMessageFields]);
+
+  useEffect(() => {
+    setRetryStatusCodesRaw(endpoint.polling?.retryStatusCodes?.join(', ') || '');
+  }, [endpoint.polling?.retryStatusCodes]);
 
   useEffect(() => {
     setBodyStr(endpoint.body ? JSON.stringify(endpoint.body, null, 2) : '');
@@ -156,6 +173,7 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
     }
   };
 
+  // Save to context (уже был onBlur, но добавили синхронизацию)
   const handleSaveToContextBlur = () => {
     const fields = saveToContextRaw
       .split(',')
@@ -164,6 +182,25 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
     handleChange('saveToContext', fields);
   };
 
+  // User message fields (исправлено: onBlur + локальное состояние)
+  const handleUserMessageFieldsBlur = () => {
+    const fields = userMessageFieldsRaw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    handleChange('userMessageFields', fields);
+  };
+
+  // Assistant message fields (исправлено)
+  const handleAssistantMessageFieldsBlur = () => {
+    const fields = assistantMessageFieldsRaw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    handleChange('assistantMessageFields', fields);
+  };
+
+  // Polling
   const handlePollingChange = (enabled: boolean) => {
     const currentPolling = endpoint.polling || {};
     handleChange('polling', { ...currentPolling, enabled });
@@ -174,6 +211,16 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
     handleChange('polling', { ...current, [field]: val });
   };
 
+  // Retry status codes (исправлено: onBlur + локальное состояние)
+  const handleRetryStatusCodesBlur = () => {
+    const codes = retryStatusCodesRaw
+      .split(',')
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => !isNaN(n));
+    handlePollingFieldChange('retryStatusCodes', codes);
+  };
+
+  // Streaming
   const handleStreamingChange = (enabled: boolean) => {
     if (enabled) {
       if (!endpoint.streaming || typeof endpoint.streaming === 'boolean') {
@@ -216,6 +263,17 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
     return endpoint.streaming;
   };
 
+  // History sync (исправлено: не перезаписываем друг друга значениями по умолчанию)
+  const handleHistorySyncEventTypeChange = (eventType: string) => {
+    const current = endpoint.historySync || {};
+    handleChange('historySync', { ...current, eventType });
+  };
+
+  const handleHistorySyncMessagesPathChange = (messagesPath: string) => {
+    const current = endpoint.historySync || {};
+    handleChange('historySync', { ...current, messagesPath });
+  };
+
   const label = (
     <div className={styles.header}>
       <strong>
@@ -230,7 +288,6 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
           onRemove(index);
         }}
         aria-label="Delete endpoint"
-        className={styles.deleteButton}
       />
     </div>
   );
@@ -282,7 +339,7 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
 
           {/* Request body */}
           <div style={{ marginBottom: '16px' }}>
-            <Field label="Body (JSON object with variables)" invalid={!!bodyError} error={bodyError}>
+            <Field label="Body" invalid={!!bodyError} error={bodyError}>
               <TextArea
                 value={bodyStr}
                 onChange={(e) => handleBodyChange(e.currentTarget.value)}
@@ -375,14 +432,9 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
                 </Field>
                 <Field label="Retry HTTP statuses">
                   <Input
-                    value={endpoint.polling?.retryStatusCodes?.join(', ') || ''}
-                    onChange={(e) => {
-                      const codes = e.currentTarget.value
-                        .split(',')
-                        .map((s) => parseInt(s.trim(), 10))
-                        .filter((n) => !isNaN(n));
-                      handlePollingFieldChange('retryStatusCodes', codes);
-                    }}
+                    value={retryStatusCodesRaw}
+                    onChange={(e) => setRetryStatusCodesRaw(e.currentTarget.value)}
+                    onBlur={handleRetryStatusCodesBlur}
                     placeholder="202, 404, 409"
                   />
                 </Field>
@@ -439,27 +491,17 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
               <>
                 <Field label="User message fields (comma‑separated)">
                   <Input
-                    value={endpoint.userMessageFields?.join(', ') || ''}
-                    onChange={(e) => {
-                      const fields = e.currentTarget.value
-                        .split(',')
-                        .map((s) => s.trim())
-                        .filter(Boolean);
-                      handleChange('userMessageFields', fields);
-                    }}
+                    value={userMessageFieldsRaw}
+                    onChange={(e) => setUserMessageFieldsRaw(e.currentTarget.value)}
+                    onBlur={handleUserMessageFieldsBlur}
                     placeholder="id, sessionID"
                   />
                 </Field>
                 <Field label="Assistant message fields (comma‑separated)">
                   <Input
-                    value={endpoint.assistantMessageFields?.join(', ') || ''}
-                    onChange={(e) => {
-                      const fields = e.currentTarget.value
-                        .split(',')
-                        .map((s) => s.trim())
-                        .filter(Boolean);
-                      handleChange('assistantMessageFields', fields);
-                    }}
+                    value={assistantMessageFieldsRaw}
+                    onChange={(e) => setAssistantMessageFieldsRaw(e.currentTarget.value)}
+                    onBlur={handleAssistantMessageFieldsBlur}
                     placeholder="id, reasoning_details, tool_calls"
                   />
                 </Field>
@@ -471,26 +513,14 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
                 <Field label="History sync event type">
                   <Input
                     value={endpoint.historySync?.eventType || ''}
-                    onChange={(e) =>
-                      handleChange('historySync', {
-                        ...endpoint.historySync,
-                        eventType: e.currentTarget.value,
-                        messagesPath: endpoint.historySync?.messagesPath || 'messages',
-                      })
-                    }
+                    onChange={(e) => handleHistorySyncEventTypeChange(e.currentTarget.value)}
                     placeholder="MESSAGES_SNAPSHOT"
                   />
                 </Field>
                 <Field label="Messages path in event">
                   <Input
                     value={endpoint.historySync?.messagesPath || ''}
-                    onChange={(e) =>
-                      handleChange('historySync', {
-                        ...endpoint.historySync,
-                        eventType: endpoint.historySync?.eventType || 'MESSAGES_SNAPSHOT',
-                        messagesPath: e.currentTarget.value,
-                      })
-                    }
+                    onChange={(e) => handleHistorySyncMessagesPathChange(e.currentTarget.value)}
                     placeholder="messages"
                   />
                 </Field>
