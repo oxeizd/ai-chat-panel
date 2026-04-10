@@ -161,17 +161,19 @@ export const executeEndpoint = async (
       if (shouldAdd) {
         let messageToStore: any;
         if (endpoint.userMessageFields?.length) {
-          messageToStore = { role: lastUserMessageFromRequest.role };
+          messageToStore = {};
           for (const field of endpoint.userMessageFields) {
             if (lastUserMessageFromRequest[field] !== undefined) {
               messageToStore[field] = lastUserMessageFromRequest[field];
             }
           }
         } else {
-          // По умолчанию сохраняем все поля
+          // Сохраняем все поля исходного сообщения
           messageToStore = { ...lastUserMessageFromRequest };
         }
-        context.messages.push(messageToStore);
+        if (Object.keys(messageToStore).length > 0) {
+          context.messages.push(messageToStore);
+        }
       }
     }
 
@@ -292,19 +294,45 @@ export const executeEndpoint = async (
       if (!context.messages || !Array.isArray(context.messages)) {
         context.messages = [];
       }
+
+      // Ищем последнее событие, содержащее полное сообщение
+      let fullMessageEvent = null;
+      for (let i = rawEvents.length - 1; i >= 0; i--) {
+        const ev = rawEvents[i];
+        if (ev.choices?.[0]?.message && typeof ev.choices[0].message === 'object') {
+          fullMessageEvent = ev;
+          break;
+        }
+      }
+
       let assistantMsg: any;
-      if (endpoint.assistantMessageFields?.length) {
-        assistantMsg = { role: 'assistant', content: fullText };
-        for (const field of endpoint.assistantMessageFields) {
-          if (finalData[field] !== undefined) {
-            assistantMsg[field] = finalData[field];
-          }
+      if (fullMessageEvent) {
+        const { choices, ...upperFields } = fullMessageEvent;
+        const messageFields = choices?.[0]?.message || {};
+        assistantMsg = { ...upperFields, ...messageFields };
+        // Если в собранном тексте отличия от message.content, заменяем content на fullText
+        if (fullText && assistantMsg.content !== fullText) {
+          assistantMsg.content = fullText;
         }
       } else {
-        // По умолчанию сохраняем все поля finalData
-        assistantMsg = { ...finalData, role: 'assistant', content: fullText };
+        assistantMsg = { content: fullText };
       }
-      context.messages.push(assistantMsg);
+
+      // Если указаны assistantMessageFields, фильтруем
+      if (endpoint.assistantMessageFields?.length) {
+        const filtered: any = {};
+        for (const field of endpoint.assistantMessageFields) {
+          const value = assistantMsg[field];
+          if (value !== undefined) {
+            filtered[field] = value;
+          }
+        }
+        assistantMsg = filtered;
+      }
+
+      if (Object.keys(assistantMsg).length > 0) {
+        context.messages.push(assistantMsg);
+      }
     }
 
     // Сохранение остальных полей в контекст
@@ -426,19 +454,28 @@ export const executeEndpoint = async (
     if (!context.messages || !Array.isArray(context.messages)) {
       context.messages = [];
     }
+
+    // Объединяем верхние поля ответа и поля из message
+    const { choices, ...upperFields } = data;
+    const messageFields = choices?.[0]?.message || {};
+    const fullAssistantData = { ...upperFields, ...messageFields };
+
     let assistantMsg: any;
     if (endpoint.assistantMessageFields?.length) {
-      assistantMsg = { role: 'assistant', content: replyText };
+      assistantMsg = {};
       for (const field of endpoint.assistantMessageFields) {
-        if (data[field] !== undefined) {
-          assistantMsg[field] = data[field];
+        const value = messageFields[field] ?? upperFields[field];
+        if (value !== undefined) {
+          assistantMsg[field] = value;
         }
       }
     } else {
-      // По умолчанию сохраняем все поля ответа
-      assistantMsg = { ...data, role: 'assistant', content: replyText };
+      assistantMsg = fullAssistantData;
     }
-    context.messages.push(assistantMsg);
+
+    if (Object.keys(assistantMsg).length > 0) {
+      context.messages.push(assistantMsg);
+    }
   }
 
   // ========== 12. Сохранение в контекст (кроме messages) ==========
