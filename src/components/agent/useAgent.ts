@@ -1,7 +1,6 @@
-// useAgent.ts
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { AgentConfig, TraceStep } from '.';
-import { AgentClient } from './AgentClient';
+import { AgentConfig, TraceStep } from 'types';
+import { AgentClient } from './agentClient';
 
 export const useAgent = (agentConfig: AgentConfig | null) => {
   const [isLoading, setIsLoading] = useState(false);

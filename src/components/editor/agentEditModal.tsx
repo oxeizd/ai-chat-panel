@@ -12,7 +12,7 @@ import {
   ComboboxOption,
 } from '@grafana/ui';
 import { AgentConfig, EndpointConfig } from 'types';
-import { EndpointEditor, EndpointEditorHandle } from './EndpointEditor';
+import { EndpointEditor, EndpointEditorHandle } from './endpointEditor';
 
 interface AgentEditModalProps {
   isOpen: boolean;

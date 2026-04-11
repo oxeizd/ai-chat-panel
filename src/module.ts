@@ -1,7 +1,7 @@
 import { PanelPlugin } from '@grafana/data';
 import { PanelOptions } from './types';
 import { ChatPanel } from './components/ChatPanel';
-import { AgentsEditor } from './components/editors/agentEditor/AgentsEditor';
+import { AgentsEditor } from './components/editor/agentsEditor';
 
 export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((builder) => {
   return (

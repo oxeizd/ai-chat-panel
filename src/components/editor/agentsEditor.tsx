@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, useTheme2 } from '@grafana/ui';
 import { AgentConfig } from 'types';
-import { AgentEditModal } from './AgentEditModal';
+import { AgentEditModal } from './agentEditModal';
 
 interface AgentsEditorProps {
   value?: AgentConfig[];

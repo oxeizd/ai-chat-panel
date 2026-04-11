@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { Message, AgentConfig, DebugTrace, TraceStep } from 'types';
-import { useAgent } from 'components/agent';
+import { useAgent } from 'components/agent/useAgent';
 import { GrafanaUser } from '../../hooks/useGrafanaUser';
 import { MESSAGES } from '../core/config';
 

@@ -1,6 +1,6 @@
 import { AgentConfig, EndpointConfig, TraceStep } from 'types';
-import { resolveObject, VariableContext } from './VariableResolver';
-import { executeWorkflow, executeEndpoint, WorkflowContext } from './WorkflowExecutor';
+import { resolveObject, VariableContext } from './utils/variableResolver';
+import { executeEndpoint, WorkflowContext, executeWorkflow } from './executionEngine';
 
 export class AgentClient {
   private config: AgentConfig;
@@ -62,11 +62,11 @@ export class AgentClient {
       Object.assign(this.context, additionalContext);
 
       if (this.config.startupOperation && !this.initialized) {
-        const endpointMap = new Map<string, EndpointConfig>(
-          this.config.endpoints?.map((ep) => [ep.operation, ep]) ?? []
-        );
+        const endpointMap = new Map(this.config.endpoints?.map((ep) => [ep.operation, ep]) ?? []);
         const startupEndpoint = endpointMap.get(this.config.startupOperation);
-        if (startupEndpoint) {
+        if (!startupEndpoint) {
+          throw new Error(`Startup operation "${this.config.startupOperation}" not found.`);
+        } else {
           await this.runEndpoint(startupEndpoint, {}, onTrace);
           this.initialized = true;
         }
@@ -100,7 +100,6 @@ export class AgentClient {
         return lastResponse.reply || lastResponse.result || JSON.stringify(lastResponse);
       }
 
-      // FALLBACK: простой POST (без workflow)
       let requestBody: any = { message: userInput };
       if (this.config.config) {
         const resolvedConfig = resolveObject(this.config.config, this.context);
