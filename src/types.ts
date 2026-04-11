@@ -1,24 +1,57 @@
 export interface PanelOptions {
   chatMode?: 'floating' | 'inline' | 'button';
-  centerFloatingChat?: boolean;
-  buttonText?: string;
-  openFullscreen?: boolean;
-  placeholderText?: string;
-  fetchRecommendedQuestions?: boolean;
+  chatStyles: {
+    centerInput?: boolean;
+    centerFloatingChat?: boolean;
+    buttonText?: string;
+    placeholderText?: string;
+    maxWidth?: number;
+    inputAreaBackground?: boolean;
+  };
+  settings: {
+    openFullscreen?: boolean;
+    showWelcomeMessage?: boolean;
+    welcomeMessage?: string;
+    showSuggestions?: boolean;
+    suggestions?: string;
+    suggestionsPlacement?: 'always' | 'onFocus';
+  };
   agents: AgentConfig[];
-  agentsJson?: string;
-  maxWidth?: number;
-  centerInput?: boolean;
-  welcomeMessage?: string;
-  showWelcomeMessage?: boolean;
-  showSuggestions?: boolean;
-  suggestions?: string;
-  suggestionsPlacement?: 'always' | 'onFocus';
   debug?: boolean;
 }
 
+export interface AgentConfig {
+  name: string;
+  api: string;
+  default: boolean;
+  config?: Record<string, any>; // объект, не строка
+  headers?: Record<string, string>; // объект, не строка
+  endpoints: EndpointConfig[];
+  workflow: string[];
+  startupOperation: string;
+}
+
+export interface EndpointConfig {
+  operation: string;
+  method: string;
+  path: string;
+  body?: Record<string, any>; // объект, не строка
+  saveToContext: string[];
+  polling?: PollingConfig;
+  headers?: Record<string, string>; // объект, не строка
+  replyField?: string;
+  streaming?: boolean | StreamingConfig;
+  preserveConversationHistory?: boolean;
+  userMessageFields?: string[]; // поля из контекста для сообщения пользователя (например, ["id"])
+  assistantMessageFields?: string[]; // поля из ответа для сообщения ассистента
+  historySync?: {
+    eventType: string; // тип события-снимка (например, "MESSAGES_SNAPSHOT")
+    messagesPath: string; // путь к массиву сообщений в событии (например, "messages")
+  };
+}
+
 export interface PollingConfig {
-  enabled: boolean;
+  enabled?: boolean;
   intervalMs?: number;
   maxAttempts?: number;
   statusField?: string;
@@ -27,26 +60,11 @@ export interface PollingConfig {
   retryStatusCodes?: number[];
 }
 
-export interface EndpointConfig {
-  operation: string;
-  method: string;
-  path: string;
-  body?: string; // JSON строка с поддержкой переменных
-  headers?: string; // JSON строка с заголовками
-  saveToContext?: string[];
-  replyField?: string;
-  polling?: PollingConfig;
-}
-
-export interface AgentConfig {
-  name: string;
-  api: string; // базовый URL
-  default?: boolean;
-  config?: string; // общие параметры для тела запроса (JSON)
-  headers?: string; // общие заголовки для всех запросов (JSON)
-  endpoints?: EndpointConfig[];
-  workflow?: string[];
-  startupOperation?: string;
+export interface StreamingConfig {
+  enabled: boolean;
+  textPath?: string;
+  delimiter?: string;
+  dataPrefix?: string;
 }
 
 export interface Message {

@@ -1,13 +1,3 @@
-export const CHAT_SETTINGS = {
-  targetHeight: 650,
-  minHeight: 500,
-  viewportLimit: 0.95,
-  margin: 8,
-  positionOffset: 65,
-  inputWrapperHeight: 150,
-  default_padding: 16,
-};
-
 export const DEFAULT_PLACEHOLDER = 'Введите сообщение...';
 
 export const MESSAGES = {

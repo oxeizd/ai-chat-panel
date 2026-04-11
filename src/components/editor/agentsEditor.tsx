@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, useTheme2 } from '@grafana/ui';
 import { AgentConfig } from 'types';
-import { AgentEditModal } from './AgentEditModal';
+import { AgentEditModal } from './agentEditModal';
 
 interface AgentsEditorProps {
   value?: AgentConfig[];
@@ -108,30 +108,22 @@ export const AgentsEditor: React.FC<AgentsEditorProps> = ({ value = [], onChange
                 )}
               </div>
               <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                <Button
-                  icon="edit"
-                  onClick={() => handleEdit(idx)}
-                  variant="secondary"
-                  size="sm"
-                  aria-label="Редактировать"
-                />
+                <Button icon="edit" onClick={() => handleEdit(idx)} variant="secondary" size="sm" aria-label="Edit" />
                 <Button
                   icon="trash-alt"
                   onClick={() => handleRemove(idx)}
                   variant="destructive"
                   size="sm"
-                  aria-label="Удалить"
+                  aria-label="Delete"
                 />
               </div>
             </div>
           ))}
         </div>
       )}
-
       <Button icon="plus" onClick={handleAdd} variant="secondary" style={{ width: '100%' }}>
         add agent
       </Button>
-
       <AgentEditModal
         key={editingIndex}
         isOpen={isModalOpen}

@@ -6,7 +6,6 @@ interface ChatMenuProps {
   agents: AgentConfig[];
   onClearChat: () => void;
   onExportChat: () => void;
-  onOpenSettings: () => void;
   onSelectAgent: (agent: AgentConfig) => void;
   selectedAgent: AgentConfig | null;
   onNewChat: () => void;
@@ -17,7 +16,6 @@ export const ChatMenu: React.FC<ChatMenuProps> = ({
   agents,
   onClearChat,
   onExportChat,
-  onOpenSettings,
   onSelectAgent,
   selectedAgent,
   onNewChat,
@@ -30,12 +28,14 @@ export const ChatMenu: React.FC<ChatMenuProps> = ({
     <Menu.Item label="Экспорт чата" onClick={onExportChat} />
     <Menu.Divider />
     <Menu.Item label="Выбор агента" disabled />
-    {agents.map((agent) => (
-      <Menu.Item
-        key={agent.name}
-        label={selectedAgent?.name === agent.name ? `${agent.name}\u00A0✔` : agent.name}
-        onClick={() => onSelectAgent(agent)}
-      />
+    {agents.map((agent, i) => (
+      <React.Fragment key={agent.name}>
+        {i > 0 && <Menu.Divider />}
+        <Menu.Item
+          label={selectedAgent?.name === agent.name ? `${agent.name}\u00A0✔` : agent.name}
+          onClick={() => onSelectAgent(agent)}
+        />
+      </React.Fragment>
     ))}
   </Menu>
 );

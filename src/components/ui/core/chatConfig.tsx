@@ -50,6 +50,9 @@ export interface ChatConfig {
   suggestions?: string[];
   suggestionsPlacement?: 'always' | 'onFocus';
   showSuggestions?: boolean;
+  inputAreaBackground?: boolean;
+  panelHeigth?: number;
+  panelWidth?: number;
 
   // Действия
   exportChat: () => void;
@@ -75,6 +78,7 @@ interface ChatProviderProps {
   buttonText?: string;
   openFullscreen?: boolean;
   centerFloatingChat?: boolean;
+  inputAreaBackground?: boolean;
 }
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({
@@ -85,13 +89,14 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   suggestionsPlacement = 'always',
   showSuggestions = false,
   maxWidth,
-  centerInput,
+  centerInput = false,
   welcomeMessage,
   showWelcomeMessage = false,
   debug = false,
   buttonText = 'Open Chat',
   openFullscreen = false,
   centerFloatingChat = false,
+  inputAreaBackground = false,
 }) => {
   // User
   const { user } = useGrafanaUser();
@@ -241,6 +246,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     buttonText,
     openFullscreen,
     centerFloatingChat,
+    inputAreaBackground,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

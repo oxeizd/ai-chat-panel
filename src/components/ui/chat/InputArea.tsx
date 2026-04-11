@@ -1,7 +1,8 @@
-import React, { forwardRef, memo, useState, useEffect, useCallback } from 'react';
+import React, { forwardRef, memo, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { Input, Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { cx } from '@emotion/css';
+import { useFloating, autoUpdate, flip, offset, size } from '@floating-ui/react';
 import { useStyles } from '../core/styles';
 import { ChatMenu } from 'components/ui/shared/ChatMenu';
 import { useSuggestions } from 'components/ui/hooks/useSuggestions';
@@ -19,7 +20,6 @@ const formatWelcomeMessage = (text: string) => {
   if (!text) {
     return null;
   }
-
   const parts = text.split(/(\{[^:]+:[^}]+\})/g);
   return parts.map((part, i) => {
     const match = part.match(/^\{([^:]+):(.+)\}$/);
@@ -45,7 +45,6 @@ export const InputArea = memo(
       isLoading,
       clearChat,
       exportChat,
-      openSettings,
       newChat,
       selectedAgent,
       setSelectedAgent,
@@ -57,45 +56,51 @@ export const InputArea = memo(
       showSuggestions,
       welcomeMessage,
       showWelcomeMessage,
+      inputAreaBackground,
     } = chat;
 
-    const { showPopup, popupRef, inputRef, onFocus, onBlur } = useSuggestions({
+    const { showPopup, popupRef, inputRef, onFocus, onBlur, setShowPopup } = useSuggestions({
       suggestions: suggestions || [],
       placement: suggestionsPlacement || 'always',
       hideWhen: !showSuggestions,
     });
 
-    const [popupPosition, setPopupPosition] = useState<{
-      top: number;
-      left: number;
-      width: number;
-    } | null>(null);
-
-    const updatePopupPosition = useCallback(() => {
-      if (inputRef.current && showPopup) {
-        const rect = inputRef.current.getBoundingClientRect();
-        setPopupPosition({
-          top: rect.bottom + 4,
-          left: rect.left,
-          width: rect.width,
-        });
-      } else {
-        setPopupPosition(null);
-      }
-    }, [inputRef, showPopup]);
+    const { refs, floatingStyles } = useFloating({
+      open: showPopup,
+      placement: 'bottom-start',
+      middleware: [
+        offset(4),
+        flip({ padding: 8 }),
+        size({
+          apply({ rects, elements }) {
+            elements.floating.style.width = `${rects.reference.width}px`;
+          },
+        }),
+      ],
+      whileElementsMounted: autoUpdate,
+    });
 
     useEffect(() => {
-      if (!showPopup) {
-        return;
+      if (inputRef.current) {
+        refs.setReference(inputRef.current);
       }
-      updatePopupPosition();
-      window.addEventListener('scroll', updatePopupPosition, true);
-      window.addEventListener('resize', updatePopupPosition);
-      return () => {
-        window.removeEventListener('scroll', updatePopupPosition, true);
-        window.removeEventListener('resize', updatePopupPosition);
+    }, [inputRef, refs]);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          showPopup &&
+          popupRef.current &&
+          !popupRef.current.contains(event.target as Node) &&
+          inputRef.current &&
+          !inputRef.current.contains(event.target as Node)
+        ) {
+          setShowPopup(false);
+        }
       };
-    }, [showPopup, updatePopupPosition]);
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showPopup, popupRef, inputRef, setShowPopup]);
 
     const handleSuggestionClick = (suggestion: string) => {
       if (props.onSendText) {
@@ -109,6 +114,7 @@ export const InputArea = memo(
         }
       }
       inputRef.current?.blur();
+      setShowPopup(false);
     };
 
     const menu = (
@@ -116,7 +122,6 @@ export const InputArea = memo(
         agents={agents}
         onClearChat={clearChat}
         onExportChat={exportChat}
-        onOpenSettings={openSettings}
         onSelectAgent={setSelectedAgent}
         selectedAgent={selectedAgent}
         onNewChat={newChat}
@@ -127,7 +132,12 @@ export const InputArea = memo(
     const showSuggestionsAlways =
       showSuggestions && suggestionsPlacement === 'always' && suggestions && suggestions.length > 0;
 
-    const containerStyle = cx(styles.input.container, props.className, centerInput && styles.base.centeredInputWrapper);
+    const containerStyle = cx(styles.input.container, props.className, centerInput && styles.input.centredContainer);
+    const inlineWrapperStyle = cx(
+      styles.input.inlineWrapper,
+      props.className,
+      inputAreaBackground && styles.input.inlineWrapperArea
+    );
 
     const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {
       e.currentTarget.blur();
@@ -178,15 +188,16 @@ export const InputArea = memo(
       />
     );
 
-    const popupContent = showPopup && suggestions && popupPosition && (
+    const popupContent = showPopup && suggestions && (
       <div
-        ref={popupRef}
-        className={styles.suggestions.popupPortal}
-        style={{
-          top: popupPosition.top,
-          left: popupPosition.left,
-          width: popupPosition.width,
+        ref={(node) => {
+          refs.setFloating(node);
+          if (popupRef) {
+            (popupRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          }
         }}
+        className={styles.suggestions.popupPortal}
+        style={floatingStyles}
       >
         <div className={styles.suggestions.popupHeader}>Можно спросить:</div>
         <div className={styles.suggestions.popupList}>
@@ -209,7 +220,7 @@ export const InputArea = memo(
             <div className={styles.welcome.message}>{formatWelcomeMessage(welcomeMessage)}</div>
           )}
           <div style={{ position: 'relative', width: '100%' }}>
-            <div className={styles.input.inlineWrapper}>
+            <div className={inlineWrapperStyle}>
               <Input
                 ref={inputRef}
                 className={styles.input.box}

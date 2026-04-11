@@ -15,26 +15,11 @@ const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {
   e.currentTarget.blur();
 };
 
-export const ChatHeader: React.FC<ChatHeaderProps> = ({
-  onBack,
-  isFullscreen,
-  onFullscreen,
-  welcomeMessage: propWelcomeMessage,
-}) => {
-  const {
-    agents,
-    clearChat,
-    exportChat,
-    openSettings,
-    setSelectedAgent,
-    selectedAgent,
-    newChat,
-    welcomeMessage: contextWelcomeMessage,
-  } = useChat();
+export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, isFullscreen, onFullscreen }) => {
+  const { agents, clearChat, exportChat, setSelectedAgent, selectedAgent, newChat } = useChat();
 
   const theme = useTheme2();
   const styles = useStyles(theme);
-  const displayWelcome = propWelcomeMessage ?? contextWelcomeMessage;
 
   const menuButton = (
     <Dropdown
@@ -43,7 +28,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           agents={agents}
           onClearChat={clearChat}
           onExportChat={exportChat}
-          onOpenSettings={openSettings}
           onSelectAgent={setSelectedAgent}
           selectedAgent={selectedAgent}
           onNewChat={newChat}
@@ -92,7 +76,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           aria-label="Назад"
         />
       )}
-      {!onBack && displayWelcome && <span style={{ fontSize: '0.9rem' }}>{displayWelcome}</span>}
     </div>
   );
 
