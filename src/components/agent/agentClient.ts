@@ -146,7 +146,16 @@ export class AgentClient {
         }
         throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
       }
+
       const responseData = await response.json();
+
+      if (responseData && responseData.error) {
+        const err: any = new Error(responseData.error.message || 'API error');
+        err.status = responseData.error.code || responseData.error.status || response.status;
+        err.responseBody = JSON.stringify(responseData.error);
+        throw err;
+      }
+
       if (onTrace) {
         onTrace({
           type: 'response',

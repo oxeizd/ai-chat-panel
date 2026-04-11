@@ -130,6 +130,14 @@ export const executeEndpoint = async (
 
   // 8. Обычный JSON
   let data: any = rawText ? JSON.parse(rawText) : await response.json();
+
+  if (data && data.error) {
+    const err: any = new Error(data.error.message || 'API error');
+    err.status = data.error.code || data.error.status || 500;
+    err.responseBody = JSON.stringify(data.error);
+    throw err;
+  }
+
   if (onTrace) {
     onTrace({ type: 'response', timestamp: Date.now(), responseStatus: response.status, responseBody: data });
   }

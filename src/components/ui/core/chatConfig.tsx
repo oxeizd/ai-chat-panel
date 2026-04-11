@@ -118,6 +118,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     getTrace,
   } = useChatMessages(selectedAgent, user, debug);
 
+  useEffect(() => {
+    newChat();
+  }, [selectedAgent, newChat]);
+
   // UI state
   const { isChatOpen, openChat, closeChat } = useChatOpen();
 
