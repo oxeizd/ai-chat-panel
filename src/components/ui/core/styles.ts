@@ -281,12 +281,12 @@ export const getStyles = (theme: GrafanaTheme2) => {
         justify-content: flex-start;
       `,
       bubble: css`
-        max-width: 70%;
         padding: ${theme.spacing(1)} ${theme.spacing(2)};
         border-radius: ${theme.shape.radius.default};
         word-break: break-word;
       `,
       userBubble: css`
+        max-width: 80%;
         background: rgba(128, 128, 128, 0.2);
         color: ${theme.colors.primary.contrastText};
         border-bottom-right-radius: 0;
@@ -297,12 +297,28 @@ export const getStyles = (theme: GrafanaTheme2) => {
         }
       `,
       aiBubble: css`
+        max-width: 97%;
         color: ${theme.colors.text.primary};
         border-bottom-left-radius: 0;
 
         p {
           margin: 0;
           padding: 0;
+        }
+
+        table {
+          border-collapse: collapse;
+          width: 100%;
+          margin: 1em 0;
+        }
+        th,
+        td {
+          border: 1px solid rgba(85, 84, 84, 0.2);
+          padding: 8px;
+          text-align: left;
+        }
+        th {
+          background-color: rgb(204, 204, 220, 0.05);
         }
       `,
     },

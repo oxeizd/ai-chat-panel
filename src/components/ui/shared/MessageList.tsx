@@ -5,6 +5,8 @@ import { useChat } from 'components/ui/core/chatConfig';
 import { DebugTraceModal } from './DebugTraceModal';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 
 export interface MessageListStyles {
   messageWrapper: string;
@@ -88,7 +90,9 @@ export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true
                 {msg.errorDetails.message}
               </>
             ) : (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
+                {msg.text}
+              </ReactMarkdown>
             )}
             {debug && msg.errorDetails && msg.sender === 'ai' && (
               <Icon name="info-circle" style={{ marginLeft: '8px', fontSize: '14px', opacity: 0.7 }} />
