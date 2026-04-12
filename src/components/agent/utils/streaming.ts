@@ -46,7 +46,6 @@ export async function parseSSEStream(
   let fullResponse = '';
   let finalEvent: any = undefined;
   const rawEvents: any[] = [];
-  let streamClosed = false;
 
   try {
     reader = response.body.getReader();
@@ -55,7 +54,6 @@ export async function parseSSEStream(
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
-        streamClosed = true;
         break;
       }
       buffer += decoder.decode(value, { stream: true });
@@ -78,7 +76,7 @@ export async function parseSSEStream(
           }
         }
         if (isDone) {
-          streamClosed = true;
+          // Завершаем поток, но не выбрасываем ошибку
           return { fullText: fullResponse, finalEvent, rawEvents };
         }
 
@@ -116,18 +114,22 @@ export async function parseSSEStream(
             }
           }
         } catch (e) {
-          // Игнорируем строки, которые не являются валидным JSON
         }
       }
     }
     return { fullText: fullResponse, finalEvent, rawEvents };
   } catch (err) {
-    if (!streamClosed) {
-      await response.body?.cancel().catch(() => {});
+    try {
+      await response.body?.cancel();
+    } catch (cancelErr) {
     }
     throw err;
   } finally {
     if (reader) {
+      try {
+        await reader.cancel();
+      } catch {
+      }
       reader.releaseLock();
     }
   }

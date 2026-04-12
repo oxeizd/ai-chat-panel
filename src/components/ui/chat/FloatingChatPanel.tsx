@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useTheme2 } from '@grafana/ui';
 import { cx } from '@emotion/css';
 import { useStyles } from 'components/ui/core/styles';
@@ -26,25 +26,19 @@ export const FloatingChatPanel: React.FC = () => {
     toggleFullscreen,
   } = props;
 
-  const handleSendWithOpen = () => {
+  const handleSendWithOpen = useCallback(() => {
     sendMessage();
-    if (!isChatOpen) {
-      openChat();
-    }
-  };
-
-  const handleSendText = (text: string) => {
+    if (!isChatOpen) openChat();
+  }, [sendMessage, isChatOpen, openChat]);
+  
+  const handleSendText = useCallback((text: string) => {
     sendMessage(text);
-    if (!isChatOpen) {
-      openChat();
-    }
-  };
-
-  const handleContinue = () => {
-    if (!isChatOpen) {
-      openChat();
-    }
-  };
+    if (!isChatOpen) openChat();
+  }, [sendMessage, isChatOpen, openChat]);
+  
+  const handleContinue = useCallback(() => {
+    if (!isChatOpen) openChat();
+  }, [isChatOpen, openChat]);
 
   const hasHistory = messages.length > 0;
   const continueMode = !isChatOpen && hasHistory;

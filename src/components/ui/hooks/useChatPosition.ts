@@ -1,8 +1,10 @@
 import { useState, useRef, useLayoutEffect, useCallback } from 'react';
 
-const settings = {
+type ChatStyle = React.CSSProperties;
+
+const SETTINGS = {
   margin: 8,
-  top_offset: 100,
+  topOffset: 100,
   minHeight: 500,
   minWrapperHeight: 150,
   contentLimit: 0.96,
@@ -10,34 +12,53 @@ const settings = {
 };
 
 export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWidth = 1300) => {
-  const inputContainerRef = useRef<HTMLDivElement>(null);
-  const chatMessagesRef = useRef<HTMLDivElement>(null);
-  const floatingChatRef = useRef<HTMLDivElement | null>(null);
+  const chatRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLDivElement | null>(null);
+  const messagesRef = useRef<HTMLDivElement | null>(null);
+
   const [chatDomElement, setChatDomElement] = useState<HTMLElement | null>(null);
-  const [chatStyle, setChatStyle] = useState<React.CSSProperties>({
+  
+  const [chatStyle, setChatStyle] = useState<ChatStyle>({
     left: 0,
     top: undefined,
     bottom: undefined,
-    maxHeight: settings.minHeight,
+    maxHeight: SETTINGS.minHeight,
     width: 0,
   });
 
-  const setFloatingChatRefCallback = useCallback((node: HTMLDivElement | null) => {
-    floatingChatRef.current = node;
-    setChatDomElement(node);
-  }, []);
+  const setFloatingChatRefCallback = useCallback(
+    (node: HTMLDivElement | null) => {
+      chatRef.current = node;
+      setChatDomElement(node);
+    },
+    []
+  );
 
   const updateChatPosition = useCallback(() => {
-    const desiredHeight =
-      floatingChatRef.current?.offsetHeight ?? (chatMessagesRef.current?.scrollHeight || 0) + settings.minWrapperHeight;
+    const {
+      margin,
+      topOffset,
+      minHeight,
+      minWrapperHeight,
+      contentLimit,
+      padding,
+    } = SETTINGS;
+
+    const chatHeight = chatRef.current?.offsetHeight;
+    const messagesHeight = (messagesRef.current?.scrollHeight || 0) + minWrapperHeight;
+    const targetHeight = chatHeight ?? messagesHeight;
 
     if (centerChat) {
-      const maxHeight = Math.floor((window.innerHeight - settings.top_offset) * 0.96);
-      const height = Math.min(maxHeight, Math.max(settings.minHeight, desiredHeight));
-      const top =
-        window.innerHeight / 2 - Math.floor(height / 2) < 100
-          ? `${settings.top_offset}px`
-          : `calc(50% - ${Math.floor(height / 2)}px)`;
+      const maxHeight = Math.floor((window.innerHeight - topOffset) * 0.96);
+      const height = Math.min(maxHeight, Math.max(minHeight, targetHeight));
+
+      let top;
+
+      if (window.innerHeight / 2 - Math.floor(height / 2) < topOffset) {
+        top = `${topOffset}px`;
+      } else {
+        top = `calc(50% - ${Math.floor(height / 2)}px)`;
+      }
 
       let width: number;
 
@@ -60,26 +81,25 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        padding: settings.padding,
+        padding: padding,
       });
 
       return;
     }
 
-    if (!inputContainerRef.current || !isChatOpen) {
+    if (!inputRef.current || !isChatOpen) {
       return;
     }
 
-    const rect = inputContainerRef.current.getBoundingClientRect();
-    const { contentLimit: viewportLimit, margin } = settings;
+    const rect = inputRef.current.getBoundingClientRect();
 
-    const top = Math.max(settings.top_offset, rect.top);
-    const bottom = window.innerHeight - rect.bottom + settings.margin;
-    const freerTop = Math.max(0, top - settings.top_offset);
-    const freeBottom = Math.max(0, (window.innerHeight - top + margin) * viewportLimit);
+    const top = Math.max(topOffset, rect.top);
+    const bottom = window.innerHeight - rect.bottom + margin;
+    const freerTop = Math.max(0, top - topOffset);
+    const freeBottom = Math.max(0, (window.innerHeight - top + margin) * contentLimit);
 
-    const showAbove = freerTop >= desiredHeight;
-    const showBelow = freeBottom >= desiredHeight;
+    const showAbove = freerTop >= targetHeight;
+    const showBelow = freeBottom >= targetHeight;
     const preferDown = showBelow ? !showAbove || freeBottom >= freerTop : freeBottom >= freerTop;
 
     let topPosition: number | undefined;
@@ -92,7 +112,7 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
       bottomPosition = undefined;
     } else {
       topPosition = undefined;
-      maxHeightValue = window.innerHeight - bottom - settings.top_offset;
+      maxHeightValue = window.innerHeight - bottom - topOffset;
       bottomPosition = bottom;
     }
 
@@ -116,54 +136,64 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
       maxHeight: maxHeightValue,
       width: widthPosition,
       bottom: bottomPosition,
-      padding: settings.padding,
+      padding: padding,
     });
 
     return;
   }, [isChatOpen, centerChat, maxWidth]);
 
   useLayoutEffect(() => {
-    if (!isChatOpen) {
-      return;
-    }
+    if (!isChatOpen) return;
 
-    const frame = requestAnimationFrame(() => updateChatPosition());
-    const handleResizeOrScroll = () => requestAnimationFrame(updateChatPosition);
-    window.addEventListener('resize', handleResizeOrScroll);
-    window.addEventListener('scroll', handleResizeOrScroll);
+    let rafId: number | null = null;
+
+    const scheduleUpdate = () => {
+      if (rafId != null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        updateChatPosition();
+        rafId = null;
+      });
+    };
+
+    scheduleUpdate();
+
+    const onResizeOrScroll = scheduleUpdate;
+    window.addEventListener("resize", onResizeOrScroll, { passive: true });
+    window.addEventListener("scroll", onResizeOrScroll, { passive: true });
 
     let inputResizeObserver: ResizeObserver | null = null;
-    if (!centerChat && inputContainerRef.current && window.ResizeObserver) {
-      inputResizeObserver = new ResizeObserver(updateChatPosition);
-      inputResizeObserver.observe(inputContainerRef.current);
-    }
-
-    let chatMessagesResizeObserver: ResizeObserver | null = null;
-    if (chatMessagesRef.current && window.ResizeObserver) {
-      chatMessagesResizeObserver = new ResizeObserver(updateChatPosition);
-      chatMessagesResizeObserver.observe(chatMessagesRef.current);
-    }
-
+    let messagesResizeObserver: ResizeObserver | null = null;
     let floatingResizeObserver: ResizeObserver | null = null;
-    if (floatingChatRef.current && window.ResizeObserver) {
-      floatingResizeObserver = new ResizeObserver(updateChatPosition);
-      floatingResizeObserver.observe(floatingChatRef.current);
+
+    if (!centerChat && inputRef.current && "ResizeObserver" in window) {
+      inputResizeObserver = new ResizeObserver(scheduleUpdate);
+      inputResizeObserver.observe(inputRef.current);
+    }
+
+    if (messagesRef.current && "ResizeObserver" in window) {
+      messagesResizeObserver = new ResizeObserver(scheduleUpdate);
+      messagesResizeObserver.observe(messagesRef.current);
+    }
+
+    if (chatRef.current && "ResizeObserver" in window) {
+      floatingResizeObserver = new ResizeObserver(scheduleUpdate);
+      floatingResizeObserver.observe(chatRef.current);
     }
 
     return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener('resize', handleResizeOrScroll);
-      window.removeEventListener('scroll', handleResizeOrScroll);
+      if (rafId != null) cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", onResizeOrScroll);
+      window.removeEventListener("scroll", onResizeOrScroll);
       inputResizeObserver?.disconnect();
-      chatMessagesResizeObserver?.disconnect();
+      messagesResizeObserver?.disconnect();
       floatingResizeObserver?.disconnect();
     };
   }, [isChatOpen, centerChat, updateChatPosition]);
 
   return {
-    inputContainerRef,
-    chatMessagesRef,
-    floatingChatRef,
+    inputContainerRef: inputRef,
+    chatMessagesRef: messagesRef,
+    floatingChatRef: chatRef,
     setFloatingChatRefCallback,
     chatStyle,
     chatDomElement,

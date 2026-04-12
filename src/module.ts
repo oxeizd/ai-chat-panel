@@ -19,12 +19,6 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
         },
         category: ['Mode settings'],
       })
-      // .addBooleanSwitch({
-      //   path: 'settings.fullscreen',
-      //   name: 'Open in fullscreen',
-      //   defaultValue: false,
-      //   category: ['Mode settings'],
-      // })
       .addBooleanSwitch({
         path: 'chatStyles.centerInput',
         name: 'Center start input position',
