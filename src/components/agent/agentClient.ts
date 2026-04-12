@@ -31,7 +31,8 @@ export class AgentClient {
     endpoint: EndpointConfig,
     additionalContext: VariableContext,
     onTrace?: (step: TraceStep) => void,
-    onChunk?: (chunk: string) => void
+    onChunk?: (chunk: string) => void,
+    signal?: AbortSignal
   ): Promise<any> {
     const mergedContext: WorkflowContext = { ...this.context, ...additionalContext };
     const result = await executeEndpoint(
@@ -41,7 +42,8 @@ export class AgentClient {
       this.config.config,
       this.config.headers,
       onTrace,
-      onChunk
+      onChunk,
+      signal
     );
     this.context = mergedContext;
     return result;
@@ -51,11 +53,13 @@ export class AgentClient {
     userInput: string,
     additionalContext: VariableContext = {},
     onTrace?: (step: TraceStep) => void,
-    onChunk?: (chunk: string) => void
+    onChunk?: (chunk: string) => void,
+    signal?: AbortSignal
   ): Promise<string> {
     if (this.isProcessing) {
       throw new Error('Agent is already processing a message. Please wait.');
     }
+
     this.isProcessing = true;
     try {
       this.context.user_input = userInput;
@@ -67,7 +71,7 @@ export class AgentClient {
         if (!startupEndpoint) {
           throw new Error(`Startup operation "${this.config.startupOperation}" not found.`);
         } else {
-          await this.runEndpoint(startupEndpoint, {}, onTrace);
+          await this.runEndpoint(startupEndpoint, {}, onTrace, undefined, signal);
           this.initialized = true;
         }
       }
@@ -85,9 +89,11 @@ export class AgentClient {
             return { endpoint: ep };
           })
           .filter((step): step is { endpoint: EndpointConfig } => step !== null);
+
         if (steps.length === 0) {
           throw new Error('No valid steps in workflow');
         }
+
         const lastResponse = await executeWorkflow(
           steps,
           this.context,
@@ -95,16 +101,19 @@ export class AgentClient {
           this.config.config,
           this.config.headers,
           onTrace,
-          onChunk
+          onChunk,
+          signal
         );
         return lastResponse.reply || lastResponse.result || JSON.stringify(lastResponse);
       }
 
+      // Fallback – прямой запрос без workflow
       let requestBody: any = { message: userInput };
       if (this.config.config) {
         const resolvedConfig = resolveObject(this.config.config, this.context);
         requestBody = { ...requestBody, ...resolvedConfig };
       }
+
       const headersObj: Record<string, string> = {};
       if (this.config.headers) {
         const resolvedHeaders = resolveObject(this.config.headers, this.context);
@@ -115,6 +124,7 @@ export class AgentClient {
       if (!headersObj['Content-Type'] && !headersObj['content-type']) {
         headersObj['Content-Type'] = 'application/json';
       }
+
       if (onTrace) {
         onTrace({
           type: 'request',
@@ -124,11 +134,14 @@ export class AgentClient {
           requestBody,
         });
       }
+
       const response = await fetch(this.config.api, {
         method: 'POST',
         headers: headersObj,
         body: JSON.stringify(requestBody),
+        signal,
       });
+
       if (!response.ok) {
         let errorText = '';
         try {
@@ -165,6 +178,11 @@ export class AgentClient {
         });
       }
       return responseData.reply || responseData.result || 'Ответ не получен';
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request was cancelled');
+      }
+      throw error;
     } finally {
       this.isProcessing = false;
     }

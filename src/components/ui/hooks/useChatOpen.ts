@@ -14,6 +14,6 @@ export const useChatOpen = () => {
 
   const openChat = useCallback(() => setIsChatOpen(true), []);
   const closeChat = useCallback(() => setIsChatOpen(false), []);
-  
+
   return { isChatOpen, openChat, closeChat };
 };

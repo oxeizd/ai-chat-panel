@@ -1,17 +1,17 @@
 import { StreamingConfig } from 'types';
 import { extractValueByPath } from './objectHelpers';
+import { STREAMING_DEFAULTS } from 'components/agent/constants';
 
 export const isStreamingEnabled = (endpoint: { streaming?: boolean | StreamingConfig }): boolean => {
   return endpoint.streaming === true || (endpoint.streaming as StreamingConfig)?.enabled === true;
 };
 
 export const getStreamConfig = (endpoint: { streaming?: boolean | StreamingConfig }) => {
-  const defaultTextPath = 'choices.0.delta.content';
   const defaultConfig: StreamingConfig = {
     enabled: true,
-    textPath: defaultTextPath,
-    delimiter: '\n\n',
-    dataPrefix: 'data:',
+    textPath: STREAMING_DEFAULTS.textPath,
+    delimiter: STREAMING_DEFAULTS.delimiter,
+    dataPrefix: STREAMING_DEFAULTS.dataPrefix,
   };
 
   const streamingEnabled = isStreamingEnabled(endpoint);
@@ -35,7 +35,8 @@ export async function parseSSEStream(
   textPath: string,
   dataPrefix: string,
   onChunk?: (chunk: string) => void,
-  onHistorySync?: (event: any) => void
+  onHistorySync?: (event: any) => void,
+  onTrace?: (step: any) => void
 ): Promise<{ fullText: string; finalEvent?: any; rawEvents: any[] }> {
   if (!response.body) {
     throw new Error('Response body is empty');
@@ -114,6 +115,14 @@ export async function parseSSEStream(
             }
           }
         } catch (e) {
+          if (onTrace) {
+            onTrace({
+              type: 'sse_parse_error',
+              timestamp: Date.now(),
+              line: trimmed,
+              error: e instanceof Error ? e.message : String(e),
+            });
+          }
         }
       }
     }
@@ -121,15 +130,13 @@ export async function parseSSEStream(
   } catch (err) {
     try {
       await response.body?.cancel();
-    } catch (cancelErr) {
-    }
+    } catch (cancelErr) {}
     throw err;
   } finally {
     if (reader) {
       try {
         await reader.cancel();
-      } catch {
-      }
+      } catch {}
       reader.releaseLock();
     }
   }

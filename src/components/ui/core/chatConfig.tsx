@@ -130,7 +130,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
 
   // Fullscreen
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const toggleFullscreen = useCallback(() => setIsFullscreen(prev => !prev), []);
+  const toggleFullscreen = useCallback(() => setIsFullscreen((prev) => !prev), []);
 
   useEffect(() => {
     if (!isFullscreen) {
@@ -208,8 +208,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     URL.revokeObjectURL(url);
   }, [messages]);
 
-  const openSettings = useCallback(() => {
-  }, []);
+  const openSettings = useCallback(() => {}, []);
 
   const value: ChatConfig = {
     messages,

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, useTheme2 } from '@grafana/ui';
 import { AgentConfig } from 'types';
-import { AgentEditModal } from './agentEditModal';
+import { AgentEditModal } from './agentEditModal/agentEditModal';
 
 interface AgentsEditorProps {
   value?: AgentConfig[];
@@ -128,6 +128,7 @@ export const AgentsEditor: React.FC<AgentsEditorProps> = ({ value = [], onChange
         key={editingIndex}
         isOpen={isModalOpen}
         agent={editingIndex !== null ? agents[editingIndex] : null}
+        existingAgents={agents}
         onDismiss={() => {
           setIsModalOpen(false);
           setEditingIndex(null);

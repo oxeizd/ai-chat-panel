@@ -28,16 +28,25 @@ export const FloatingChatPanel: React.FC = () => {
 
   const handleSendWithOpen = useCallback(() => {
     sendMessage();
-    if (!isChatOpen) openChat();
+    if (!isChatOpen) {
+      openChat();
+    }
   }, [sendMessage, isChatOpen, openChat]);
-  
-  const handleSendText = useCallback((text: string) => {
-    sendMessage(text);
-    if (!isChatOpen) openChat();
-  }, [sendMessage, isChatOpen, openChat]);
-  
+
+  const handleSendText = useCallback(
+    (text: string) => {
+      sendMessage(text);
+      if (!isChatOpen) {
+        openChat();
+      }
+    },
+    [sendMessage, isChatOpen, openChat]
+  );
+
   const handleContinue = useCallback(() => {
-    if (!isChatOpen) openChat();
+    if (!isChatOpen) {
+      openChat();
+    }
   }, [isChatOpen, openChat]);
 
   const hasHistory = messages.length > 0;

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Message, AgentConfig, DebugTrace, TraceStep } from 'types';
 import { useAgent } from 'components/agent/useAgent';
 import { GrafanaUser } from '../../hooks/useGrafanaUser';
@@ -20,7 +20,13 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
   const isSendingRef = useRef(false);
   const [traces, setTraces] = useState<Map<string, DebugTrace>>(new Map());
 
-  const { isLoading, sendMessage: agentSendMessage, resetSession } = useAgent(currentAgent);
+  const { isLoading, sendMessage: agentSendMessage, resetSession, abort } = useAgent(currentAgent);
+
+  useEffect(() => {
+    return () => {
+      abort();
+    };
+  }, [abort]);
 
   const sendText = useCallback(
     async (text: string): Promise<boolean> => {
@@ -137,6 +143,13 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
 
         return true;
       } catch (error: any) {
+        if (error.name === 'AbortError' || error.message === 'Request was cancelled') {
+          // Удаляем пустое сообщение ассистента
+          setMessages((prev) => prev.filter((m) => m.id !== assistantMessageId));
+          isSendingRef.current = false;
+          return false;
+        }
+
         // Удаляем пустое сообщение ассистента, если оно есть
         setMessages((prev) => prev.filter((m) => m.id !== assistantMessageId));
 

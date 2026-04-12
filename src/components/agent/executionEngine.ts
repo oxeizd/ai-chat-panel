@@ -5,6 +5,7 @@ import { extractValueByPath, mergeObjects } from './utils/objectHelpers';
 import { buildUrl, buildRequestBody, extractReply, saveToContext } from './utils/httpHelpers';
 import { addAssistantMessageToHistory, addUserMessageToHistory } from './utils/historyManager';
 import { isStreamingEnabled, getStreamConfig, detectSSEByContent, parseSSEStream } from './utils/streaming';
+import { STREAMING_DEFAULTS } from './constants';
 
 export interface WorkflowContext extends Record<string, any> {
   messages?: any[];
@@ -17,7 +18,8 @@ export const executeEndpoint = async (
   agentConfig?: Record<string, any>,
   agentHeaders?: Record<string, string>,
   onTrace?: (step: TraceStep) => void,
-  onChunk?: (chunk: string) => void
+  onChunk?: (chunk: string) => void,
+  signal?: AbortSignal
 ): Promise<any> => {
   // 1. URL
   const url = buildUrl(endpoint, context, baseUrl);
@@ -51,7 +53,7 @@ export const executeEndpoint = async (
   }
 
   // 5. Выполнение запроса
-  const response = await fetch(url, { method: endpoint.method, headers, body: bodyString });
+  const response = await fetch(url, { method: endpoint.method, headers, body: bodyString, signal });
   if (!response.ok) {
     let errorBody = '';
     try {
@@ -85,8 +87,8 @@ export const executeEndpoint = async (
 
   // 7. Обработка SSE
   if (isSSE) {
-    const textPath = streamConfig?.textPath ?? 'choices.0.delta.content';
-    const dataPrefix = streamConfig?.dataPrefix ?? 'data:';
+    const textPath = streamConfig?.textPath ?? STREAMING_DEFAULTS.textPath;
+    const dataPrefix = streamConfig?.dataPrefix ?? STREAMING_DEFAULTS.dataPrefix;
 
     let syncedFromSnapshot = false;
     const onHistorySync = (event: any) => {
@@ -111,7 +113,8 @@ export const executeEndpoint = async (
       textPath,
       dataPrefix,
       onChunk,
-      onHistorySync
+      onHistorySync,
+      onTrace
     );
     const finalData: any = { reply: fullText, result: fullText, finalMetadata: finalEvent, rawEvents };
 
@@ -165,7 +168,8 @@ export const executeWorkflow = async (
   agentConfig?: Record<string, any>,
   agentHeaders?: Record<string, string>,
   onTrace?: (step: TraceStep) => void,
-  onChunk?: (chunk: string) => void
+  onChunk?: (chunk: string) => void,
+  signal?: AbortSignal
 ): Promise<any> => {
   let lastResponse: any = null;
   for (let i = 0; i < steps.length; i++) {
@@ -182,7 +186,8 @@ export const executeWorkflow = async (
       agentConfig,
       agentHeaders,
       onTrace,
-      chunkCallback
+      chunkCallback,
+      signal
     );
   }
   return lastResponse;

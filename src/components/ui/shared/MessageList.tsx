@@ -22,7 +22,7 @@ interface MessageListProps {
   styles: MessageListStyles;
 }
 
-export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true, styles }) => {
+export const MessageList: React.FC<MessageListProps> = React.memo(({ showPlaceholder = true, styles }) => {
   const { messages, isLoading, placeholderText, retryMessage, debug, getTrace } = useChat();
   const [errorDetails, setErrorDetails] = useState<any>(null);
   const [traceModalOpen, setTraceModalOpen] = useState(false);
@@ -162,4 +162,6 @@ export const MessageList: React.FC<MessageListProps> = ({ showPlaceholder = true
       <DebugTraceModal isOpen={traceModalOpen} trace={selectedTrace} onDismiss={() => setTraceModalOpen(false)} />
     </>
   );
-};
+});
+
+MessageList.displayName = 'MessageList';

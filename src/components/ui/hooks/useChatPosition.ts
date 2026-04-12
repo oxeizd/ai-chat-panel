@@ -17,7 +17,7 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
   const messagesRef = useRef<HTMLDivElement | null>(null);
 
   const [chatDomElement, setChatDomElement] = useState<HTMLElement | null>(null);
-  
+
   const [chatStyle, setChatStyle] = useState<ChatStyle>({
     left: 0,
     top: undefined,
@@ -26,23 +26,13 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
     width: 0,
   });
 
-  const setFloatingChatRefCallback = useCallback(
-    (node: HTMLDivElement | null) => {
-      chatRef.current = node;
-      setChatDomElement(node);
-    },
-    []
-  );
+  const setFloatingChatRefCallback = useCallback((node: HTMLDivElement | null) => {
+    chatRef.current = node;
+    setChatDomElement(node);
+  }, []);
 
   const updateChatPosition = useCallback(() => {
-    const {
-      margin,
-      topOffset,
-      minHeight,
-      minWrapperHeight,
-      contentLimit,
-      padding,
-    } = SETTINGS;
+    const { margin, topOffset, minHeight, minWrapperHeight, contentLimit, padding } = SETTINGS;
 
     const chatHeight = chatRef.current?.offsetHeight;
     const messagesHeight = (messagesRef.current?.scrollHeight || 0) + minWrapperHeight;
@@ -143,12 +133,16 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
   }, [isChatOpen, centerChat, maxWidth]);
 
   useLayoutEffect(() => {
-    if (!isChatOpen) return;
+    if (!isChatOpen) {
+      return;
+    }
 
     let rafId: number | null = null;
 
     const scheduleUpdate = () => {
-      if (rafId != null) cancelAnimationFrame(rafId);
+      if (rafId != null) {
+        cancelAnimationFrame(rafId);
+      }
       rafId = requestAnimationFrame(() => {
         updateChatPosition();
         rafId = null;
@@ -158,32 +152,34 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
     scheduleUpdate();
 
     const onResizeOrScroll = scheduleUpdate;
-    window.addEventListener("resize", onResizeOrScroll, { passive: true });
-    window.addEventListener("scroll", onResizeOrScroll, { passive: true });
+    window.addEventListener('resize', onResizeOrScroll, { passive: true });
+    window.addEventListener('scroll', onResizeOrScroll, { passive: true });
 
     let inputResizeObserver: ResizeObserver | null = null;
     let messagesResizeObserver: ResizeObserver | null = null;
     let floatingResizeObserver: ResizeObserver | null = null;
 
-    if (!centerChat && inputRef.current && "ResizeObserver" in window) {
+    if (!centerChat && inputRef.current && 'ResizeObserver' in window) {
       inputResizeObserver = new ResizeObserver(scheduleUpdate);
       inputResizeObserver.observe(inputRef.current);
     }
 
-    if (messagesRef.current && "ResizeObserver" in window) {
+    if (messagesRef.current && 'ResizeObserver' in window) {
       messagesResizeObserver = new ResizeObserver(scheduleUpdate);
       messagesResizeObserver.observe(messagesRef.current);
     }
 
-    if (chatRef.current && "ResizeObserver" in window) {
+    if (chatRef.current && 'ResizeObserver' in window) {
       floatingResizeObserver = new ResizeObserver(scheduleUpdate);
       floatingResizeObserver.observe(chatRef.current);
     }
 
     return () => {
-      if (rafId != null) cancelAnimationFrame(rafId);
-      window.removeEventListener("resize", onResizeOrScroll);
-      window.removeEventListener("scroll", onResizeOrScroll);
+      if (rafId != null) {
+        cancelAnimationFrame(rafId);
+      }
+      window.removeEventListener('resize', onResizeOrScroll);
+      window.removeEventListener('scroll', onResizeOrScroll);
       inputResizeObserver?.disconnect();
       messagesResizeObserver?.disconnect();
       floatingResizeObserver?.disconnect();
