@@ -3,6 +3,7 @@ import { Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { ChatMenu } from './ChatMenu';
 import { useChat } from 'components/ui/core/chatConfig';
 import { useStyles } from 'components/ui/core/styles';
+import { blurButton } from '../utils/dom';
 
 interface ChatHeaderProps {
   onBack?: () => void;
@@ -10,10 +11,6 @@ interface ChatHeaderProps {
   onFullscreen?: () => void;
   welcomeMessage?: string;
 }
-
-const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {
-  e.currentTarget.blur();
-};
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, isFullscreen, onFullscreen }) => {
   const { agents, clearChat, exportChat, setSelectedAgent, selectedAgent, newChat } = useChat();

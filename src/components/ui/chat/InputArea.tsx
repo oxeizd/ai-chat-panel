@@ -7,6 +7,7 @@ import { useStyles } from '../core/styles';
 import { ChatMenu } from 'components/ui/shared/ChatMenu';
 import { useSuggestions } from 'components/ui/hooks/useSuggestions';
 import { useChat } from '../core/chatConfig';
+import { blurButton } from '../utils/dom';
 
 interface InputAreaProps {
   className?: string;
@@ -138,10 +139,6 @@ export const InputArea = memo(
       props.className,
       inputAreaBackground && styles.input.inlineWrapperArea
     );
-
-    const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.currentTarget.blur();
-    };
 
     const handleAction = () => {
       if (props.continueMode) {
