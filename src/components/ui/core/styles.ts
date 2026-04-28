@@ -297,15 +297,46 @@ export const getStyles = (theme: GrafanaTheme2) => {
         }
       `,
       aiBubble: css`
-        max-width: 97%;
+        max-width: 99%;
         color: ${theme.colors.text.primary};
         border-bottom-left-radius: 0;
 
+        /* Абзацы – небольшой отступ снизу */
         p {
-          margin: 0;
-          padding: 0;
+          margin: 0 0 0.5rem 0;
+          &:last-child {
+            margin-bottom: 0;
+          }
         }
 
+        /* Списки – фикс вылета за левый край */
+        ul,
+        ol {
+          padding-left: 1.5rem;
+          margin: 0 0 0.5rem 0;
+        }
+
+        li {
+          margin-bottom: 0.2rem;
+        }
+
+        /* Заголовки */
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+          margin: 0.8rem 0 0.4rem 0;
+          font-weight: 500;
+        }
+        h1:first-child,
+        h2:first-child,
+        h3:first-child {
+          margin-top: 0;
+        }
+
+        /* Таблицы */
         table {
           border-collapse: collapse;
           width: 100%;
@@ -319,6 +350,49 @@ export const getStyles = (theme: GrafanaTheme2) => {
         }
         th {
           background-color: rgb(204, 204, 220, 0.05);
+        }
+
+        /* Цитаты */
+        blockquote {
+          margin: 0.5rem 0;
+          padding-left: 0.8rem;
+          border-left: 3px solid ${theme.colors.border.medium};
+          color: ${theme.colors.primary.text};
+        }
+
+        /* Блоки кода – горизонтальная прокрутка */
+        pre {
+          margin: 0.5rem 0;
+          padding: 0.8rem;
+          background: ${theme.colors.background.secondary};
+          border-radius: ${theme.shape.radius.default};
+          overflow-x: auto;
+          white-space: pre;
+          word-break: normal;
+          font-family: monospace;
+          font-size: 0.85rem;
+          max-width: 100%;
+        }
+
+        pre code {
+          background: transparent;
+          padding: 0;
+          white-space: pre;
+          word-break: normal;
+        }
+
+        code:not(pre code) {
+          background: none;
+          padding: 0;
+          color: ${theme.colors.primary.text};
+          font-family: monospace;
+          font-size: 0.9em;
+          border: none;
+        }
+
+        pre code::before,
+        pre code::after {
+          display: none;
         }
       `,
     },
@@ -373,6 +447,36 @@ export const getStyles = (theme: GrafanaTheme2) => {
       `,
     },
 
+    katex: css`
+      .katex {
+        font-size: 1.1em;
+        color: ${theme.colors.primary.text};
+        letter-spacing: 0.01em;
+      }
+      .katex-display {
+        margin: 0.75em 0;
+        padding: 0.5em 0.75em;
+        background: ${theme.colors.background.secondary};
+        border-radius: ${theme.shape.radius.default};
+        overflow-x: auto;
+        overflow-y: hidden;
+        box-shadow: inset 0 0 0 1px ${theme.colors.border.weak};
+      }
+      .katex-inline {
+        background: ${theme.colors.background.secondary};
+        padding: 0.05em 0.2em;
+        border-radius: 4px;
+      }
+      .katex .mord,
+      .katex .mbin,
+      .katex .mrel {
+        font-weight: 450;
+      }
+      .katex-html {
+        line-height: 1.4;
+      }
+    `,
+
     fullscreenStyle: {
       position: 'fixed',
       top: 0,
@@ -391,6 +495,27 @@ export const getStyles = (theme: GrafanaTheme2) => {
       background: toRgba(bgColor, 0.7),
       backdropFilter: 'blur(8px)',
     } as React.CSSProperties,
+
+    copyMessageButton: css`
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: ${theme.shape.radius.sm};
+      color: ${theme.colors.text.secondary};
+      font-size: 0.75rem;
+      transition:
+        background 0.2s,
+        color 0.2s;
+
+      &:hover {
+        background: ${theme.colors.action.hover};
+        color: ${theme.colors.text.primary};
+      }
+    `,
   };
 };
 
@@ -405,4 +530,5 @@ export const getMessageListStyles = (styles: ReturnType<typeof getStyles>): Mess
   messageBubble: styles.messages.bubble,
   userMessageBubble: styles.messages.userBubble,
   aiMessageBubble: styles.messages.aiBubble,
+  katex: styles.katex,
 });
