@@ -7,8 +7,6 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-// @ts-ignore
-import 'katex/dist/katex.min.css';
 
 import { useChat } from 'components/ui/core/chatConfig';
 import { DebugTraceModal } from './DebugTraceModal';
