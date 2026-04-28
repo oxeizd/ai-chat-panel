@@ -45,6 +45,7 @@ export interface ChatConfig {
   buttonText?: string;
   openFullscreen?: boolean;
   centerFloatingChat?: boolean;
+  fullScale?: boolean;
   welcomeMessage?: string;
   showWelcomeMessage?: boolean;
   suggestions?: string[];
@@ -79,6 +80,7 @@ interface ChatProviderProps {
   openFullscreen?: boolean;
   centerFloatingChat?: boolean;
   inputAreaBackground?: boolean;
+  fullScale?: boolean;
 }
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({
@@ -97,6 +99,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   openFullscreen = false,
   centerFloatingChat = false,
   inputAreaBackground = false,
+  fullScale = false,
 }) => {
   // User
   const { user } = useGrafanaUser();
@@ -126,7 +129,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   const { isChatOpen, openChat, closeChat } = useChatOpen();
 
   const { inputContainerRef, chatMessagesRef, floatingChatRef, setFloatingChatRefCallback, chatStyle, chatDomElement } =
-    useChatPosition(isChatOpen, centerFloatingChat, maxWidth);
+    useChatPosition(isChatOpen, centerFloatingChat, fullScale, maxWidth);
 
   // Fullscreen
   const [isFullscreen, setIsFullscreen] = useState(false);

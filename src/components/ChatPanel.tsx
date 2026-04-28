@@ -23,7 +23,7 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
   const providerProps = useMemo(
     () => ({
       agents: options.agents,
-      placeholderText: options.chatStyles.placeholderText,
+      placeholderText: options.settings.placeholderText,
       suggestions: options.settings.suggestions,
       suggestionsPlacement: options.settings.suggestionsPlacement,
       showSuggestions: options.settings.showSuggestions,
@@ -36,6 +36,7 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
       openFullscreen: options.settings.openFullscreen,
       centerFloatingChat: options.chatMode === 'button' ? true : options.chatStyles.centerFloatingChat,
       inputAreaBackground: options.chatStyles.inputAreaBackground,
+      fullScale: options.chatStyles.fullScale,
     }),
     [options]
   );

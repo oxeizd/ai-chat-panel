@@ -1,17 +1,18 @@
 import { useState, useRef, useLayoutEffect, useCallback } from 'react';
 
-type ChatStyle = React.CSSProperties;
+type ChatStyle = React.CSSProperties & { maxHeight?: number | undefined };
 
 const SETTINGS = {
   margin: 8,
   topOffset: 100,
   minHeight: 500,
   minWrapperHeight: 150,
-  contentLimit: 0.96,
+  contentLimit: 0.98,
   padding: 16,
+  sidePadding: 12,
 };
 
-export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWidth = 1300) => {
+export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullScale: boolean, maxWidth = 1300) => {
   const chatRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLDivElement | null>(null);
   const messagesRef = useRef<HTMLDivElement | null>(null);
@@ -32,15 +33,28 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
   }, []);
 
   const updateChatPosition = useCallback(() => {
-    const { margin, topOffset, minHeight, minWrapperHeight, contentLimit, padding } = SETTINGS;
+    const { margin, topOffset, minHeight, minWrapperHeight, contentLimit, padding, sidePadding } = SETTINGS;
+
+    if (!inputRef.current || !isChatOpen) {
+      return;
+    }
+
+    const rect = inputRef.current.getBoundingClientRect();
 
     const chatHeight = chatRef.current?.offsetHeight;
     const messagesHeight = (messagesRef.current?.scrollHeight || 0) + minWrapperHeight;
     const targetHeight = chatHeight ?? messagesHeight;
 
     if (centerChat) {
-      const maxHeight = Math.floor((window.innerHeight - topOffset) * 0.96);
-      const height = Math.min(maxHeight, Math.max(minHeight, targetHeight));
+      const maxHeight = Math.floor((window.innerHeight - topOffset) * contentLimit);
+
+      let height;
+
+      if (fullScale) {
+        height = maxHeight;
+      } else {
+        height = Math.min(maxHeight, Math.max(minHeight, targetHeight));
+      }
 
       let top;
 
@@ -53,7 +67,7 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
       let width: number;
 
       if (typeof maxWidth !== 'number' || maxWidth <= 0) {
-        width = 1300;
+        width = rect.width;
       } else {
         width = maxWidth;
       }
@@ -65,23 +79,18 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
       setChatStyle({
         position: 'fixed',
         left: `calc(50% - ${Math.floor(width / 2)}px)`,
-        top: top,
-        width: width,
-        maxHeight: `${maxHeight}px`,
+        top,
+        width,
+        height: fullScale ? height : undefined,
+        maxHeight: fullScale ? undefined : maxHeight,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        padding: padding,
+        padding,
       });
 
       return;
     }
-
-    if (!inputRef.current || !isChatOpen) {
-      return;
-    }
-
-    const rect = inputRef.current.getBoundingClientRect();
 
     const top = Math.max(topOffset, rect.top);
     const bottom = window.innerHeight - rect.bottom + margin;
@@ -109,7 +118,6 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
     let leftPosition: number | undefined;
     let widthPosition: number | undefined;
 
-    const sidePadding = 12;
     if (maxWidth > rect.width) {
       widthPosition = maxWidth;
       let desiredLeft = rect.right - widthPosition;
@@ -123,14 +131,15 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, maxWid
       position: 'fixed',
       left: leftPosition,
       top: topPosition,
-      maxHeight: maxHeightValue,
+      height: fullScale ? maxHeightValue : undefined,
+      maxHeight: fullScale ? undefined : maxHeightValue,
       width: widthPosition,
       bottom: bottomPosition,
       padding: padding,
     });
 
     return;
-  }, [isChatOpen, centerChat, maxWidth]);
+  }, [isChatOpen, centerChat, maxWidth, fullScale]);
 
   useLayoutEffect(() => {
     if (!isChatOpen) {

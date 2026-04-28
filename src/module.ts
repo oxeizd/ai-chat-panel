@@ -39,6 +39,13 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
       category: ['Style options'],
       showIf: (config) => config.chatMode === 'floating',
     })
+    .addBooleanSwitch({
+      path: 'chatStyles.fullScale',
+      name: 'Full scale chat',
+      defaultValue: false,
+      category: ['Style options'],
+      showIf: (config) => config.chatMode !== 'inline',
+    })
     .addTextInput({
       path: 'chatStyles.buttonText',
       name: 'Button text',
