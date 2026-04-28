@@ -15,7 +15,6 @@ export const ButtonChatPanel: React.FC = () => {
     openFullscreen,
     isLoading,
     chatStyle,
-    maxWidth,
   } = useChat();
 
   const handleOpenChat = () => {
@@ -45,7 +44,6 @@ export const ButtonChatPanel: React.FC = () => {
       isFullscreen={isFullscreen}
       onToggleFullscreen={toggleFullscreen}
       messagesContainerRef={chatMessagesRef}
-      maxWidth={maxWidth}
     />
   );
 };

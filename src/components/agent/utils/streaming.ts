@@ -1,17 +1,17 @@
 import { StreamingConfig } from 'types';
 import { extractValueByPath } from './objectHelpers';
+import { STREAMING_DEFAULTS } from 'components/agent/constants';
 
 export const isStreamingEnabled = (endpoint: { streaming?: boolean | StreamingConfig }): boolean => {
   return endpoint.streaming === true || (endpoint.streaming as StreamingConfig)?.enabled === true;
 };
 
 export const getStreamConfig = (endpoint: { streaming?: boolean | StreamingConfig }) => {
-  const defaultTextPath = 'choices.0.delta.content';
   const defaultConfig: StreamingConfig = {
     enabled: true,
-    textPath: defaultTextPath,
-    delimiter: '\n\n',
-    dataPrefix: 'data:',
+    textPath: STREAMING_DEFAULTS.textPath,
+    delimiter: STREAMING_DEFAULTS.delimiter,
+    dataPrefix: STREAMING_DEFAULTS.dataPrefix,
   };
 
   const streamingEnabled = isStreamingEnabled(endpoint);
@@ -35,7 +35,8 @@ export async function parseSSEStream(
   textPath: string,
   dataPrefix: string,
   onChunk?: (chunk: string) => void,
-  onHistorySync?: (event: any) => void
+  onHistorySync?: (event: any) => void,
+  onTrace?: (step: any) => void
 ): Promise<{ fullText: string; finalEvent?: any; rawEvents: any[] }> {
   if (!response.body) {
     throw new Error('Response body is empty');
@@ -46,7 +47,6 @@ export async function parseSSEStream(
   let fullResponse = '';
   let finalEvent: any = undefined;
   const rawEvents: any[] = [];
-  let streamClosed = false;
 
   try {
     reader = response.body.getReader();
@@ -55,7 +55,6 @@ export async function parseSSEStream(
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
-        streamClosed = true;
         break;
       }
       buffer += decoder.decode(value, { stream: true });
@@ -78,7 +77,7 @@ export async function parseSSEStream(
           }
         }
         if (isDone) {
-          streamClosed = true;
+          // Завершаем поток, но не выбрасываем ошибку
           return { fullText: fullResponse, finalEvent, rawEvents };
         }
 
@@ -116,18 +115,28 @@ export async function parseSSEStream(
             }
           }
         } catch (e) {
-          // Игнорируем строки, которые не являются валидным JSON
+          if (onTrace) {
+            onTrace({
+              type: 'sse_parse_error',
+              timestamp: Date.now(),
+              line: trimmed,
+              error: e instanceof Error ? e.message : String(e),
+            });
+          }
         }
       }
     }
     return { fullText: fullResponse, finalEvent, rawEvents };
   } catch (err) {
-    if (!streamClosed) {
-      await response.body?.cancel().catch(() => {});
-    }
+    try {
+      await response.body?.cancel();
+    } catch (cancelErr) {}
     throw err;
   } finally {
     if (reader) {
+      try {
+        await reader.cancel();
+      } catch {}
       reader.releaseLock();
     }
   }

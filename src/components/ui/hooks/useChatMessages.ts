@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Message, AgentConfig, DebugTrace, TraceStep } from 'types';
 import { useAgent } from 'components/agent/useAgent';
 import { GrafanaUser } from '../../hooks/useGrafanaUser';
@@ -16,14 +16,33 @@ const generateMessageId = () => `${Date.now()}-${Math.random().toString(36).subs
 export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaUser | null, debug: boolean) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
-  const sessionIdRef = useRef(generateSessionId());
-  const isSendingRef = useRef(false);
   const [traces, setTraces] = useState<Map<string, DebugTrace>>(new Map());
 
-  const { isLoading, sendMessage: agentSendMessage, resetSession } = useAgent(currentAgent);
+  const sessionIdRef = useRef(generateSessionId());
+  const isSendingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const { isLoading, sendMessage: agentSendMessage, resetSession, abort } = useAgent(currentAgent);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abort();
+    };
+  }, [abort]);
 
   const sendText = useCallback(
     async (text: string): Promise<boolean> => {
+      if (!mountedRef.current) {
+        return false;
+      }
+
       if (isSendingRef.current) {
         return false;
       }
@@ -31,6 +50,9 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
         return false;
       }
       if (!currentAgent) {
+        if (!mountedRef.current) {
+          return false;
+        }
         const errorMessage: Message = {
           id: generateMessageId(),
           text: MESSAGES.noAgentSelected,
@@ -50,19 +72,29 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
         sender: 'user',
         timestamp: Date.now(),
       };
-      setMessages((prev) => [...prev, userMessage]);
 
-      // Создаём пустое сообщение ассистента для накопления чанков
+      if (mountedRef.current) {
+        setMessages((prev) => [...prev, userMessage]);
+      } else {
+        isSendingRef.current = false;
+        return false;
+      }
+
       const assistantMessageId = generateMessageId();
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: assistantMessageId,
-          text: '',
-          sender: 'ai',
-          timestamp: Date.now(),
-        },
-      ]);
+      if (mountedRef.current) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: assistantMessageId,
+            text: '',
+            sender: 'ai',
+            timestamp: Date.now(),
+          },
+        ]);
+      } else {
+        isSendingRef.current = false;
+        return false;
+      }
 
       let trace: DebugTrace | undefined;
       if (debug) {
@@ -71,20 +103,21 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
           userInput: text,
           steps: [],
         };
-        setTraces((prev) => new Map(prev).set(userMessageId, trace!));
+        if (mountedRef.current) {
+          setTraces((prev) => new Map(prev).set(userMessageId, trace!));
+        }
       }
 
       const addTraceStep = (step: TraceStep) => {
-        if (!debug || !trace) {
+        if (!debug || !trace || !mountedRef.current) {
           return;
         }
         trace.steps.push(step);
         setTraces((prev) => new Map(prev).set(userMessageId, trace));
       };
 
-      // Обработчик чанков (стриминг)
       const handleChunk = (chunk: string) => {
-        if (!chunk) {
+        if (!chunk || !mountedRef.current) {
           return;
         }
         setMessages((prev) => {
@@ -111,32 +144,48 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
           additionalContext.userName = user.name;
         }
 
-        // Передаём handleChunk как четвёртый аргумент (onChunk)
+        abortControllerRef.current = new AbortController();
+
         const reply = await agentSendMessage(text, additionalContext, addTraceStep, handleChunk);
 
-        if (debug && trace) {
+        if (abortControllerRef.current?.signal.aborted || !mountedRef.current) {
+          return false;
+        }
+
+        if (debug && trace && mountedRef.current) {
           trace.finalReply = reply;
           setTraces((prev) => new Map(prev).set(userMessageId, trace));
         }
 
-        // Финальная синхронизация (на случай, если последний чанк не пришёл или reply полнее)
-        setMessages((prev) => {
-          const newMessages = [...prev];
-          const assistantIndex = newMessages.findIndex((m) => m.id === assistantMessageId);
-          if (assistantIndex !== -1) {
-            const currentText = newMessages[assistantIndex].text;
-            if (reply !== currentText) {
-              newMessages[assistantIndex] = {
-                ...newMessages[assistantIndex],
-                text: reply,
-              };
+        if (mountedRef.current) {
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            const assistantIndex = newMessages.findIndex((m) => m.id === assistantMessageId);
+            if (assistantIndex !== -1) {
+              const currentText = newMessages[assistantIndex].text;
+              if (reply !== currentText) {
+                newMessages[assistantIndex] = {
+                  ...newMessages[assistantIndex],
+                  text: reply,
+                };
+              }
             }
-          }
-          return newMessages;
-        });
+            return newMessages;
+          });
+        }
 
         return true;
       } catch (error: any) {
+        if (!mountedRef.current) {
+          return false;
+        }
+
+        if (error.name === 'AbortError' || error.message === 'Request was cancelled') {
+          setMessages((prev) => prev.filter((m) => m.id !== assistantMessageId));
+          isSendingRef.current = false;
+          return false;
+        }
+
         // Удаляем пустое сообщение ассистента, если оно есть
         setMessages((prev) => prev.filter((m) => m.id !== assistantMessageId));
 
@@ -174,18 +223,20 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
           errorMessage = 'Ошибка на сервере. Повторите позже.';
         }
 
-        if (debug && trace) {
+        if (debug && trace && mountedRef.current) {
           trace.error = { message: errorMessage, status: statusCode, raw: rawError };
           setTraces((prev) => new Map(prev).set(userMessageId, trace));
         }
 
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === userMessageId
-              ? { ...msg, error: true, errorDetails: { status: statusCode, message: errorMessage, raw: rawError } }
-              : msg
-          )
-        );
+        if (mountedRef.current) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === userMessageId
+                ? { ...msg, error: true, errorDetails: { status: statusCode, message: errorMessage, raw: rawError } }
+                : msg
+            )
+          );
+        }
 
         const errorAiMessage: Message = {
           id: generateMessageId(),
@@ -194,11 +245,15 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
           timestamp: Date.now(),
           errorDetails: { status: statusCode, message: errorMessage, raw: rawError },
         };
-        setMessages((prev) => [...prev, errorAiMessage]);
+
+        if (mountedRef.current) {
+          setMessages((prev) => [...prev, errorAiMessage]);
+        }
 
         return false;
       } finally {
         isSendingRef.current = false;
+        abortControllerRef.current = null;
       }
     },
     [currentAgent, isLoading, agentSendMessage, user, debug]
@@ -219,19 +274,30 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
 
   const retryMessage = useCallback(
     async (messageId: string) => {
+      if (!mountedRef.current) {
+        return;
+      }
+
       const msgIndex = messages.findIndex((m) => m.id === messageId);
       if (msgIndex === -1 || messages[msgIndex].sender !== 'user') {
         return;
       }
 
       const originalMessage = messages[msgIndex];
+
+      setTraces((prev) => {
+        const newTraces = new Map(prev);
+        newTraces.delete(messageId);
+        return newTraces;
+      });
+
       setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, error: false } : m)));
 
       const newMessages = messages.slice(0, msgIndex + 1);
       setMessages(newMessages);
 
       const success = await sendText(originalMessage.text);
-      if (!success) {
+      if (!success && mountedRef.current) {
         setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, error: true } : m)));
       }
     },
@@ -239,10 +305,18 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
   );
 
   const newChat = useCallback(async () => {
-    setMessages([]);
-    setInputValue('');
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    if (mountedRef.current) {
+      setMessages([]);
+      setInputValue('');
+      setTraces(new Map());
+    }
+
     sessionIdRef.current = generateSessionId();
-    setTraces(new Map());
+
     try {
       await resetSession();
     } catch (err) {
@@ -251,8 +325,14 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
   }, [resetSession]);
 
   const clearChat = useCallback(() => {
-    setMessages([]);
-    setTraces(new Map());
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    if (mountedRef.current) {
+      setMessages([]);
+      setTraces(new Map());
+    }
   }, []);
 
   const getTrace = useCallback((messageId: string) => traces.get(messageId), [traces]);

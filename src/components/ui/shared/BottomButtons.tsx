@@ -3,10 +3,7 @@ import { Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { AgentMenu } from './AgentMenu';
 import { useChat } from '../core/chatConfig';
 import { useStyles } from '../core/styles';
-
-const blurButton = (e: React.MouseEvent<HTMLButtonElement>) => {
-  e.currentTarget.blur();
-};
+import { blurButton } from '../utils/dom';
 
 export const BottomButtons: React.FC = () => {
   const { selectedAgent, agents, setSelectedAgent, newChat, isLoading } = useChat();

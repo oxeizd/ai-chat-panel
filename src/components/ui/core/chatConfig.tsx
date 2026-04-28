@@ -45,6 +45,7 @@ export interface ChatConfig {
   buttonText?: string;
   openFullscreen?: boolean;
   centerFloatingChat?: boolean;
+  fullScale?: boolean;
   welcomeMessage?: string;
   showWelcomeMessage?: boolean;
   suggestions?: string[];
@@ -56,7 +57,6 @@ export interface ChatConfig {
 
   // Действия
   exportChat: () => void;
-  openSettings: () => void;
   handleSuggestionClick: (suggestion: string) => void;
 
   debug: boolean;
@@ -79,6 +79,7 @@ interface ChatProviderProps {
   openFullscreen?: boolean;
   centerFloatingChat?: boolean;
   inputAreaBackground?: boolean;
+  fullScale?: boolean;
 }
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({
@@ -97,9 +98,14 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   openFullscreen = false,
   centerFloatingChat = false,
   inputAreaBackground = false,
+  fullScale = false,
 }) => {
   // User
   const { user } = useGrafanaUser();
+
+  if (placeholderText.length === 0) {
+    placeholderText = DEFAULT_PLACEHOLDER;
+  }
 
   // Agent selection
   const defaultAgent = useMemo(() => agents.find((a) => a.default) || null, [agents]);
@@ -126,7 +132,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   const { isChatOpen, openChat, closeChat } = useChatOpen();
 
   const { inputContainerRef, chatMessagesRef, floatingChatRef, setFloatingChatRefCallback, chatStyle, chatDomElement } =
-    useChatPosition(isChatOpen, centerFloatingChat, maxWidth);
+    useChatPosition(isChatOpen, centerFloatingChat, fullScale, maxWidth);
 
   // Fullscreen
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -208,50 +214,86 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     URL.revokeObjectURL(url);
   }, [messages]);
 
-  const openSettings = useCallback(() => {
-    console.log('Open settings – implement as needed');
-  }, []);
-
-  const value: ChatConfig = {
-    messages,
-    isLoading,
-    inputValue,
-    setInputValue,
-    sendMessage,
-    clearChat,
-    newChat,
-    retryMessage,
-    selectedAgent,
-    setSelectedAgent,
-    agents,
-    isChatOpen,
-    openChat,
-    closeChat,
-    isFullscreen,
-    toggleFullscreen,
-    inputContainerRef,
-    chatMessagesRef,
-    floatingChatRef,
-    setFloatingChatRefCallback,
-    chatStyle,
-    placeholderText,
-    maxWidth,
-    centerInput,
-    welcomeMessage,
-    showWelcomeMessage,
-    suggestions: suggestionsArray,
-    suggestionsPlacement,
-    showSuggestions,
-    exportChat,
-    openSettings,
-    handleSuggestionClick,
-    debug,
-    getTrace,
-    buttonText,
-    openFullscreen,
-    centerFloatingChat,
-    inputAreaBackground,
-  };
+  const value = useMemo<ChatConfig>(
+    () => ({
+      messages,
+      isLoading,
+      inputValue,
+      setInputValue,
+      sendMessage,
+      clearChat,
+      newChat,
+      retryMessage,
+      selectedAgent,
+      setSelectedAgent,
+      agents,
+      isChatOpen,
+      openChat,
+      closeChat,
+      isFullscreen,
+      toggleFullscreen,
+      inputContainerRef,
+      chatMessagesRef,
+      floatingChatRef,
+      setFloatingChatRefCallback,
+      chatStyle,
+      placeholderText,
+      maxWidth,
+      centerInput,
+      welcomeMessage,
+      showWelcomeMessage,
+      suggestions: suggestionsArray,
+      suggestionsPlacement,
+      showSuggestions,
+      exportChat,
+      handleSuggestionClick,
+      debug,
+      getTrace,
+      buttonText,
+      openFullscreen,
+      centerFloatingChat,
+      inputAreaBackground,
+    }),
+    [
+      messages,
+      isLoading,
+      inputValue,
+      setInputValue,
+      sendMessage,
+      clearChat,
+      newChat,
+      retryMessage,
+      selectedAgent,
+      setSelectedAgent,
+      agents,
+      isChatOpen,
+      openChat,
+      closeChat,
+      isFullscreen,
+      toggleFullscreen,
+      inputContainerRef,
+      chatMessagesRef,
+      floatingChatRef,
+      setFloatingChatRefCallback,
+      chatStyle,
+      placeholderText,
+      maxWidth,
+      centerInput,
+      welcomeMessage,
+      showWelcomeMessage,
+      suggestionsArray,
+      suggestionsPlacement,
+      showSuggestions,
+      exportChat,
+      handleSuggestionClick,
+      debug,
+      getTrace,
+      buttonText,
+      openFullscreen,
+      centerFloatingChat,
+      inputAreaBackground,
+    ]
+  );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 };

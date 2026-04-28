@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 /**
  * Manages the open/closed state of the floating chat.
@@ -12,8 +12,8 @@ import { useState } from 'react';
 export const useChatOpen = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  const openChat = () => setIsChatOpen(true);
-  const closeChat = () => setIsChatOpen(false);
+  const openChat = useCallback(() => setIsChatOpen(true), []);
+  const closeChat = useCallback(() => setIsChatOpen(false), []);
 
   return { isChatOpen, openChat, closeChat };
 };

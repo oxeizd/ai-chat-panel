@@ -1,12 +1,13 @@
 import { PollingConfig } from 'types';
+import { POLLING_DEFAULTS } from 'components/agent/constants';
 
-export const DEFAULT_POLLING_CONFIG: Required<PollingConfig> = {
+const DEFAULT_POLLING_CONFIG: Required<PollingConfig> = {
   enabled: false,
-  intervalMs: 1000,
-  maxAttempts: 10,
-  statusField: 'status',
-  successValue: 'completed',
-  resultField: 'result',
+  intervalMs: POLLING_DEFAULTS.intervalMs,
+  maxAttempts: POLLING_DEFAULTS.maxAttempts,
+  statusField: POLLING_DEFAULTS.statusField,
+  successValue: POLLING_DEFAULTS.successValue,
+  resultField: POLLING_DEFAULTS.resultField,
   retryStatusCodes: [],
 };
 
