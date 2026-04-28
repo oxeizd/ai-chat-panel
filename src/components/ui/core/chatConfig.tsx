@@ -54,7 +54,7 @@ export interface ChatConfig {
   inputAreaBackground?: boolean;
   panelHeigth?: number;
   panelWidth?: number;
-
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   // Действия
   exportChat: () => void;
   handleSuggestionClick: (suggestion: string) => void;
@@ -114,6 +114,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   // Messages
   const {
     messages,
+    setMessages,
     isLoading,
     inputValue,
     setInputValue,
@@ -216,6 +217,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
 
   const value = useMemo<ChatConfig>(
     () => ({
+      setMessages,
       messages,
       isLoading,
       inputValue,

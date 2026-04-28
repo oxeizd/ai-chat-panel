@@ -298,6 +298,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
       `,
       aiBubble: css`
         max-width: 99%;
+        width: 99%;
         color: ${theme.colors.text.primary};
         border-bottom-left-radius: 0;
 
@@ -516,6 +517,22 @@ export const getStyles = (theme: GrafanaTheme2) => {
         color: ${theme.colors.text.primary};
       }
     `,
+    
+    // === Графики =====
+    chartContainer: css`
+      margin: ${theme.spacing(1)} 0;
+      width: 100%;
+      min-width: 200px;
+      background: ${theme.colors.background.secondary};
+      border-radius: ${theme.shape.radius.default};
+      padding: ${theme.spacing(1)};
+      overflow-x: auto;
+      
+      canvas {
+        max-width: 100%;
+        height: auto;
+      }
+    `,
   };
 };
 
@@ -531,4 +548,5 @@ export const getMessageListStyles = (styles: ReturnType<typeof getStyles>): Mess
   userMessageBubble: styles.messages.userBubble,
   aiMessageBubble: styles.messages.aiBubble,
   katex: styles.katex,
+  chartContainer: styles.chartContainer
 });

@@ -339,6 +339,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
 
   return {
     messages,
+    setMessages,
     isLoading,
     inputValue,
     setInputValue,
