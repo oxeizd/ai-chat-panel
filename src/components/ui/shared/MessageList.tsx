@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { cx } from '@emotion/css';
 import { Spinner, Button, Icon, Modal } from '@grafana/ui';
 import ReactMarkdown from 'react-markdown';
@@ -26,19 +26,94 @@ interface MessageListProps {
   styles: MessageListStyles;
 }
 
+const REMARK_PLUGINS = [remarkGfm, remarkMath];
+const REHYPE_PLUGINS = [rehypeRaw, rehypeSanitize, rehypeKatex];
+
+const ChatMessage = React.memo(
+  ({ message, styles, debug, isLastUserMessage, onRetry, onUserMessageClick, onAiMessageClick }: any) => {
+    const handleClick = () => {
+      if (message.sender === 'user') {
+        onUserMessageClick?.(message);
+      } else if (message.sender === 'ai') {
+        onAiMessageClick?.(message);
+      }
+    };
+
+    return (
+      <div
+        className={cx(
+          styles.messageWrapper,
+          message.sender === 'user' ? styles.userMessageWrapper : styles.aiMessageWrapper
+        )}
+        onClick={debug ? handleClick : undefined}
+        style={
+          debug && (message.sender === 'user' || (message.sender === 'ai' && message.errorDetails))
+            ? { cursor: 'pointer' }
+            : undefined
+        }
+      >
+        <div
+          className={cx(
+            styles.messageBubble,
+            message.sender === 'user' ? styles.userMessageBubble : styles.aiMessageBubble
+          )}
+        >
+          {message.sender === 'ai' && message.errorDetails && debug ? (
+            <>
+              ❌ {message.errorDetails.status ? `[${message.errorDetails.status}] ` : ''}
+              {message.errorDetails.message}
+            </>
+          ) : (
+            <div className={styles.katex}>
+              <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS}>
+                {message.text}
+              </ReactMarkdown>
+            </div>
+          )}
+          {debug && message.errorDetails && message.sender === 'ai' && (
+            <Icon name="info-circle" style={{ marginLeft: '8px', fontSize: '14px', opacity: 0.7 }} />
+          )}
+        </div>
+
+        {message.sender === 'user' && message.error && (
+          <div style={{ marginLeft: '8px', alignSelf: 'center' }}>
+            {isLastUserMessage ? (
+              <Button
+                icon="repeat"
+                size="sm"
+                variant="secondary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRetry?.(message.id);
+                }}
+                aria-label="Повторить отправку"
+              />
+            ) : (
+              <Icon name="exclamation-triangle" style={{ color: 'orange' }} />
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+);
+
+ChatMessage.displayName = 'ChatMessage';
+
 export const MessageList: React.FC<MessageListProps> = React.memo(({ showPlaceholder = true, styles }) => {
   const { messages, isLoading, placeholderText, retryMessage, debug, getTrace } = useChat();
   const [errorDetails, setErrorDetails] = useState<any>(null);
   const [traceModalOpen, setTraceModalOpen] = useState(false);
   const [selectedTrace, setSelectedTrace] = useState<any>(null);
 
-  let lastUserMessageIndex = -1;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].sender === 'user') {
-      lastUserMessageIndex = i;
-      break;
+  const lastUserMessageIndex = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].sender === 'user') {
+        return i;
+      }
     }
-  }
+    return -1;
+  }, [messages]);
 
   const handleUserMessageClick = (msg: any) => {
     if (debug && getTrace) {
@@ -56,6 +131,10 @@ export const MessageList: React.FC<MessageListProps> = React.memo(({ showPlaceho
     }
   };
 
+  const handleRetry = (messageId: string) => {
+    retryMessage?.(messageId);
+  };
+
   return (
     <>
       {messages.length === 0 && showPlaceholder && placeholderText && (
@@ -63,70 +142,16 @@ export const MessageList: React.FC<MessageListProps> = React.memo(({ showPlaceho
       )}
 
       {messages.map((msg, idx) => (
-        <div
+        <ChatMessage
           key={msg.id}
-          className={cx(
-            styles.messageWrapper,
-            msg.sender === 'user' ? styles.userMessageWrapper : styles.aiMessageWrapper
-          )}
-          onClick={() => {
-            if (msg.sender === 'user') {
-              handleUserMessageClick(msg);
-            } else if (msg.sender === 'ai') {
-              handleAiMessageClick(msg);
-            }
-          }}
-          style={
-            debug && (msg.sender === 'user' || (msg.sender === 'ai' && msg.errorDetails))
-              ? { cursor: 'pointer' }
-              : undefined
-          }
-        >
-          <div
-            className={cx(
-              styles.messageBubble,
-              msg.sender === 'user' ? styles.userMessageBubble : styles.aiMessageBubble
-            )}
-          >
-            {msg.sender === 'ai' && msg.errorDetails && debug ? (
-              <>
-                ❌ {msg.errorDetails.status ? `[${msg.errorDetails.status}] ` : ''}
-                {msg.errorDetails.message}
-              </>
-            ) : (
-              <div className={styles.katex}>
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeRaw, rehypeSanitize, rehypeKatex]}
-                >
-                  {msg.text}
-                </ReactMarkdown>
-              </div>
-            )}
-            {debug && msg.errorDetails && msg.sender === 'ai' && (
-              <Icon name="info-circle" style={{ marginLeft: '8px', fontSize: '14px', opacity: 0.7 }} />
-            )}
-          </div>
-
-          {msg.sender === 'user' && msg.error && (
-            <div style={{ marginLeft: '8px', alignSelf: 'center' }}>
-              {idx === lastUserMessageIndex ? (
-                <Button
-                  icon="repeat"
-                  size="sm"
-                  variant="secondary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    retryMessage?.(msg.id);
-                  }}
-                  aria-label="Повторить отправку"
-                />
-              ) : (
-                <Icon name="exclamation-triangle" style={{ color: 'orange' }} />
-              )}
-            </div>
-          )}
-        </div>
+          message={msg}
+          styles={styles}
+          debug={debug}
+          isLastUserMessage={idx === lastUserMessageIndex}
+          onRetry={handleRetry}
+          onUserMessageClick={handleUserMessageClick}
+          onAiMessageClick={handleAiMessageClick}
+        />
       ))}
 
       {isLoading && (

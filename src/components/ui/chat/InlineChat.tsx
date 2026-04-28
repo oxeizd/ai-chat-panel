@@ -31,11 +31,7 @@ export const InlineChat: React.FC = () => {
   return (
     <>
       <div className={wrapperStyle} style={{ height: '100%' }}>
-        <ChatHeader
-          onFullscreen={toggleFullscreen}
-          isFullscreen={false}
-          welcomeMessage={props.showWelcomeMessage ? props.welcomeMessage : undefined}
-        />
+        <ChatHeader onFullscreen={toggleFullscreen} isFullscreen={false} />
         <div ref={props.chatMessagesRef} className={styles.messages.container}>
           <MessageList styles={getMessageListStyles(styles)} showPlaceholder={!props.welcomeMessage} />
         </div>
@@ -65,7 +61,6 @@ export const InlineChat: React.FC = () => {
           isFullscreen={true}
           onToggleFullscreen={toggleFullscreen}
           messagesContainerRef={props.chatMessagesRef}
-          maxWidth={props.maxWidth}
         />
       )}
     </>

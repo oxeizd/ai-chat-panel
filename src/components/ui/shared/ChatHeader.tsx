@@ -9,7 +9,6 @@ interface ChatHeaderProps {
   onBack?: () => void;
   isFullscreen?: boolean;
   onFullscreen?: () => void;
-  welcomeMessage?: string;
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, isFullscreen, onFullscreen }) => {

@@ -1,4 +1,4 @@
-import React, { forwardRef, memo, useEffect } from 'react';
+import React, { forwardRef, memo, useEffect, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { Input, Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { cx } from '@emotion/css';
@@ -39,6 +39,9 @@ export const InputArea = memo(
     const theme = useTheme2();
     const styles = useStyles(theme);
     const chat = useChat();
+
+    const { className, onSend, onContinue, continueMode, onSendText } = props;
+
     const {
       inputValue,
       setInputValue,
@@ -103,118 +106,146 @@ export const InputArea = memo(
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showPopup, popupRef, inputRef, setShowPopup]);
 
-    const handleSuggestionClick = (suggestion: string) => {
-      if (props.onSendText) {
-        props.onSendText(suggestion);
-      } else {
-        setInputValue(suggestion);
-        if (props.onSend) {
-          props.onSend();
+    const handleSuggestionClick = useCallback(
+      (suggestion: string) => {
+        if (onSendText) {
+          onSendText(suggestion);
         } else {
-          sendMessage();
-        }
-      }
-      inputRef.current?.blur();
-      setShowPopup(false);
-    };
-
-    const menu = (
-      <ChatMenu
-        agents={agents}
-        onClearChat={clearChat}
-        onExportChat={exportChat}
-        onSelectAgent={setSelectedAgent}
-        selectedAgent={selectedAgent}
-        onNewChat={newChat}
-        className={styles.menu.customMenu}
-      />
-    );
-
-    const showSuggestionsAlways =
-      showSuggestions && suggestionsPlacement === 'always' && suggestions && suggestions.length > 0;
-
-    const containerStyle = cx(styles.input.container, props.className, centerInput && styles.input.centredContainer);
-    const inlineWrapperStyle = cx(
-      styles.input.inlineWrapper,
-      props.className,
-      inputAreaBackground && styles.input.inlineWrapperArea
-    );
-
-    const handleAction = () => {
-      if (props.continueMode) {
-        props.onContinue?.();
-      } else {
-        if (props.onSend) {
-          props.onSend();
-        } else {
-          sendMessage();
-        }
-      }
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleAction();
-      }
-    };
-
-    const actionButton = props.continueMode ? (
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={(e) => {
-          blurButton(e);
-          handleAction();
-        }}
-        aria-label="Продолжить диалог"
-      >
-        Продолжить...
-      </Button>
-    ) : (
-      <Button
-        variant="secondary"
-        size="sm"
-        icon="arrow-right"
-        onClick={(e) => {
-          blurButton(e);
-          handleAction();
-        }}
-        disabled={isLoading || !inputValue.trim()}
-        aria-label="Отправить сообщение"
-      />
-    );
-
-    const popupContent = showPopup && suggestions && (
-      <div
-        ref={(node) => {
-          refs.setFloating(node);
-          if (popupRef) {
-            (popupRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          setInputValue(suggestion);
+          if (onSend) {
+            onSend();
+          } else {
+            sendMessage();
           }
-        }}
-        className={styles.suggestions.popupPortal}
-        style={floatingStyles}
-      >
-        <div className={styles.suggestions.popupHeader}>Можно спросить:</div>
-        <div className={styles.suggestions.popupList}>
-          {suggestions.map((suggestion, idx) => (
-            <div key={idx} className={styles.suggestions.popupItem} onClick={() => handleSuggestionClick(suggestion)}>
-              {suggestion}
-            </div>
-          ))}
-        </div>
-        <div className={styles.suggestions.popupFooter}>
-          Ответит: <strong>{selectedAgent?.name || 'Агент не выбран'}</strong>
-        </div>
-      </div>
+        }
+        inputRef.current?.blur();
+        setShowPopup(false);
+      },
+      [onSendText, onSend, setInputValue, sendMessage, inputRef, setShowPopup]
     );
+
+    const handleAction = useCallback(() => {
+      if (continueMode) {
+        onContinue?.();
+      } else {
+        if (onSend) {
+          onSend();
+        } else {
+          sendMessage();
+        }
+      }
+    }, [continueMode, onContinue, onSend, sendMessage]);
+
+    const handleKeyDown = useCallback(
+      (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          handleAction();
+        }
+      },
+      [handleAction]
+    );
+
+    const formattedWelcomeMessage = useMemo(() => formatWelcomeMessage(welcomeMessage || ''), [welcomeMessage]);
+
+    const containerStyle = useMemo(
+      () => cx(styles.input.container, className, centerInput && styles.input.centredContainer),
+      [styles.input.container, styles.input.centredContainer, className, centerInput]
+    );
+
+    const inlineWrapperStyle = useMemo(
+      () => cx(styles.input.inlineWrapper, className, inputAreaBackground && styles.input.inlineWrapperArea),
+      [styles.input.inlineWrapper, styles.input.inlineWrapperArea, className, inputAreaBackground]
+    );
+
+    const actionButton = useMemo(() => {
+      if (continueMode) {
+        return (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={(e) => {
+              blurButton(e);
+              handleAction();
+            }}
+            aria-label="Продолжить диалог"
+          >
+            Продолжить...
+          </Button>
+        );
+      }
+
+      return (
+        <Button
+          variant="secondary"
+          size="sm"
+          icon="arrow-right"
+          onClick={(e) => {
+            blurButton(e);
+            handleAction();
+          }}
+          disabled={isLoading || !inputValue.trim()}
+          aria-label="Отправить сообщение"
+        />
+      );
+    }, [continueMode, handleAction, isLoading, inputValue]);
+
+    const menu = useMemo(
+      () => (
+        <ChatMenu
+          agents={agents}
+          onClearChat={clearChat}
+          onExportChat={exportChat}
+          onSelectAgent={setSelectedAgent}
+          selectedAgent={selectedAgent}
+          onNewChat={newChat}
+          className={styles.menu.customMenu}
+        />
+      ),
+      [agents, clearChat, exportChat, setSelectedAgent, selectedAgent, newChat, styles.menu.customMenu]
+    );
+
+    const showSuggestionsAlways = useMemo(
+      () => showSuggestions && suggestionsPlacement === 'always' && suggestions && suggestions.length > 0,
+      [showSuggestions, suggestionsPlacement, suggestions]
+    );
+
+    const popupContent = useMemo(() => {
+      if (!showPopup || !suggestions) {
+        return null;
+      }
+
+      return (
+        <div
+          ref={(node) => {
+            refs.setFloating(node);
+            if (popupRef) {
+              (popupRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+            }
+          }}
+          className={styles.suggestions.popupPortal}
+          style={floatingStyles}
+        >
+          <div className={styles.suggestions.popupHeader}>Можно спросить:</div>
+          <div className={styles.suggestions.popupList}>
+            {suggestions.map((suggestion, idx) => (
+              <div key={idx} className={styles.suggestions.popupItem} onClick={() => handleSuggestionClick(suggestion)}>
+                {suggestion}
+              </div>
+            ))}
+          </div>
+          <div className={styles.suggestions.popupFooter}>
+            Ответит: <strong>{selectedAgent?.name || 'Агент не выбран'}</strong>
+          </div>
+        </div>
+      );
+    }, [showPopup, suggestions, styles, floatingStyles, refs, popupRef, handleSuggestionClick, selectedAgent]);
 
     return (
       <>
         <div ref={ref} className={containerStyle}>
           {showWelcomeMessage && welcomeMessage && (
-            <div className={styles.welcome.message}>{formatWelcomeMessage(welcomeMessage)}</div>
+            <div className={styles.welcome.message}>{formattedWelcomeMessage}</div>
           )}
           <div style={{ position: 'relative', width: '100%' }}>
             <div className={inlineWrapperStyle}>

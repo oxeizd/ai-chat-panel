@@ -13,7 +13,6 @@ interface FloatingChatProps {
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
   messagesContainerRef?: React.RefObject<HTMLDivElement>;
-  maxWidth?: number;
 }
 
 export const FloatingChat = forwardRef<HTMLDivElement, FloatingChatProps>(
