@@ -57,7 +57,6 @@ export interface ChatConfig {
 
   // Действия
   exportChat: () => void;
-  openSettings: () => void;
   handleSuggestionClick: (suggestion: string) => void;
 
   debug: boolean;
@@ -211,8 +210,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     URL.revokeObjectURL(url);
   }, [messages]);
 
-  const openSettings = useCallback(() => {}, []);
-
   const value: ChatConfig = {
     messages,
     isLoading,
@@ -244,7 +241,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     suggestionsPlacement,
     showSuggestions,
     exportChat,
-    openSettings,
     handleSuggestionClick,
     debug,
     getTrace,
