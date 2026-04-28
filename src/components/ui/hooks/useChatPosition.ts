@@ -1,3 +1,4 @@
+// useChatPosition.ts
 import { useState, useRef, useLayoutEffect, useCallback } from 'react';
 
 type ChatStyle = React.CSSProperties & { maxHeight?: number | undefined };
@@ -13,6 +14,9 @@ const SETTINGS = {
 };
 
 export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullScale: boolean, maxWidth = 1300) => {
+  const mountedRef = useRef(true);
+  const rafIdRef = useRef<number | null>(null);
+
   const chatRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLDivElement | null>(null);
   const messagesRef = useRef<HTMLDivElement | null>(null);
@@ -32,6 +36,14 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullSc
   }, []);
 
   const updateChatPosition = useCallback(() => {
+    if (!isChatOpen) {
+      return;
+    }
+
+    if (!mountedRef.current) {
+      return;
+    }
+
     const { margin, topOffset, minHeight, minWrapperHeight, contentLimit, padding, sidePadding } = SETTINGS;
 
     const chatHeight = chatRef.current?.offsetHeight;
@@ -73,18 +85,20 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullSc
         width = Math.round(window.innerWidth * 0.8);
       }
 
-      setChatStyle({
-        position: 'fixed',
-        left: `calc(50% - ${Math.floor(width / 2)}px)`,
-        top,
-        width,
-        height: fullScale ? height : undefined,
-        maxHeight: fullScale ? undefined : maxHeight,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        padding,
-      });
+      if (mountedRef.current) {
+        setChatStyle({
+          position: 'fixed',
+          left: `calc(50% - ${Math.floor(width / 2)}px)`,
+          top,
+          width,
+          height: fullScale ? height : undefined,
+          maxHeight: fullScale ? undefined : maxHeight,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          padding,
+        });
+      }
 
       return;
     }
@@ -128,34 +142,43 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullSc
       widthPosition = rect.width;
     }
 
-    setChatStyle({
-      position: 'fixed',
-      left: leftPosition,
-      top: topPosition,
-      height: fullScale ? maxHeightValue : undefined,
-      maxHeight: fullScale ? undefined : maxHeightValue,
-      width: widthPosition,
-      bottom: bottomPosition,
-      padding: padding,
-    });
+    if (mountedRef.current) {
+      setChatStyle({
+        position: 'fixed',
+        left: leftPosition,
+        top: topPosition,
+        height: fullScale ? maxHeightValue : undefined,
+        maxHeight: fullScale ? undefined : maxHeightValue,
+        width: widthPosition,
+        bottom: bottomPosition,
+        padding: padding,
+      });
+    }
   }, [isChatOpen, centerChat, maxWidth, fullScale]);
 
-  useLayoutEffect(() => {
-    if (!isChatOpen) {
+  const scheduleUpdate = useCallback(() => {
+    if (!mountedRef.current) {
       return;
     }
 
-    let rafId: number | null = null;
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+    }
 
-    const scheduleUpdate = () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-      rafId = requestAnimationFrame(() => {
+    rafIdRef.current = requestAnimationFrame(() => {
+      if (mountedRef.current) {
         updateChatPosition();
-        rafId = null;
-      });
-    };
+      }
+      rafIdRef.current = null;
+    });
+  }, [updateChatPosition]);
+
+  useLayoutEffect(() => {
+    mountedRef.current = true;
+
+    if (!isChatOpen) {
+      return;
+    }
 
     scheduleUpdate();
 
@@ -183,16 +206,21 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullSc
     }
 
     return () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
+      mountedRef.current = false;
+
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
       }
+
       window.removeEventListener('resize', onResizeOrScroll);
       window.removeEventListener('scroll', onResizeOrScroll);
+
       inputResizeObserver?.disconnect();
       messagesResizeObserver?.disconnect();
       floatingResizeObserver?.disconnect();
     };
-  }, [isChatOpen, centerChat, updateChatPosition]);
+  }, [isChatOpen, centerChat, scheduleUpdate]);
 
   return {
     inputContainerRef: inputRef,
