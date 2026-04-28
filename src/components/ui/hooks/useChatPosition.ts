@@ -18,7 +18,6 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullSc
   const messagesRef = useRef<HTMLDivElement | null>(null);
 
   const [chatDomElement, setChatDomElement] = useState<HTMLElement | null>(null);
-
   const [chatStyle, setChatStyle] = useState<ChatStyle>({
     left: 0,
     top: undefined,
@@ -34,12 +33,6 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullSc
 
   const updateChatPosition = useCallback(() => {
     const { margin, topOffset, minHeight, minWrapperHeight, contentLimit, padding, sidePadding } = SETTINGS;
-
-    if (!inputRef.current || !isChatOpen) {
-      return;
-    }
-
-    const rect = inputRef.current.getBoundingClientRect();
 
     const chatHeight = chatRef.current?.offsetHeight;
     const messagesHeight = (messagesRef.current?.scrollHeight || 0) + minWrapperHeight;
@@ -67,9 +60,13 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullSc
       let width: number;
 
       if (typeof maxWidth !== 'number' || maxWidth <= 0) {
-        width = rect.width;
+        if (inputRef.current) {
+          width = inputRef.current.getBoundingClientRect().width;
+        } else {
+          width = 1300;
+        }
       } else {
-        width = maxWidth;
+        width = 1300;
       }
 
       if (window.innerWidth < width) {
@@ -92,6 +89,12 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullSc
       return;
     }
 
+    if (!inputRef.current || !isChatOpen) {
+      return;
+    }
+
+    const rect = inputRef.current.getBoundingClientRect();
+
     const top = Math.max(topOffset, rect.top);
     const bottom = window.innerHeight - rect.bottom + margin;
     const freerTop = Math.max(0, top - topOffset);
@@ -108,9 +111,7 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullSc
     if (preferDown) {
       topPosition = top;
       maxHeightValue = freeBottom;
-      bottomPosition = undefined;
     } else {
-      topPosition = undefined;
       maxHeightValue = window.innerHeight - bottom - topOffset;
       bottomPosition = bottom;
     }
@@ -137,8 +138,6 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullSc
       bottom: bottomPosition,
       padding: padding,
     });
-
-    return;
   }, [isChatOpen, centerChat, maxWidth, fullScale]);
 
   useLayoutEffect(() => {
@@ -149,7 +148,7 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullSc
     let rafId: number | null = null;
 
     const scheduleUpdate = () => {
-      if (rafId != null) {
+      if (rafId !== null) {
         cancelAnimationFrame(rafId);
       }
       rafId = requestAnimationFrame(() => {
@@ -184,7 +183,7 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullSc
     }
 
     return () => {
-      if (rafId != null) {
+      if (rafId !== null) {
         cancelAnimationFrame(rafId);
       }
       window.removeEventListener('resize', onResizeOrScroll);
