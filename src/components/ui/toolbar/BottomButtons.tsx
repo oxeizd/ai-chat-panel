@@ -1,8 +1,8 @@
 import React from 'react';
 import { Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { AgentMenu } from './AgentMenu';
-import { useChat } from '../core/chatConfig';
-import { useStyles } from '../core/styles';
+import { useChat } from '../chat/ChatContext';
+import { useStyles } from '../styles/styles';
 import { blurButton } from '../utils/dom';
 
 export const BottomButtons: React.FC = () => {

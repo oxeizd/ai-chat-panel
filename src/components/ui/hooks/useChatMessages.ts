@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Message, AgentConfig, DebugTrace, TraceStep } from 'types';
 import { useAgent } from 'components/agent/useAgent';
 import { GrafanaUser } from '../../hooks/useGrafanaUser';
-import { MESSAGES } from '../core/config';
+import { MESSAGES } from '../chat/config';
 
 const generateSessionId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -46,9 +46,11 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       if (isSendingRef.current) {
         return false;
       }
+
       if (!text.trim() || isLoading) {
         return false;
       }
+
       if (!currentAgent) {
         if (!mountedRef.current) {
           return false;

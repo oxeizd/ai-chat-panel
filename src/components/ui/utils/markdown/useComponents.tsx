@@ -10,14 +10,13 @@ export const useMarkdownComponents = (chartContainerClass: string) => {
         const language = match ? match[1] : '';
         const codeText = String(children).replace(/\n$/, '');
 
+        // Графики
         if (language === 'chart' && !inline) {
           try {
             const config = parseChartConfig(codeText);
-
             if (!isValidChartConfig(config)) {
               throw new Error('Missing data field');
             }
-
             return (
               <div className={chartContainerClass}>
                 <ChartComponent config={config} />
@@ -35,17 +34,28 @@ export const useMarkdownComponents = (chartContainerClass: string) => {
           }
         }
 
+        // Формулы
+        if (language === 'math') {
+          return (
+            <code className={className} {...props}>
+              {children}
+            </code>
+          );
+        }
+
+        // Блок кода без переносов и короткий → покажем как инлайн
+        if (!inline && !codeText.includes('\n') && codeText.length < 100) {
+          return (
+            <code className={className} {...props}>
+              {children}
+            </code>
+          );
+        }
+
+        // Обычный блок кода
         if (!inline) {
           return (
-            <pre
-              style={{
-                overflowX: 'auto',
-                margin: '8px 0',
-                padding: '8px',
-                background: 'rgba(0,0,0,0.05)',
-                borderRadius: '4px',
-              }}
-            >
+            <pre>
               <code className={className} {...props}>
                 {children}
               </code>
@@ -53,18 +63,9 @@ export const useMarkdownComponents = (chartContainerClass: string) => {
           );
         }
 
+        // Инлайн-код
         return (
-          <code
-            className={className}
-            style={{
-              fontFamily: 'monospace',
-              fontSize: '0.9em',
-              background: 'rgba(0,0,0,0.06)',
-              padding: '0.2em 0.4em',
-              borderRadius: '3px',
-            }}
-            {...props}
-          >
+          <code className={className} {...props}>
             {children}
           </code>
         );

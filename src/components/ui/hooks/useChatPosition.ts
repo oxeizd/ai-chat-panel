@@ -1,4 +1,3 @@
-// useChatPosition.ts
 import { useState, useRef, useLayoutEffect, useCallback } from 'react';
 
 type ChatStyle = React.CSSProperties & { maxHeight?: number | undefined };

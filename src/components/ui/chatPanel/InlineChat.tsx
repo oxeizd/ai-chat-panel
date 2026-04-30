@@ -1,13 +1,13 @@
 import React from 'react';
 import { cx } from '@emotion/css';
 import { useTheme2 } from '@grafana/ui';
-import { useChat } from '../core/chatConfig';
+import { useChat } from '../chat/ChatContext';
 import { FloatingChat } from './FloatingChat';
-import { ChatHeader } from '../shared/ChatHeader';
-import { ChatTextarea } from '../shared/ChatTextarea';
-import { MessageList } from '../shared/MessageList';
-import { BottomButtons } from '../shared/BottomButtons';
-import { useStyles, getMessageListStyles } from '../core/styles';
+import { ChatHeader } from '../toolbar/ChatHeader';
+import { ChatTextarea } from './ChatTextarea';
+import { MessageList } from '../messages/MessageList';
+import { BottomButtons } from '../toolbar/BottomButtons';
+import { useStyles, getMessageListStyles } from '../styles/styles';
 
 export const InlineChat: React.FC = () => {
   const props = useChat();

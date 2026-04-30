@@ -1,11 +1,11 @@
 import ReactDOM from 'react-dom';
 import React, { forwardRef } from 'react';
 import { useTheme2 } from '@grafana/ui';
-import { ChatHeader } from 'components/ui/shared/ChatHeader';
-import { ChatTextarea } from 'components/ui/shared/ChatTextarea';
-import { MessageList } from 'components/ui/shared/MessageList';
-import { BottomButtons } from 'components/ui/shared/BottomButtons';
-import { useStyles, getMessageListStyles } from 'components/ui/core/styles';
+import { ChatHeader } from 'components/ui/toolbar/ChatHeader';
+import { ChatTextarea } from 'components/ui/chatPanel/ChatTextarea';
+import { MessageList } from '../messages/MessageList';
+import { BottomButtons } from 'components/ui/toolbar/BottomButtons';
+import { useStyles, getMessageListStyles } from 'components/ui/styles/styles';
 
 interface FloatingChatProps {
   chatStyle: React.CSSProperties;

@@ -1,10 +1,10 @@
 import React, { useCallback } from 'react';
 import { useTheme2 } from '@grafana/ui';
 import { cx } from '@emotion/css';
-import { useStyles } from 'components/ui/core/styles';
+import { useStyles } from 'components/ui/styles/styles';
 import { InputArea } from './InputArea';
 import { FloatingChat } from './FloatingChat';
-import { useChat } from 'components/ui/core/chatConfig';
+import { useChat } from '../chat/ChatContext';
 
 export const FloatingChatPanel: React.FC = () => {
   const props = useChat();

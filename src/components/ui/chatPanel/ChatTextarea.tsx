@@ -1,10 +1,10 @@
 import React from 'react';
 import { Button, useTheme2 } from '@grafana/ui';
 import { cx } from '@emotion/css';
-import { useStyles } from '../core/styles';
+import { useStyles } from '../styles/styles';
 import { useKeyboardSubmit } from '../hooks/useKeyboardSubmit';
 import { useWheelPrevention } from '../hooks/useWheelPrevention';
-import { useChat } from '../core/chatConfig';
+import { useChat } from '../chat/ChatContext';
 
 interface ChatTextareaProps {
   disabled?: boolean;

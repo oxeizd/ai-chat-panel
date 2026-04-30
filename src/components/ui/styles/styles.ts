@@ -1,7 +1,7 @@
 import { css } from '@emotion/css';
 import { GrafanaTheme2 } from '@grafana/data';
 import { useMemo } from 'react';
-import { MessageListStyles } from '../shared/MessageList';
+import { MessageListStyles } from '../messages/MessageList';
 
 const toRgba = (color: string, alpha: number) => {
   if (color.startsWith('#')) {
@@ -302,7 +302,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
         color: ${theme.colors.text.primary};
         border-bottom-left-radius: 0;
 
-        /* Абзацы – небольшой отступ снизу */
         p {
           margin: 0 0 0.5rem 0;
           &:last-child {
@@ -310,7 +309,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
           }
         }
 
-        /* Списки – фикс вылета за левый край */
         ul,
         ol {
           padding-left: 1.5rem;
@@ -321,7 +319,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
           margin-bottom: 0.2rem;
         }
 
-        /* Заголовки */
         h1,
         h2,
         h3,
@@ -337,10 +334,12 @@ export const getStyles = (theme: GrafanaTheme2) => {
           margin-top: 0;
         }
 
-        /* Таблицы */
         table {
-          border-collapse: collapse;
+          display: block;
           width: 100%;
+          overflow-x: auto;
+          white-space: nowrap;
+          border-collapse: collapse;
           margin: 1em 0;
         }
         th,
@@ -348,12 +347,12 @@ export const getStyles = (theme: GrafanaTheme2) => {
           border: 1px solid rgba(85, 84, 84, 0.2);
           padding: 8px;
           text-align: left;
+          white-space: nowrap;
         }
         th {
           background-color: rgb(204, 204, 220, 0.05);
         }
 
-        /* Цитаты */
         blockquote {
           margin: 0.5rem 0;
           padding-left: 0.8rem;
@@ -361,7 +360,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
           color: ${theme.colors.primary.text};
         }
 
-        /* Блоки кода – горизонтальная прокрутка */
+        /* Блоки кода */
         pre {
           margin: 0.5rem 0;
           padding: 0.8rem;
@@ -373,6 +372,9 @@ export const getStyles = (theme: GrafanaTheme2) => {
           font-family: monospace;
           font-size: 0.85rem;
           max-width: 100%;
+          border: none;
+          outline: none;
+          box-shadow: none;
         }
 
         pre code {
@@ -380,20 +382,28 @@ export const getStyles = (theme: GrafanaTheme2) => {
           padding: 0;
           white-space: pre;
           word-break: normal;
+          border: none;
+          outline: none;
+          box-shadow: none;
         }
 
+        /* Инлайн код */
         code:not(pre code) {
-          background: none;
-          padding: 0;
+          background: ${theme.colors.background.secondary};
+          padding: 0.1em 0.3em;
           color: ${theme.colors.primary.text};
           font-family: monospace;
           font-size: 0.9em;
           border: none;
+          border-radius: 3px;
         }
 
         pre code::before,
-        pre code::after {
+        pre code::after,
+        code::before,
+        code::after {
           display: none;
+          content: none;
         }
       `,
     },
