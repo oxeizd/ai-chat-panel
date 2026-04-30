@@ -6,7 +6,7 @@ import { useStyles } from '../core/styles';
 import { blurButton } from '../utils/dom';
 
 export const BottomButtons: React.FC = () => {
-  const { selectedAgent, agents, setSelectedAgent, newChat, isLoading,debug, setMessages, messages } = useChat();
+  const { selectedAgent, agents, setSelectedAgent, newChat, isLoading, debug, setMessages, messages } = useChat();
   const theme = useTheme2();
   const styles = useStyles(theme);
 

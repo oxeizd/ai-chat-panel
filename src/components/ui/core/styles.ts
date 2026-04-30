@@ -450,7 +450,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
 
     katex: css`
       .katex {
-        font-size: 1.1em;
+        font-size: 1.3em;
         color: ${theme.colors.primary.text};
         letter-spacing: 0.01em;
       }
@@ -517,7 +517,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
         color: ${theme.colors.text.primary};
       }
     `,
-    
+
     // === Графики =====
     chartContainer: css`
       margin: ${theme.spacing(1)} 0;
@@ -527,7 +527,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
       border-radius: ${theme.shape.radius.default};
       padding: ${theme.spacing(1)};
       overflow-x: auto;
-      
+
       canvas {
         max-width: 100%;
         height: auto;
@@ -548,5 +548,5 @@ export const getMessageListStyles = (styles: ReturnType<typeof getStyles>): Mess
   userMessageBubble: styles.messages.userBubble,
   aiMessageBubble: styles.messages.aiBubble,
   katex: styles.katex,
-  chartContainer: styles.chartContainer
+  chartContainer: styles.chartContainer,
 });

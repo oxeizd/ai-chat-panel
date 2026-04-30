@@ -257,6 +257,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       inputAreaBackground,
     }),
     [
+      setMessages,
       messages,
       isLoading,
       inputValue,
