@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import 'katex/dist/katex.min.css';
 import { REMARK_PLUGINS, REHYPE_PLUGINS } from '../utils/markdown/plugins';
 import { MessageListStyles } from './MessageList';
+import { downloadFile } from 'components/agent/utils/fileHandler';
 
 interface ChatMessageProps {
   message: {
@@ -15,6 +16,12 @@ interface ChatMessageProps {
     text: string;
     error?: boolean;
     errorDetails?: any;
+    fileAttachment?: {
+      filename: string;
+      data: string;
+      mimeType?: string;
+      isUrl?: boolean;
+    };
   };
   styles: MessageListStyles;
   debug: boolean;
@@ -86,6 +93,24 @@ export const ChatMessage = React.memo(
                   {message.text}
                 </ReactMarkdown>
               </div>
+
+              {message.fileAttachment && (
+                <div style={{ marginTop: 8 }}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon="download-alt"
+                    onClick={() => {
+                      if (message.fileAttachment) {
+                        downloadFile(message.fileAttachment);
+                      }
+                    }}
+                  >
+                    📄 {message.fileAttachment.filename}
+                  </Button>
+                </div>
+              )}
+
               {debug && message.errorDetails && (
                 <Icon
                   name="info-circle"

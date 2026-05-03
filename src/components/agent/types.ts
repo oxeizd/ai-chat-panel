@@ -57,6 +57,12 @@ export interface Message {
     message: string; // читаемое сообщение
     raw?: string; // сырой ответ сервера
   };
+  fileAttachment?: {
+    filename: string;
+    data: string;
+    mimeType?: string;
+    isUrl?: boolean;
+  };
 }
 
 export interface TraceStep {

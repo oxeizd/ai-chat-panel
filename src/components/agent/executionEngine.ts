@@ -6,6 +6,7 @@ import { buildUrl, buildRequestBody, extractReply, saveToContext } from './utils
 import { addAssistantMessageToHistory, addUserMessageToHistory } from './utils/historyManager';
 import { isStreamingEnabled, getStreamConfig, detectSSEByContent, parseSSEStream } from './utils/streaming';
 import { STREAMING_DEFAULTS } from './constants';
+import { parseFileFromResponse } from './utils/fileHandler';
 
 export interface WorkflowContext extends Record<string, any> {
   messages?: any[];
@@ -157,6 +158,13 @@ export const executeEndpoint = async (
 
   // 12. Сохранение в контекст
   saveToContext(endpoint, context, data, ['reply', 'result', 'status']);
+
+  const fileAttachment = parseFileFromResponse(data);
+
+  if (fileAttachment) {
+    data.fileAttachment = fileAttachment;
+    saveToContext(endpoint, context, { fileAttachment }, []);
+  }
 
   return data;
 };

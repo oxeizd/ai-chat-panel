@@ -164,13 +164,11 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
             const newMessages = [...prev];
             const assistantIndex = newMessages.findIndex((m) => m.id === assistantMessageId);
             if (assistantIndex !== -1) {
-              const currentText = newMessages[assistantIndex].text;
-              if (reply !== currentText) {
-                newMessages[assistantIndex] = {
-                  ...newMessages[assistantIndex],
-                  text: reply,
-                };
-              }
+              newMessages[assistantIndex] = {
+                ...newMessages[assistantIndex],
+                text: reply,
+                fileAttachment: (reply as any)?.fileAttachment || undefined,
+              };
             }
             return newMessages;
           });
