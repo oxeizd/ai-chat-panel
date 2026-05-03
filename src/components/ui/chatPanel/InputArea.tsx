@@ -3,10 +3,10 @@ import ReactDOM from 'react-dom';
 import { Input, Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { cx } from '@emotion/css';
 import { useFloating, autoUpdate, flip, offset, size } from '@floating-ui/react';
-import { useStyles } from '../core/styles';
-import { ChatMenu } from 'components/ui/shared/ChatMenu';
+import { useStyles } from '../styles/styles';
+import { ChatMenu } from 'components/ui/toolbar/ChatMenu';
 import { useSuggestions } from 'components/ui/hooks/useSuggestions';
-import { useChat } from '../core/chatConfig';
+import { useChat } from '../chat/ChatContext';
 import { blurButton } from '../utils/dom';
 
 interface InputAreaProps {

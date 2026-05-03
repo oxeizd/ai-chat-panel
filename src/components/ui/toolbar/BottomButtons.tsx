@@ -1,14 +1,27 @@
 import React from 'react';
 import { Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { AgentMenu } from './AgentMenu';
-import { useChat } from '../core/chatConfig';
-import { useStyles } from '../core/styles';
+import { useChat } from '../chat/ChatContext';
+import { useStyles } from '../styles/styles';
 import { blurButton } from '../utils/dom';
 
 export const BottomButtons: React.FC = () => {
-  const { selectedAgent, agents, setSelectedAgent, newChat, isLoading } = useChat();
+  const { selectedAgent, agents, setSelectedAgent, newChat, isLoading, debug, setMessages, messages } = useChat();
   const theme = useTheme2();
   const styles = useStyles(theme);
+
+  const sendTestAiMessage = () => {
+    const text = window.prompt('Введите текст сообщения от AI');
+    if (text && text.trim()) {
+      const newMessage = {
+        id: `test-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+        text: text.trim(),
+        sender: 'ai' as const,
+        timestamp: Date.now(),
+      };
+      setMessages([...messages, newMessage]);
+    }
+  };
 
   return (
     <div style={{ display: 'flex', gap: '8px' }}>
@@ -34,6 +47,19 @@ export const BottomButtons: React.FC = () => {
           {selectedAgent ? selectedAgent.name : 'Агент не выбран'}
         </Button>
       </Dropdown>
+
+      {debug && (
+        <Button
+          variant="secondary"
+          size="sm"
+          icon="edit"
+          onClick={sendTestAiMessage}
+          title="Отправить тестовое сообщение от AI (Markdown, графики, формулы)"
+        >
+          Тест AI
+        </Button>
+      )}
+
       <Button
         variant="secondary"
         size="sm"

@@ -1,86 +1,14 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import { Message, AgentConfig, DebugTrace } from 'types';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { AgentConfig } from 'types';
 import { useGrafanaUser } from 'components/hooks/useGrafanaUser';
 import { useChatMessages } from '../hooks/useChatMessages';
 import { useChatOpen } from '../hooks/useChatOpen';
 import { useChatPosition } from '../hooks/useChatPosition';
 import { useChatWheelHandler } from '../hooks/useChatWheelHandler';
 import { useAutoScroll } from '../hooks/useAutoScroll';
+import { ChatContext } from './ChatContext';
 import { DEFAULT_PLACEHOLDER } from './config';
-
-export interface ChatConfig {
-  // Состояния
-  messages: Message[];
-  isLoading: boolean;
-  inputValue: string;
-  setInputValue: (value: string) => void;
-  sendMessage: (customText?: string) => void;
-  clearChat: () => void;
-  newChat: () => void;
-  retryMessage?: (messageId: string) => void;
-
-  // Агенты
-  selectedAgent: AgentConfig | null;
-  setSelectedAgent: (agent: AgentConfig) => void;
-  agents: AgentConfig[];
-
-  // UI состояние
-  isChatOpen: boolean;
-  openChat: () => void;
-  closeChat: () => void;
-  isFullscreen: boolean;
-  toggleFullscreen: () => void;
-
-  // Refs и стили
-  inputContainerRef: React.RefObject<HTMLDivElement>;
-  chatMessagesRef: React.RefObject<HTMLDivElement>;
-  floatingChatRef: React.RefObject<HTMLDivElement>;
-  setFloatingChatRefCallback: (node: HTMLDivElement | null) => void;
-  chatStyle: React.CSSProperties;
-
-  // Опции панели
-  placeholderText: string;
-  maxWidth?: number;
-  centerInput?: boolean;
-  buttonText?: string;
-  openFullscreen?: boolean;
-  centerFloatingChat?: boolean;
-  fullScale?: boolean;
-  welcomeMessage?: string;
-  showWelcomeMessage?: boolean;
-  suggestions?: string[];
-  suggestionsPlacement?: 'always' | 'onFocus';
-  showSuggestions?: boolean;
-  inputAreaBackground?: boolean;
-  panelHeigth?: number;
-  panelWidth?: number;
-
-  // Действия
-  exportChat: () => void;
-  handleSuggestionClick: (suggestion: string) => void;
-
-  debug: boolean;
-  getTrace?: (messageId: string) => DebugTrace | undefined;
-}
-
-interface ChatProviderProps {
-  children: React.ReactNode;
-  agents: AgentConfig[];
-  placeholderText?: string;
-  suggestions?: string;
-  suggestionsPlacement?: 'always' | 'onFocus';
-  showSuggestions?: boolean;
-  maxWidth?: number;
-  centerInput?: boolean;
-  welcomeMessage?: string;
-  showWelcomeMessage?: boolean;
-  debug?: boolean;
-  buttonText?: string;
-  openFullscreen?: boolean;
-  centerFloatingChat?: boolean;
-  inputAreaBackground?: boolean;
-  fullScale?: boolean;
-}
+import { ChatProviderProps } from './types';
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({
   children,
@@ -100,7 +28,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   inputAreaBackground = false,
   fullScale = false,
 }) => {
-  // User
   const { user } = useGrafanaUser();
 
   if (placeholderText.length === 0) {
@@ -114,6 +41,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   // Messages
   const {
     messages,
+    setMessages,
     isLoading,
     inputValue,
     setInputValue,
@@ -214,8 +142,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     URL.revokeObjectURL(url);
   }, [messages]);
 
-  const value = useMemo<ChatConfig>(
+  const value = useMemo(
     () => ({
+      setMessages,
       messages,
       isLoading,
       inputValue,
@@ -255,6 +184,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       inputAreaBackground,
     }),
     [
+      setMessages,
       messages,
       isLoading,
       inputValue,
@@ -296,14 +226,4 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
-};
-
-const ChatContext = createContext<ChatConfig | null>(null);
-
-export const useChat = () => {
-  const context = useContext(ChatContext);
-  if (!context) {
-    throw new Error('useChat must be used within ChatProvider');
-  }
-  return context;
 };

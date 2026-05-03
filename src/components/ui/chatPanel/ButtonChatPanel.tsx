@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@grafana/ui';
-import { useChat } from '../core/chatConfig';
+import { useChat } from '../chat/ChatContext';
 import { FloatingChat } from './FloatingChat';
 
 export const ButtonChatPanel: React.FC = () => {

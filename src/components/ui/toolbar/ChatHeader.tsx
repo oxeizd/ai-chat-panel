@@ -1,8 +1,8 @@
 import React from 'react';
 import { Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { ChatMenu } from './ChatMenu';
-import { useChat } from 'components/ui/core/chatConfig';
-import { useStyles } from 'components/ui/core/styles';
+import { useChat } from '../chat/ChatContext';
+import { useStyles } from 'components/ui/styles/styles';
 import { blurButton } from '../utils/dom';
 
 interface ChatHeaderProps {

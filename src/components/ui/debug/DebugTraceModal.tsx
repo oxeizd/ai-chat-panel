@@ -11,6 +11,7 @@ interface DebugTraceModalProps {
 
 export const DebugTraceModal: React.FC<DebugTraceModalProps> = ({ isOpen, trace, onDismiss }) => {
   const theme = useTheme2();
+
   if (!trace) {
     return null;
   }

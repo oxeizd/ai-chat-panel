@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Input, Field } from '@grafana/ui';
 
 interface CommaSeparatedInputProps {
@@ -18,13 +18,23 @@ export const CommaSeparatedInput: React.FC<CommaSeparatedInputProps> = ({
   disabled,
   description,
 }) => {
-  const [rawString, setRawString] = useState(value.join(', '));
+  const [rawString, setRawString] = useState(() => value.join(', '));
+  const isEditingRef = useRef(false);
 
   useEffect(() => {
-    setRawString(value.join(', '));
+    if (!isEditingRef.current) {
+      setRawString(value.join(', '));
+    }
   }, [value]);
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    isEditingRef.current = true;
+    setRawString(e.currentTarget.value);
+  };
+
   const handleBlur = () => {
+    isEditingRef.current = false;
+
     const values = rawString
       .split(',')
       .map((s) => s.trim())
@@ -36,7 +46,7 @@ export const CommaSeparatedInput: React.FC<CommaSeparatedInputProps> = ({
     <Field label={label} description={description}>
       <Input
         value={rawString}
-        onChange={(e) => setRawString(e.currentTarget.value)}
+        onChange={handleChange}
         onBlur={handleBlur}
         placeholder={placeholder}
         disabled={disabled}
