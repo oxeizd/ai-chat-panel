@@ -1,4 +1,4 @@
-import { ChartData } from './chartComponent/ChartComponent';
+import { ChartData } from './chartComponent/types';
 
 export const parseChartConfig = (codeText: string): ChartData => {
   if (codeText.trim().startsWith('{')) {

@@ -10,12 +10,9 @@ export interface DatasetConfig {
   tension?: number;
   fill?: boolean;
   type?: 'line' | 'bar';
-  yAxisID?: string;
   stack?: string;
   pointHoverRadius?: number;
-  pointHoverBackgroundColor?: string;
   borderDash?: number[];
-  shadow?: boolean;
   gradient?: boolean;
 }
 
@@ -31,9 +28,7 @@ export interface ChartData {
   yAxisMax?: number;
   showLegend?: boolean;
   showTooltip?: boolean;
-  maintainAspectRatio?: boolean;
   height?: number | string;
-  theme?: 'light' | 'dark' | 'auto';
   smooth?: boolean;
   areaOpacity?: number;
   showGrid?: boolean;

@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useMemo } from 'react';
-import { Line, Bar } from 'react-chartjs-2';
+import React, { useRef, useMemo } from 'react';
+import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -17,6 +17,18 @@ import {
 } from 'chart.js';
 import 'chartjs-adapter-date-fns';
 
+import { ChartData, DatasetConfig } from './types';
+import {
+  TEXT_COLOR_MUTED,
+  TOOLTIP_BG,
+  TOOLTIP_BORDER,
+  GRID_COLOR,
+  getColor,
+  formatNumber,
+  createGradient,
+  useChartResize,
+} from './utils';
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -30,457 +42,165 @@ ChartJS.register(
   Filler
 );
 
-// ========== Типы ==========
-export interface DatasetConfig {
-  label: string;
-  data: number[];
-  borderColor?: string;
-  backgroundColor?: string;
-  borderWidth?: number;
-  pointRadius?: number;
-  pointBackgroundColor?: string;
-  pointBorderColor?: string;
-  // Added hover border color
-  pointHoverBorderColor?: string;
-  tension?: number;
-  fill?: boolean;
-  type?: 'line' | 'bar';
-  yAxisID?: string;
-  stack?: string;
-  pointHoverRadius?: number;
-  pointHoverBackgroundColor?: string;
-  borderDash?: number[];
-  shadow?: boolean;
-  gradient?: boolean;
-  overlayGradient?: boolean;
-  overlayGradientCSS?: string;
-}
+const ChartRenderer: React.FC<{ config: ChartData; chartType: 'line' | 'bar' }> = React.memo(
+  ({ config, chartType }) => {
+    const chartRef = useRef<any>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    useChartResize(containerRef, chartRef);
 
-export interface ChartData {
-  datasets?: DatasetConfig[];
-  labels?: string[] | Date[];
-  title?: string;
-  type?: 'line' | 'bar';
-  xAxisType?: 'category' | 'time';
-  xAxisTitle?: string;
-  yAxisTitle?: string;
-  yAxisMin?: number;
-  yAxisMax?: number;
-  showLegend?: boolean;
-  showTooltip?: boolean;
-  maintainAspectRatio?: boolean;
-  height?: number | string;
-  theme?: 'light' | 'dark' | 'auto';
-  smooth?: boolean;
-  areaOpacity?: number;
-  showGrid?: boolean;
-  data?: number[];
-  borderColor?: string;
-  backgroundColor?: string;
-  overlayGradientStyle?: string;
-}
+    const {
+      datasets = [],
+      labels,
+      title,
+      xAxisType = 'category',
+      xAxisTitle,
+      yAxisTitle,
+      yAxisMin,
+      yAxisMax,
+      showLegend = false,
+      showTooltip = true,
+      height = 400,
+      smooth = true,
+      showGrid = true,
+      areaOpacity = 0.25,
+    } = config;
 
-// ========== Константы ==========
-const MODERN_COLORS = [
-  { border: '#3b82f6', background: 'rgba(59, 130, 246, 0.12)', gradient: 'rgba(59, 130, 246, 0.6)' },
-  { border: '#ef4444', background: 'rgba(239, 68, 68, 0.12)', gradient: 'rgba(239, 68, 68, 0.6)' },
-  { border: '#10b981', background: 'rgba(16, 185, 129, 0.12)', gradient: 'rgba(16, 185, 129, 0.6)' },
-  { border: '#f59e0b', background: 'rgba(245, 158, 11, 0.12)', gradient: 'rgba(245, 158, 11, 0.6)' },
-  { border: '#8b5cf6', background: 'rgba(139, 92, 246, 0.12)', gradient: 'rgba(139, 92, 246, 0.6)' },
-  { border: '#ec4899', background: 'rgba(236, 72, 153, 0.12)', gradient: 'rgba(236, 72, 153, 0.6)' },
-  { border: '#06b6d4', background: 'rgba(6, 182, 212, 0.12)', gradient: 'rgba(6, 182, 212, 0.6)' },
-  { border: '#84cc16', background: 'rgba(132, 204, 22, 0.12)', gradient: 'rgba(132, 204, 22, 0.6)' },
-];
+    const chartLabels = useMemo(
+      () =>
+        labels?.length
+          ? labels.map((l) => (xAxisType === 'time' ? new Date(l as string) : l))
+          : Array.from({ length: Math.max(...datasets.map((ds) => ds.data.length), 0) }, (_, i) => (i + 1).toString()),
+      [labels, datasets, xAxisType]
+    );
 
-// ========== Хук для ResizeObserver (упрощённый) ==========
-const useChartResize = (containerRef: React.RefObject<HTMLDivElement>, chartRef: React.RefObject<any>) => {
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-    const handleResize = () => {
-      const chart = chartRef.current;
-      if (chart?.resize) {
-        chart.resize();
-      }
-    };
-    const observer = new ResizeObserver(handleResize);
-    observer.observe(container);
-    handleResize();
-    return () => observer.disconnect();
-  }, [containerRef, chartRef]);
-};
+    const chartDatasets = useMemo(
+      () =>
+        datasets.map((ds: DatasetConfig, idx: number) => {
+          const c = getColor(idx);
+          const border = ds.borderColor || c.border;
+          const gradientColor = ds.borderColor?.startsWith('#')
+            ? `rgba(${parseInt(ds.borderColor.slice(1, 3), 16)},${parseInt(ds.borderColor.slice(3, 5), 16)},${parseInt(ds.borderColor.slice(5, 7), 16)},0.5)`
+            : c.gradient;
 
-// ========== Вспомогательные функции ==========
-const generateColor = (idx: number) => MODERN_COLORS[idx % MODERN_COLORS.length];
+          const baseConfig = {
+            label: ds.label,
+            data: ds.data,
+            borderColor: border,
+            yAxisID: 'y',
+            stack: ds.stack,
+          };
 
-const clampAlpha = (s: string, alpha: number) => {
-  if (!s.includes('rgb')) {
-    return s;
-  }
-  const nums = s.replace(/rgba?\(|\)|\s/g, '').split(',');
-  const [r, g, b] = nums;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
+          if (chartType === 'line' || ds.type === 'line') {
+            return {
+              ...baseConfig,
+              backgroundColor:
+                ds.gradient !== false
+                  ? (ctx: any) => createGradient(ctx.chart.ctx, gradientColor, areaOpacity)
+                  : ds.fill !== false
+                    ? c.background
+                    : 'transparent',
+              borderWidth: ds.borderWidth ?? 2.5,
+              pointRadius: ds.pointRadius ?? 0,
+              pointHoverRadius: ds.pointHoverRadius ?? 6,
+              pointBackgroundColor: ds.pointBackgroundColor || '#fff',
+              pointBorderColor: ds.pointBorderColor || border,
+              pointBorderWidth: 2,
+              tension: ds.tension ?? (smooth ? 0.45 : 0),
+              fill: ds.fill ?? true,
+              borderDash: ds.borderDash,
+              type: 'line',
+            };
+          }
 
-const createGradient = (ctx: CanvasRenderingContext2D, color: string, areaOpacity = 0.3) => {
-  const chart = (ctx as any).chart;
-  const chartArea = chart?.chartArea;
-  if (!chartArea) {
-    const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-    gradient.addColorStop(0, clampAlpha(color, areaOpacity));
-    gradient.addColorStop(1, 'rgba(0,0,0,0)');
-    return gradient;
-  }
+          return {
+            ...baseConfig,
+            backgroundColor: ds.backgroundColor || c.background,
+            borderWidth: ds.borderWidth ?? 0,
+            borderRadius: 8,
+            type: 'bar',
+          };
+        }),
+      [datasets, smooth, areaOpacity, chartType]
+    );
 
-  const { top, bottom } = chartArea;
-  const gradient = ctx.createLinearGradient(0, top, 0, bottom);
-  gradient.addColorStop(0, clampAlpha(color, areaOpacity));
-  gradient.addColorStop(0.5, clampAlpha(color, Math.max(areaOpacity * 0.4, 0.05)));
-  gradient.addColorStop(1, 'rgba(0,0,0,0)');
-  return gradient;
-};
-
-// Кастомизированный tooltip с темой
-const buildTooltipConfig = (showTooltip: boolean, isDark: boolean) => ({
-  enabled: showTooltip,
-  mode: 'index' as const,
-  intersect: false,
-  backgroundColor: isDark ? 'rgba(17,24,39,0.95)' : 'rgba(255,255,255,0.95)',
-  titleColor: isDark ? '#fff' : '#0b1220',
-  titleFont: { size: 13, weight: 600 as unknown as number },
-  bodyColor: isDark ? '#e5e7eb' : '#374151',
-  bodyFont: { size: 12 },
-  borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)',
-  borderWidth: 1,
-  padding: 10,
-  cornerRadius: 8,
-  displayColors: true,
-  boxPadding: 6,
-  callbacks: {
-    label: (context: any) => {
-      let label = context.dataset.label || '';
-      if (label) {
-        label += ': ';
-      }
-      const locale = navigator.language || 'en';
-      const value = context.parsed?.y ?? context.parsed;
-      return label + (typeof value === 'number' ? value.toLocaleString(locale) : String(value));
-    },
-  },
-});
-
-// ========== LineChartComponent ==========
-const LineChartComponent: React.FC<{ config: ChartData }> = React.memo(({ config }) => {
-  const chartRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  useChartResize(containerRef, chartRef);
-
-  const {
-    datasets = [],
-    labels,
-    title,
-    xAxisType = 'category',
-    xAxisTitle,
-    yAxisTitle,
-    yAxisMin,
-    yAxisMax,
-    showLegend = true,
-    showTooltip = true,
-    maintainAspectRatio = false,
-    height = '350px',
-    theme = 'auto',
-    smooth = true,
-    showGrid = true,
-    areaOpacity = 0.3,
-    overlayGradientStyle,
-  } = config;
-
-  const chartLabels = useMemo(() => {
-    if (labels?.length) {
-      return labels.map((label) => (xAxisType === 'time' ? new Date(label as string) : label));
-    }
-    const maxLen = Math.max(...datasets.map((ds) => ds.data.length), 0);
-    return Array.from({ length: maxLen }, (_, i) => (i + 1).toString());
-  }, [labels, datasets, xAxisType]);
-
-  const chartDatasets = useMemo(
-    () =>
-      datasets.map((ds, idx) => {
-        const c = generateColor(idx);
-        const borderColor = ds.borderColor || c.border;
-        const fillColor = ds.backgroundColor || c.gradient || c.background;
-        const useGradient = ds.gradient !== false;
-        return {
-          label: ds.label,
-          data: ds.data,
-          borderColor,
-          backgroundColor: useGradient
-            ? (ctx: any) => createGradient(ctx.chart.ctx, fillColor, areaOpacity)
-            : fillColor,
-          borderWidth: ds.borderWidth ?? 3,
-          pointRadius: ds.pointRadius ?? 4,
-          pointHoverRadius: ds.pointHoverRadius ?? 7,
-          pointBackgroundColor: ds.pointBackgroundColor || borderColor,
-          pointBorderColor: ds.pointBorderColor || (theme === 'dark' ? '#08101a' : '#fff'),
-          pointHoverBackgroundColor: ds.pointHoverBackgroundColor || '#fff',
-          pointHoverBorderColor: ds.pointHoverBorderColor || borderColor,
-          tension: ds.tension ?? (smooth ? 0.42 : 0),
-          fill: ds.fill ?? true,
-          yAxisID: ds.yAxisID || 'y',
-          stack: ds.stack,
-          borderDash: ds.borderDash,
-        };
+    const options = useMemo(
+      (): ChartOptions<any> => ({
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: showLegend,
+            position: 'top' as const,
+            labels: { color: TEXT_COLOR_MUTED, usePointStyle: true, font: { size: 12 } },
+          },
+          tooltip: {
+            enabled: showTooltip,
+            mode: 'index',
+            intersect: false,
+            backgroundColor: TOOLTIP_BG,
+            titleColor: '#f8fafc',
+            bodyColor: '#cbd5e1',
+            borderColor: TOOLTIP_BORDER,
+            borderWidth: 1,
+            padding: 12,
+            cornerRadius: 12,
+          },
+          title: title
+            ? {
+                display: true,
+                text: title,
+                color: '#f8fafc',
+                font: { size: 18, weight: 'bold' as const },
+                padding: { bottom: 24 },
+              }
+            : undefined,
+        },
+        scales: {
+          x: {
+            type: xAxisType === 'time' ? 'time' : 'category',
+            title: xAxisTitle
+              ? { display: true, text: xAxisTitle, color: TEXT_COLOR_MUTED, font: { size: 11 } }
+              : undefined,
+            grid: { display: false, color: GRID_COLOR },
+            ticks: { color: TEXT_COLOR_MUTED, font: { size: 11 } },
+          },
+          y: {
+            position: 'left',
+            title: yAxisTitle
+              ? { display: true, text: yAxisTitle, color: TEXT_COLOR_MUTED, font: { size: 11 } }
+              : undefined,
+            min: yAxisMin,
+            max: yAxisMax,
+            grid: { display: showGrid, color: GRID_COLOR },
+            ticks: { color: TEXT_COLOR_MUTED, font: { size: 11 }, callback: formatNumber },
+          },
+        },
       }),
-    [datasets, smooth, areaOpacity, theme]
-  );
+      [showLegend, showTooltip, title, xAxisType, xAxisTitle, yAxisTitle, yAxisMin, yAxisMax, showGrid]
+    );
 
-  const optionsRaw = useMemo(() => {
-    const prefersDark =
-      typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark = theme === 'dark' || (theme === 'auto' && prefersDark);
-    const textColor = isDark ? '#e6edf3' : '#0f172a';
-    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)';
+    const chartData: ChartJSData<any> = { labels: chartLabels, datasets: chartDatasets };
 
-    const scales: any = {
-      x: {
-        type: xAxisType === 'time' ? 'time' : 'category',
-        title: xAxisTitle ? { display: true, text: xAxisTitle, color: textColor } : undefined,
-        grid: { display: showGrid, color: gridColor },
-        ticks: { color: textColor },
-      },
-      y: {
-        type: 'linear',
-        title: yAxisTitle ? { display: true, text: yAxisTitle, color: textColor } : undefined,
-        min: yAxisMin,
-        max: yAxisMax,
-        grid: { display: showGrid, color: gridColor },
-        ticks: { color: textColor },
-      },
-    };
-
-    return {
-      responsive: true,
-      maintainAspectRatio,
-      plugins: {
-        legend: { display: showLegend, labels: { color: textColor } },
-        tooltip: buildTooltipConfig(showTooltip, isDark),
-        title: { display: !!title, text: title, color: textColor, font: { size: 14, weight: 600 } },
-      },
-      scales,
-      interaction: { mode: 'index', intersect: false },
-      elements: { line: { tension: smooth ? 0.42 : 0 }, point: { radius: 4, hoverRadius: 7 } },
-    };
-  }, [
-    xAxisType,
-    xAxisTitle,
-    yAxisTitle,
-    yAxisMin,
-    yAxisMax,
-    showLegend,
-    showTooltip,
-    title,
-    maintainAspectRatio,
-    theme,
-    smooth,
-    showGrid,
-  ]);
-
-  const options = optionsRaw as unknown as ChartOptions<'line'>;
-
-  const chartData: ChartJSData<'line', number[], string | Date> = {
-    labels: chartLabels,
-    datasets: chartDatasets,
-  };
-
-  if (!datasets.length || !datasets[0]?.data.length) {
-    return <div style={{ padding: 20, textAlign: 'center', color: '#9ca3af' }}>Нет данных для отображения</div>;
-  }
-
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        width: '100%',
-        height: typeof height === 'number' ? `${height}px` : height,
-        position: 'relative',
-        borderRadius: 8,
-        overflow: 'hidden',
-        background: 'transparent',
-      }}
-    >
-      {overlayGradientStyle && (
-        <div
-          style={{
-            position: 'absolute',
-            left: 3,
-            right: -3,
-            top: 2.48,
-            bottom: -1,
-            pointerEvents: 'none',
-            background: overlayGradientStyle,
-            opacity: 0.5,
-            borderRadius: 6,
-            mixBlendMode: 'overlay',
-          }}
-        />
-      )}
-      <Line ref={chartRef} data={chartData} options={options} />
-    </div>
-  );
-});
-LineChartComponent.displayName = 'LineChartComponent';
-
-// ========== BarChartComponent ==========
-const BarChartComponent: React.FC<{ config: ChartData }> = React.memo(({ config }) => {
-  const chartRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  useChartResize(containerRef, chartRef);
-
-  const {
-    datasets = [],
-    labels,
-    title,
-    xAxisType = 'category',
-    xAxisTitle,
-    yAxisTitle,
-    yAxisMin,
-    yAxisMax,
-    showLegend = true,
-    showTooltip = true,
-    maintainAspectRatio = false,
-    height = '350px',
-    theme = 'auto',
-    showGrid = true,
-    overlayGradientStyle,
-  } = config;
-
-  const chartLabels = useMemo(() => {
-    if (labels?.length) {
-      return labels;
+    if (!datasets.length || !datasets[0]?.data.length) {
+      return (
+        <div style={{ padding: 40, textAlign: 'center', color: TEXT_COLOR_MUTED }}>Нет данных для отображения</div>
+      );
     }
-    const maxLen = Math.max(...datasets.map((ds) => ds.data.length), 0);
-    return Array.from({ length: maxLen }, (_, i) => (i + 1).toString());
-  }, [labels, datasets]);
 
-  const chartDatasets = useMemo(
-    () =>
-      datasets.map((ds, idx) => {
-        const c = generateColor(idx);
-        return {
-          label: ds.label,
-          data: ds.data,
-          borderColor: ds.borderColor || c.border,
-          backgroundColor: ds.backgroundColor || c.background,
-          borderWidth: ds.borderWidth ?? 1,
-          borderRadius: 8,
-          borderSkipped: false,
-          yAxisID: ds.yAxisID || 'y',
-          stack: ds.stack,
-        };
-      }),
-    [datasets]
-  );
-
-  const optionsRaw = useMemo(() => {
-    const prefersDark =
-      typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark = theme === 'dark' || (theme === 'auto' && prefersDark);
-    const textColor = isDark ? '#e6edf3' : '#0f172a';
-    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)';
-
-    const scales: any = {
-      x: {
-        type: xAxisType === 'time' ? 'time' : 'category',
-        title: xAxisTitle ? { display: true, text: xAxisTitle, color: textColor } : undefined,
-        grid: { display: false },
-        ticks: { color: textColor },
-      },
-      y: {
-        type: 'linear',
-        title: yAxisTitle ? { display: true, text: yAxisTitle, color: textColor } : undefined,
-        min: yAxisMin,
-        max: yAxisMax,
-        grid: { display: showGrid, color: gridColor },
-        ticks: { color: textColor },
-      },
-    };
-
-    return {
-      responsive: true,
-      maintainAspectRatio,
-      plugins: {
-        legend: { display: showLegend, labels: { color: textColor } },
-        tooltip: buildTooltipConfig(showTooltip, isDark),
-        title: { display: !!title, text: title, color: textColor, font: { size: 14, weight: 600 } },
-      },
-      scales,
-      interaction: { mode: 'index', intersect: false },
-    };
-  }, [
-    xAxisType,
-    xAxisTitle,
-    yAxisTitle,
-    yAxisMin,
-    yAxisMax,
-    showLegend,
-    showTooltip,
-    title,
-    maintainAspectRatio,
-    theme,
-    showGrid,
-  ]);
-
-  const options = optionsRaw as unknown as ChartOptions<'bar'>;
-
-  const chartData: ChartJSData<'bar', number[], string | Date> = {
-    labels: chartLabels,
-    datasets: chartDatasets,
-  };
-
-  if (!datasets.length || !datasets[0]?.data.length) {
-    return <div style={{ padding: 20, textAlign: 'center', color: '#9ca3af' }}>Нет данных для отображения</div>;
+    return (
+      <div ref={containerRef} style={{ width: '100%', height: typeof height === 'number' ? height : height }}>
+        <Line ref={chartRef} data={chartData} options={options} />
+      </div>
+    );
   }
+);
 
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        width: '100%',
-        height: typeof height === 'number' ? `${height}px` : height,
-        position: 'relative',
-        borderRadius: 8,
-        overflow: 'hidden',
-      }}
-    >
-      {overlayGradientStyle && (
-        <div
-          style={{
-            position: 'absolute',
-            left: 3,
-            right: -3,
-            top: 2.48,
-            bottom: -1,
-            pointerEvents: 'none',
-            background: overlayGradientStyle,
-            opacity: 0.5,
-            borderRadius: 6,
-            mixBlendMode: 'overlay',
-          }}
-        />
-      )}
-      <Bar ref={chartRef} data={chartData} options={options} />
-    </div>
-  );
-});
-BarChartComponent.displayName = 'BarChartComponent';
+ChartRenderer.displayName = 'ChartRenderer';
 
-// ========== Главный компонент ChartComponent ==========
 export const ChartComponent: React.FC<{ config: ChartData }> = React.memo(({ config }) => {
-  const normalizedConfig = useMemo<ChartData>(() => {
+  const normalized = useMemo<ChartData>(() => {
     if (config.data && !config.datasets) {
-      const c = generateColor(0);
+      const c = getColor(0);
       return {
         ...config,
         type: config.type || 'line',
@@ -490,8 +210,8 @@ export const ChartComponent: React.FC<{ config: ChartData }> = React.memo(({ con
             data: config.data,
             borderColor: config.borderColor || c.border,
             backgroundColor: config.backgroundColor || c.background,
-            tension: 0.4,
-            pointRadius: 4,
+            tension: 0.45,
+            pointRadius: 0,
             fill: true,
           },
         ],
@@ -500,12 +220,7 @@ export const ChartComponent: React.FC<{ config: ChartData }> = React.memo(({ con
     return config;
   }, [config]);
 
-  const chartType = normalizedConfig.type || normalizedConfig.datasets?.[0]?.type || 'line';
-
-  if (chartType === 'bar') {
-    return <BarChartComponent config={normalizedConfig} />;
-  }
-  return <LineChartComponent config={normalizedConfig} />;
+  return <ChartRenderer config={normalized} chartType={normalized.type === 'bar' ? 'bar' : 'line'} />;
 });
 
 ChartComponent.displayName = 'ChartComponent';
