@@ -1,11 +1,21 @@
-import { StreamingConfig } from 'types';
+﻿import { StreamingConfig } from '../types';
 import { extractValueByPath } from './objectHelpers';
-import { STREAMING_DEFAULTS } from 'components/agent/constants';
+import { STREAMING_DEFAULTS } from '../constants';
 
+/**
+ * Проверяет, включена ли потоковая передача для эндпоинта.
+ * @param endpoint - конфигурация эндпоинта
+ * @returns true, если streaming включён
+ */
 export const isStreamingEnabled = (endpoint: { streaming?: boolean | StreamingConfig }): boolean => {
   return endpoint.streaming === true || (endpoint.streaming as StreamingConfig)?.enabled === true;
 };
 
+/**
+ * Возвращает полную конфигурацию стриминга, объединяя значения по умолчанию.
+ * @param endpoint - конфигурация эндпоинта
+ * @returns объект StreamingConfig или null, если стриминг отключён
+ */
 export const getStreamConfig = (endpoint: { streaming?: boolean | StreamingConfig }) => {
   const defaultConfig: StreamingConfig = {
     enabled: true,
@@ -25,11 +35,26 @@ export const getStreamConfig = (endpoint: { streaming?: boolean | StreamingConfi
   return defaultConfig;
 };
 
+/**
+ * Определяет, является ли ответ SSE на основе заголовка Content-Type.
+ * @param response - объект Response
+ * @returns true, если Content-Type содержит 'text/event-stream'
+ */
 export const detectSSEByContent = (response: Response): boolean => {
   const contentType = response.headers.get('content-type') || '';
   return contentType.includes('text/event-stream');
 };
 
+/**
+ * Разбор потока Server-Sent Events.
+ * @param response - ответ с ReadableStream
+ * @param textPath - путь для извлечения текстового содержимого из чанка (JSON-путь)
+ * @param dataPrefix - префикс строки данных ("data: ")
+ * @param onChunk - колбэк для каждого текстового чанка
+ * @param onHistorySync - колбэк для событий синхронизации истории
+ * @param onTrace - колбэк для трассировки ошибок парсинга
+ * @returns объект с полным текстом, последним событием и массивом всех событий
+ */
 export async function parseSSEStream(
   response: Response,
   textPath: string,
@@ -64,7 +89,7 @@ export async function parseSSEStream(
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith(':')) {
-          continue;
+          continue; // комментарий
         }
 
         let isDone = false;
@@ -77,7 +102,6 @@ export async function parseSSEStream(
           }
         }
         if (isDone) {
-          // Завершаем поток, но не выбрасываем ошибку
           return { fullText: fullResponse, finalEvent, rawEvents };
         }
 
@@ -96,6 +120,7 @@ export async function parseSSEStream(
           finalEvent = event;
 
           let chunkText: string | undefined;
+          // Попытка извлечь текст разными способами
           if (event.choices?.[0]) {
             chunkText = event.choices[0].delta?.content ?? event.choices[0].message?.content;
           }
@@ -115,6 +140,7 @@ export async function parseSSEStream(
             }
           }
         } catch (e) {
+          // Ошибка парсинга строки как JSON – логируем через onTrace
           if (onTrace) {
             onTrace({
               type: 'sse_parse_error',
@@ -128,6 +154,7 @@ export async function parseSSEStream(
     }
     return { fullText: fullResponse, finalEvent, rawEvents };
   } catch (err) {
+    // При ошибке отменяем поток
     try {
       await response.body?.cancel();
     } catch (cancelErr) {}

@@ -1,6 +1,9 @@
-import { PollingConfig } from 'types';
-import { POLLING_DEFAULTS } from 'components/agent/constants';
+﻿import { PollingConfig } from '../types';
+import { POLLING_DEFAULTS } from '../constants';
 
+/**
+ * Конфигурация поллинга с заполненными значениями по умолчанию.
+ */
 const DEFAULT_POLLING_CONFIG: Required<PollingConfig> = {
   enabled: false,
   intervalMs: POLLING_DEFAULTS.intervalMs,
@@ -11,6 +14,16 @@ const DEFAULT_POLLING_CONFIG: Required<PollingConfig> = {
   retryStatusCodes: [],
 };
 
+/**
+ * Выполняет поллинг (периодические запросы) до получения успешного статуса.
+ * @param endpoint - конфигурация эндпоинта с polling
+ * @param url - URL для повторных запросов
+ * @param headers - заголовки
+ * @param body - тело запроса
+ * @param initialData - данные первого ответа
+ * @param onTrace - колбэк трассировки
+ * @returns итоговые данные (возможно, извлечённые через resultField) или исходные
+ */
 export const handlePolling = async (
   endpoint: { polling?: PollingConfig; method: string },
   url: string,
@@ -75,6 +88,7 @@ export const handlePolling = async (
     throw new Error(`Polling timeout after ${polling.maxAttempts} attempts`);
   }
 
+  // Извлечение результата через resultField, если задан
   if (endpoint.polling?.resultField && data[endpoint.polling.resultField] !== undefined) {
     return data[endpoint.polling.resultField];
   }

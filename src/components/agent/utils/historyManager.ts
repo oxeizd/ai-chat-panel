@@ -1,5 +1,13 @@
-import { WorkflowContext } from '../executionEngine';
+﻿import { WorkflowContext } from "../core/ContextManager"; // обновлённый импорт
 
+/**
+ * Добавляет сообщение ассистента в историю контекста.
+ * @param endpoint - конфигурация эндпоинта
+ * @param context - мутабельный контекст
+ * @param responseData - данные ответа
+ * @param replyText - текст ответа
+ * @param skipIfAlreadySynced - флаг пропуска, если история синхронизировалась из SSE
+ */
 export const addAssistantMessageToHistory = (
   endpoint: { preserveConversationHistory?: boolean; assistantMessageFields?: string[] },
   context: WorkflowContext,
@@ -7,17 +15,9 @@ export const addAssistantMessageToHistory = (
   replyText?: string,
   skipIfAlreadySynced = false
 ): void => {
-  if (!endpoint.preserveConversationHistory) {
-    return;
-  }
-
-  if (skipIfAlreadySynced) {
-    return;
-  }
-
-  if (!replyText) {
-    return;
-  }
+  if (!endpoint.preserveConversationHistory) return;
+  if (skipIfAlreadySynced) return;
+  if (!replyText) return;
 
   if (!context.messages || !Array.isArray(context.messages)) {
     context.messages = [];
@@ -49,23 +49,25 @@ export const addAssistantMessageToHistory = (
   }
 };
 
+/**
+ * Добавляет последнее сообщение пользователя из тела запроса в историю.
+ * @param endpoint - конфигурация эндпоинта
+ * @param context - мутабельный контекст
+ * @param mergedBody - полное тело запроса
+ */
 export const addUserMessageToHistory = (
   endpoint: { preserveConversationHistory?: boolean; userMessageFields?: string[] },
   context: WorkflowContext,
   mergedBody: any
 ): void => {
-  if (!endpoint.preserveConversationHistory) {
-    return;
-  }
+  if (!endpoint.preserveConversationHistory) return;
 
   if (!context.messages || !Array.isArray(context.messages)) {
     context.messages = [];
   }
 
   const requestMessages = mergedBody.messages;
-  if (!Array.isArray(requestMessages) || requestMessages.length === 0) {
-    return;
-  }
+  if (!Array.isArray(requestMessages) || requestMessages.length === 0) return;
 
   const lastUserMessageFromRequest = requestMessages[requestMessages.length - 1];
   const lastContextMsg = context.messages[context.messages.length - 1];
@@ -75,9 +77,7 @@ export const addUserMessageToHistory = (
     lastContextMsg.role !== lastUserMessageFromRequest.role ||
     lastContextMsg.content !== lastUserMessageFromRequest.content;
 
-  if (!shouldAdd) {
-    return;
-  }
+  if (!shouldAdd) return;
 
   let messageToStore: any;
   if (endpoint.userMessageFields?.length) {

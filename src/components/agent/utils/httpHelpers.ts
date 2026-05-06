@@ -1,7 +1,14 @@
-import { WorkflowContext } from '../executionEngine';
+﻿import { WorkflowContext } from '../core/ContextManager';
 import { mergeObjects } from './objectHelpers';
 import { resolveString, resolveObject } from './variableResolver';
 
+/**
+ * Построение полного URL эндпоинта с подстановкой переменных.
+ * @param endpoint - конфигурация эндпоинта
+ * @param context - контекст для подстановки переменных
+ * @param baseUrl - базовый URL (может быть пустым, тогда берётся window.location.origin)
+ * @returns полный URL
+ */
 export const buildUrl = (endpoint: { path: string }, context: WorkflowContext, baseUrl: string): string => {
   let resolvedBaseUrl = baseUrl;
   if (!resolvedBaseUrl) {
@@ -11,9 +18,7 @@ export const buildUrl = (endpoint: { path: string }, context: WorkflowContext, b
   }
   const path = resolveString(endpoint.path, context);
   const combine = (base: string, relative: string) => {
-    if (!relative) {
-      return base;
-    }
+    if (!relative) return base;
     const baseClean = base.endsWith('/') ? base.slice(0, -1) : base;
     const relativeClean = relative.startsWith('/') ? relative : '/' + relative;
     return baseClean + relativeClean;
@@ -21,6 +26,13 @@ export const buildUrl = (endpoint: { path: string }, context: WorkflowContext, b
   return combine(resolvedBaseUrl, path);
 };
 
+/**
+ * Формирование тела запроса из конфигурации эндпоинта и глобальной конфигурации агента.
+ * @param endpoint - конфигурация эндпоинта
+ * @param context - контекст
+ * @param agentConfig - глобальная конфигурация (объединяется с телом эндпоинта)
+ * @returns объединённое тело и его строковое представление
+ */
 export const buildRequestBody = (
   endpoint: { body?: any },
   context: WorkflowContext,
@@ -36,13 +48,17 @@ export const buildRequestBody = (
   return { mergedBody, bodyString };
 };
 
+/**
+ * Извлечение текста ответа из данных согласно replyField или стандартным путям.
+ * @param data - объект ответа
+ * @param replyField - альтернативное поле для извлечения
+ * @returns replyText и обновлённый объект data с добавленным полем reply
+ */
 export const extractReply = (data: any, replyField?: string): { replyText?: string; dataWithReply: any } => {
   let replyText: string | undefined;
   if (replyField) {
     const replyValue = data[replyField];
-    if (replyValue !== undefined) {
-      replyText = String(replyValue);
-    }
+    if (replyValue !== undefined) replyText = String(replyValue);
   } else {
     if (data.choices?.[0]?.message?.content) {
       replyText = data.choices[0].message.content;
@@ -55,11 +71,18 @@ export const extractReply = (data: any, replyField?: string): { replyText?: stri
     }
   }
   if (replyText !== undefined) {
-    data.reply = replyText;
+    data.reply = replyText; // мутируем объект для совместимости
   }
   return { replyText, dataWithReply: data };
 };
 
+/**
+ * Сохранение указанных полей ответа в контекст (или всех, если saveToContext не задан).
+ * @param endpoint - конфигурация эндпоинта
+ * @param context - мутабельный контекст
+ * @param data - данные ответа
+ * @param additionalExcludes - дополнительные поля для исключения
+ */
 export const saveToContext = (
   endpoint: { saveToContext?: string[] },
   context: WorkflowContext,
