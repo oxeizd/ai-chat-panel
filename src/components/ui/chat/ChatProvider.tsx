@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { AgentConfig } from 'types';
 import { useGrafanaUser } from 'components/hooks/useGrafanaUser';
-import { useChatMessages } from '../hooks/useChatMessages';
+import { useChatMessages } from '../messages/hooks/useChatMessages';
 import { useChatOpen } from '../hooks/useChatOpen';
 import { useChatPosition } from '../hooks/useChatPosition';
 import { useChatWheelHandler } from '../hooks/useChatWheelHandler';
