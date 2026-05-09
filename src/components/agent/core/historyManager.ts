@@ -1,5 +1,5 @@
 ﻿import { EndpointConfig } from '../shared/types';
-import { WorkflowContext } from './context';
+import { WorkflowContext } from './contextManager';
 
 /**
  * Менеджер истории диалога.
@@ -114,6 +114,17 @@ export class HistoryManager {
 
     if (Object.keys(msgToStore).length > 0) {
       ctx.messages.push(msgToStore);
+    }
+  }
+
+  /**
+   * Сбрасывает историю сообщений в контексте.
+   * @param ctx - мутабельный контекст (передаём через this.ctx.context)
+   */
+  reset(ctx: WorkflowContext): void {
+    if (ctx.messages) {
+      delete ctx.messages;
+      // или ctx.messages = [];
     }
   }
 }

@@ -1,21 +1,11 @@
 ﻿import { StreamingConfig } from 'types';
-import { extractValueByPath } from './objectHelpers';
-import { STREAMING_DEFAULTS } from '../constants';
+import { extractValueByPath } from 'components/agent/shared/utils/objectHelpers';
+import { STREAMING_DEFAULTS } from 'components/agent/shared/constants';
 
-/**
- * Проверяет, включена ли потоковая передача для эндпоинта.
- * @param endpoint - конфигурация эндпоинта
- * @returns true, если streaming включён
- */
 export const isStreamingEnabled = (endpoint: { streaming?: boolean | StreamingConfig }): boolean => {
   return endpoint.streaming === true || (endpoint.streaming as StreamingConfig)?.enabled === true;
 };
 
-/**
- * Возвращает полную конфигурацию стриминга, объединяя значения по умолчанию.
- * @param endpoint - конфигурация эндпоинта
- * @returns объект StreamingConfig или null, если стриминг отключён
- */
 export const getStreamConfig = (endpoint: { streaming?: boolean | StreamingConfig }) => {
   const defaultConfig: StreamingConfig = {
     enabled: true,
@@ -35,35 +25,27 @@ export const getStreamConfig = (endpoint: { streaming?: boolean | StreamingConfi
   return defaultConfig;
 };
 
-/**
- * Определяет, является ли ответ SSE на основе заголовка Content-Type.
- * @param response - объект Response
- * @returns true, если Content-Type содержит 'text/event-stream'
- */
 export const detectSSEByContent = (response: Response): boolean => {
   const contentType = response.headers.get('content-type') || '';
   return contentType.includes('text/event-stream');
 };
 
-/**
- * Разбор потока Server-Sent Events.
- * @param response - ответ с ReadableStream
- * @param textPath - путь для извлечения текстового содержимого из чанка (JSON-путь)
- * @param dataPrefix - префикс строки данных ("data: ")
- * @param onChunk - колбэк для каждого текстового чанка
- * @param onHistorySync - колбэк для событий синхронизации истории
- * @param onTrace - колбэк для трассировки ошибок парсинга
- * @returns объект с полным текстом, последним событием и массивом всех событий
- */
+export interface ParseSSEOptions {
+  textPath: string;
+  dataPrefix: string;
+  reasoningApiField?: string;
+  onChunk?: (chunk: string) => void;
+  onHistorySync?: (event: any) => void;
+  onTrace?: (step: any) => void;
+  onReasoningChunk?: (chunk: string) => void;
+}
+
 export async function parseSSEStream(
   response: Response,
-  textPath: string,
-  dataPrefix: string,
-  onChunk?: (chunk: string) => void,
-  onHistorySync?: (event: any) => void,
-  onTrace?: (step: any) => void,
-  onReasoningChunk?: (chunk: string) => void
+  options: ParseSSEOptions
 ): Promise<{ fullText: string; finalEvent?: any; rawEvents: any[] }> {
+  const { textPath, dataPrefix, reasoningApiField, onChunk, onHistorySync, onTrace, onReasoningChunk } = options;
+
   if (!response.body) {
     throw new Error('Response body is empty');
   }
@@ -90,7 +72,7 @@ export async function parseSSEStream(
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith(':')) {
-          continue; // комментарий
+          continue;
         }
 
         let isDone = false;
@@ -106,7 +88,6 @@ export async function parseSSEStream(
           return { fullText: fullResponse, finalEvent, rawEvents };
         }
 
-        // Извлечение JSON-строки
         let jsonStr = trimmed;
         if (dataPrefix && trimmed.startsWith(dataPrefix)) {
           jsonStr = trimmed.slice(dataPrefix.length).trim();
@@ -119,22 +100,29 @@ export async function parseSSEStream(
             onHistorySync(event);
           }
 
+          // Извлечение reasoning с поддержкой кастомного пути
           let reasoningChunk: string | undefined;
-
-          if (event.choices?.[0]) {
+          if (reasoningApiField) {
+            const extracted = extractValueByPath(event, reasoningApiField);
+            if (typeof extracted === 'string') {
+              reasoningChunk = extracted;
+            }
+          }
+          // Fallback для стандартных полей, если по кастомному пути не нашли
+          if (!reasoningChunk && event.choices?.[0]) {
             reasoningChunk = event.choices[0].delta?.reasoning_content;
           }
           if (!reasoningChunk && event.type === 'REASONING' && event.delta) {
             reasoningChunk = event.delta;
           }
-          if (reasoningChunk !== undefined && onReasoningChunk) {
+          if (reasoningChunk && onReasoningChunk) {
             onReasoningChunk(reasoningChunk);
           }
 
           finalEvent = event;
 
+          // Извлечение обычного текста
           let chunkText: string | undefined;
-          // Попытка извлечь текст разными способами
           if (event.choices?.[0]) {
             chunkText = event.choices[0].delta?.content ?? event.choices[0].message?.content;
           }
@@ -154,7 +142,6 @@ export async function parseSSEStream(
             }
           }
         } catch (e) {
-          // Ошибка парсинга строки как JSON – логируем через onTrace
           if (onTrace) {
             onTrace({
               type: 'sse_parse_error',
@@ -168,10 +155,9 @@ export async function parseSSEStream(
     }
     return { fullText: fullResponse, finalEvent, rawEvents };
   } catch (err) {
-    // При ошибке отменяем поток
     try {
       await response.body?.cancel();
-    } catch (cancelErr) {}
+    } catch {}
     throw err;
   } finally {
     if (reader) {

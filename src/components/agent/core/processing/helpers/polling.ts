@@ -1,5 +1,5 @@
 ﻿import { PollingConfig } from 'types';
-import { POLLING_DEFAULTS } from '../constants';
+import { POLLING_DEFAULTS } from '../../../shared/constants';
 
 /**
  * Конфигурация поллинга с заполненными значениями по умолчанию.

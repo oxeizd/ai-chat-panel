@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { AgentClient } from './core/client';
+import { AgentClient } from './core/agentClient';
 import { AgentConfig, TraceStep } from 'types';
 
 export const useAgent = (agentConfig: AgentConfig | null) => {

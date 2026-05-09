@@ -1,9 +1,9 @@
-﻿import { EndpointConfig, TraceStep } from '../shared/types';
-import { HttpResponse } from './httpClient';
-import { WorkflowContext } from './context';
-import { EventBus } from './eventBus';
-import { SseHandler } from './handlers/sse';
-import { JsonHandler } from './handlers/json';
+﻿import { EndpointConfig, TraceStep } from '../../../shared/types';
+import { HttpResponse } from '../../httpClient';
+import { WorkflowContext } from '../../contextManager';
+import { EventBus } from '../../eventBus';
+import { SseHandler } from './sse';
+import { JsonHandler } from './json';
 
 /**
  * Дополнительные опции, передаваемые в обработчик ответа.

@@ -1,18 +1,15 @@
 ﻿import { EventBus } from './eventBus';
 import { HttpClient } from './httpClient';
-import { ContextManager } from './context';
-import { HistoryManager } from './history';
-import { ResponseHandlerFactory } from './response';
+import { ContextManager } from './contextManager';
+import { HistoryManager } from './historyManager';
+import { ResponseHandlerFactory } from './processing/handlers/response';
 import { EndpointConfig, TraceStep } from '../shared/types';
-import { PostProcessingMiddleware } from './postproc/types';
+import { PostProcessingMiddleware } from './processing/middleware/postprocessing';
 import { mergeObjects } from '../shared/utils/objectHelpers';
 import { resolveObject } from '../shared/utils/variableResolver';
 import { buildUrl, buildRequestBody, extractReply } from '../shared/utils/httpHelpers';
+import { handlePolling } from './processing/helpers/polling';
 
-/**
- * Исполнитель одного эндпоинта.
- * Координирует: подготовку запроса, выполнение, обработку ответа и постобработку.
- */
 export class EndpointExecutor {
   constructor(
     private http: HttpClient,
@@ -23,18 +20,6 @@ export class EndpointExecutor {
     private middlewares: PostProcessingMiddleware[] = []
   ) {}
 
-  /**
-   * Выполнить эндпоинт.
-   * @param endpoint - конфигурация
-   * @param additionalCtx - дополнительный контекст (сливается с текущим)
-   * @param agentConfig - глобальная конфигурация агента
-   * @param agentHeaders - глобальные заголовки
-   * @param onTrace - колбэк трассировки
-   * @param onChunk - для совместимости (будет подписан на шину)
-   * @param onReasoningChunk - для совместимости
-   * @param signal - AbortSignal
-   * @returns итоговые данные ответа
-   */
   async execute(
     endpoint: EndpointConfig,
     additionalCtx: Record<string, any> = {},
@@ -43,14 +28,11 @@ export class EndpointExecutor {
     onTrace?: (step: TraceStep) => void,
     signal?: AbortSignal
   ): Promise<any> {
-    // 1. Формируем рабочий контекст
     const context = { ...this.ctx.context, ...additionalCtx };
 
-    // 2. URL и тело запроса
     const url = buildUrl(endpoint, context, '');
     let { mergedBody, bodyString } = buildRequestBody(endpoint, context, agentConfig);
 
-    // 3. История: добавляем сообщение пользователя до запроса
     this.history.addUserMessage(endpoint, context, mergedBody);
 
     const ch = endpoint.conversationHistory;
@@ -63,41 +45,60 @@ export class EndpointExecutor {
       }
     }
 
-    // 4. Заголовки
     const headers = resolveObject(mergeObjects(agentHeaders || {}, endpoint.headers || {}), context) as Record<
       string,
       string
     >;
 
-    // 5. HTTP-запрос
-    const httpResponse = await this.http.execute(
+    // Первый запрос
+    let httpResponse = await this.http.execute(
       { url: endpoint.path, method: endpoint.method, headers, body: bodyString, onTrace },
       signal
     );
 
-    // 7. Выбор и вызов обработчика ответа
-    const handler = this.handlerFactory.get(endpoint, httpResponse);
-    const processed = await handler.handle(httpResponse, endpoint, context, {
+    // Поллинг (если включён)
+    let finalResponse = httpResponse;
+    if (endpoint.polling?.enabled) {
+      let firstData = null;
+      if (httpResponse.ok) {
+        try {
+          firstData = await httpResponse.json();
+        } catch {
+          // первый ответ может быть не JSON — игнорируем
+        }
+      }
+      const pollingData = await handlePolling(endpoint, url, headers, bodyString, firstData, onTrace, signal);
+      // Создаём поддельный HttpResponse с результатом поллинга
+      finalResponse = {
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        body: null,
+        clone: () => finalResponse,
+        text: async () => JSON.stringify(pollingData),
+        json: async () => pollingData,
+      };
+    }
+
+    // Обработка ответа (теперь всегда через finalResponse)
+    const handler = this.handlerFactory.get(endpoint, finalResponse);
+    const processed = await handler.handle(finalResponse, endpoint, context, {
       eventBus: this.bus,
       onTrace,
       signal,
       requestMeta: { url, headers, body: bodyString },
     });
 
-    // 8. Извлечение reply, если не было сделано в обработчике
     if (!processed.replyText) {
       const { replyText } = extractReply(processed.data, endpoint.replyField);
       processed.replyText = replyText;
     }
 
-    // 9. Цепочка постобработки (middleware)
     for (const mw of this.middlewares) {
       await mw.process(processed, endpoint, context, mergedBody);
     }
 
-    // 10. Сохраняем итоговый контекст
     this.ctx.replace(context);
-
     return processed.data;
   }
 }

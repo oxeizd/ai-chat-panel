@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown';
 // @ts-ignore
 import 'katex/dist/katex.min.css';
 import { MessageListStyles } from './MessageList';
-import { downloadFile } from 'components/agent/shared/utils/fileHandler';
+import { downloadFile } from 'components/agent/core/processing/helpers/fileHandler';
 import { REMARK_PLUGINS, REHYPE_PLUGINS } from '../utils/markdown/plugins';
 
 interface ChatMessageProps {

@@ -1,4 +1,4 @@
-﻿import { WorkflowContext } from 'components/agent/core/context';
+﻿import { WorkflowContext } from 'components/agent/core/contextManager';
 import { mergeObjects } from './objectHelpers';
 import { resolveString, resolveObject } from './variableResolver';
 

@@ -1,17 +1,16 @@
 ﻿import { AgentConfig, EndpointConfig, TraceStep } from '../shared/types';
 import { HttpClient } from './httpClient';
-import { ResponseHandlerFactory } from './response';
-import { PollingHandler } from './handlers/polling';
-import { JsonHandler } from './handlers/json';
-import { EndpointExecutor } from './executor';
-import { WorkflowOrchestrator } from './workflow';
-import { ContextManager } from './context';
-import { HistoryManager } from './history';
+import { ResponseHandlerFactory } from './processing/handlers/response';
+import { EndpointExecutor } from './endpointExecutor';
+import { ContextManager } from './contextManager';
+import { HistoryManager } from './historyManager';
 import { EventBus } from './eventBus';
-import { HistoryMiddleware } from './postproc/historyMiddleware';
-import { ContextSaveMiddleware } from './postproc/contextSave';
-import { FileExtractionMiddleware } from './postproc/fileExtraction';
 import { extractReply } from '../shared/utils/httpHelpers';
+import {
+  ContextSaveMiddleware,
+  FileExtractionMiddleware,
+  HistoryMiddleware,
+} from './processing/middleware/postprocessing';
 
 /**
  * Публичный клиент агента – основной API.
@@ -23,7 +22,6 @@ export class AgentClient {
   private history = new HistoryManager();
   private bus = new EventBus();
   private executor: EndpointExecutor;
-  private orchestrator: WorkflowOrchestrator;
   private initialized = false;
   private processing = false;
 
@@ -32,16 +30,13 @@ export class AgentClient {
 
     const http = new HttpClient(config.api);
     const factory = new ResponseHandlerFactory();
-    // polling-обработчик (декоратор) регистрируем в фабрике
-    factory.register(new PollingHandler(new JsonHandler()));
 
     const mids = [new HistoryMiddleware(this.history), new ContextSaveMiddleware(), new FileExtractionMiddleware()];
 
     this.executor = new EndpointExecutor(http, factory, this.ctx, this.history, this.bus, mids);
-    this.orchestrator = new WorkflowOrchestrator(this.executor);
   }
 
-  // ─── Публичная подписка на события шины ─────────────────
+  //Публичная подписка на события шины
   on(event: string, handler: (...args: any[]) => void): () => void {
     return this.bus.on(event, handler);
   }
@@ -66,12 +61,10 @@ export class AgentClient {
     return this.on('thinkingEnd', handler);
   }
 
-  /** Получить значение из текущего контекста сессии */
   getContextValue(key: string): any {
     return this.ctx.context[key];
   }
 
-  /** Получить весь контекст (только для чтения) */
   getContext(): Record<string, any> {
     return { ...this.ctx.context };
   }
@@ -83,6 +76,7 @@ export class AgentClient {
     }
     this.bus.clear();
     this.ctx.reset();
+    this.history.reset(this.ctx.context);
     this.initialized = false;
     if (this.config.startupOperation && this.config.endpoints) {
       const ep = this.config.endpoints.find((e) => e.operation === this.config.startupOperation);
@@ -119,7 +113,7 @@ export class AgentClient {
         this.initialized = true;
       }
 
-      // Workflow
+      // Workflow – теперь без оркестратора
       if (this.config.endpoints?.length && this.config.workflow?.length) {
         const epMap = new Map(this.config.endpoints.map((e) => [e.operation, e]));
         const steps = this.config.workflow
@@ -132,17 +126,21 @@ export class AgentClient {
           throw new Error('No valid steps in workflow');
         }
 
-        const last = await this.orchestrator.execute(
-          steps,
-          {},
-          this.config.config,
-          this.config.headers,
-          onTrace,
-          signal
-        );
+        let last: any = null;
+        for (const step of steps) {
+          last = await this.executor.execute(
+            step.endpoint,
+            {},
+            this.config.config,
+            this.config.headers,
+            onTrace,
+            signal
+          );
+        }
         return last.reply || last.result || JSON.stringify(last);
       }
 
+      // fallback, если workflow нет
       const fallbackEndpoint: EndpointConfig = {
         operation: 'fallback',
         method: 'POST',

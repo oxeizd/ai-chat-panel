@@ -1,16 +1,12 @@
-﻿import { EndpointConfig } from '../../shared/types';
-import { WorkflowContext } from '../context';
-import { HttpResponse } from '../httpClient';
-import { extractValueByPath } from '../../shared/utils/objectHelpers';
-import { STREAMING_DEFAULTS } from '../../shared/constants';
-import { ResponseHandler, ProcessedResponse, HandlerOptions } from '../response';
-import { getStreamConfig, parseSSEStream, detectSSEByContent, isStreamingEnabled } from '../../shared/utils/streaming';
-import { getReasoningConfig } from 'components/agent/shared/utils/reasoning';
+﻿import { EndpointConfig } from 'types';
+import { WorkflowContext } from '../../contextManager';
+import { HttpResponse } from '../../httpClient';
+import { extractValueByPath } from 'components/agent/shared/utils/objectHelpers';
+import { STREAMING_DEFAULTS } from 'components/agent/shared/constants';
+import { ResponseHandler, ProcessedResponse, HandlerOptions } from './response';
+import { getStreamConfig, parseSSEStream, detectSSEByContent, isStreamingEnabled } from '../helpers/streaming';
+import { getReasoningConfig } from '../helpers/reasoning';
 
-/**
- * Обработчик потоковых ответов (SSE).
- * Поддерживает извлечение мыслей (reasoning) согласно конфигурации endpoint.
- */
 export class SseHandler implements ResponseHandler {
   canHandle(ep: EndpointConfig, res: HttpResponse): boolean {
     return isStreamingEnabled(ep) || detectSSEByContent(res as any);
@@ -40,10 +36,8 @@ export class SseHandler implements ResponseHandler {
     let fullVisible = '';
     let thinkingStarted = false;
 
-    // ─── History sync ───
     const historyCfg = typeof ep.conversationHistory === 'object' ? ep.conversationHistory : undefined;
     const historySync = historyCfg?.historySync;
-
     let historyWasSynced = false;
 
     const onSync = (event: any) => {
@@ -61,19 +55,16 @@ export class SseHandler implements ResponseHandler {
       }
     };
 
-    // ─── Переменные для результата парсинга ───
     let fullText = '';
     let finalEvent: any;
     let rawEvents: any[] = [];
 
     try {
-      // ─── Парсинг SSE (основной блок) ───
-      const result = await parseSSEStream(
-        res as any,
+      const result = await parseSSEStream(res as any, {
         textPath,
-        prefix,
-        // Колбэк для обычных текстовых чанков
-        (chunk) => {
+        dataPrefix: prefix,
+        reasoningApiField: useApiField ? reasoningCfg.apiField : undefined,
+        onChunk: (chunk) => {
           if (reasoningEnabled && useThinkingTags) {
             const startMarker = reasoningCfg.startMarker ?? '<thinking>';
             const endMarker = reasoningCfg.endMarker ?? '</thinking>';
@@ -87,7 +78,7 @@ export class SseHandler implements ResponseHandler {
                 reasoning = visible.substring(0, endIdx);
                 visible = visible.substring(endIdx + endMarker.length);
                 thinkingStarted = false;
-                opt.eventBus.emit('thinkingEnd', {});
+                opt.eventBus.emit('thinkingEnd');
                 opt.eventBus.emit('reasoningComplete', fullReasoning + reasoning);
               } else {
                 reasoning = visible;
@@ -103,16 +94,16 @@ export class SseHandler implements ResponseHandler {
                 if (endIdx !== -1) {
                   reasoning = afterStart.substring(0, endIdx);
                   visible = beforeTag + afterStart.substring(endIdx + endMarker.length);
-                  opt.eventBus.emit('thinkingStart', {});
+                  opt.eventBus.emit('thinkingStart');
                   opt.eventBus.emit('reasoningChunk', reasoning);
-                  opt.eventBus.emit('thinkingEnd', {});
+                  opt.eventBus.emit('thinkingEnd');
                   opt.eventBus.emit('reasoningComplete', fullReasoning + reasoning);
                   fullReasoning += reasoning;
                 } else {
                   reasoning = afterStart;
                   visible = beforeTag;
                   thinkingStarted = true;
-                  opt.eventBus.emit('thinkingStart', {});
+                  opt.eventBus.emit('thinkingStart');
                 }
               }
             }
@@ -126,32 +117,30 @@ export class SseHandler implements ResponseHandler {
               opt.eventBus.emit('chunk', visible);
             }
           } else {
-            // Reasoning отключен или не thinking_tags
             fullVisible += chunk;
             opt.eventBus.emit('chunk', chunk);
           }
         },
-        onSync,
-        opt.onTrace,
-        (rChunk) => {
+        onHistorySync: onSync,
+        onTrace: opt.onTrace,
+        onReasoningChunk: (rChunk) => {
           if (reasoningEnabled && useApiField) {
             if (!thinkingStarted) {
               thinkingStarted = true;
-              opt.eventBus.emit('thinkingStart', {});
+              opt.eventBus.emit('thinkingStart');
             }
             fullReasoning += rChunk;
             opt.eventBus.emit('reasoningChunk', rChunk);
           }
-        }
-      );
+        },
+      });
 
       fullText = result.fullText;
       finalEvent = result.finalEvent;
       rawEvents = result.rawEvents;
     } finally {
-      // ─── Финализация thinking (выполнится всегда, даже при ошибке/отмене) ───
       if (thinkingStarted) {
-        opt.eventBus.emit('thinkingEnd', {});
+        opt.eventBus.emit('thinkingEnd');
         opt.eventBus.emit('reasoningComplete', fullReasoning);
         thinkingStarted = false;
       }
