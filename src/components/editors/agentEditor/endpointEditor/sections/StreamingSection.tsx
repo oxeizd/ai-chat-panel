@@ -33,7 +33,7 @@ export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, on
         onChange('streaming', {
           enabled: true,
           textPath: 'choices[0].delta.content',
-          delimiter: '\n\n',
+          delimiter: '\\n\\n',
           dataPrefix: 'data: ',
         });
       } else {

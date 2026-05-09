@@ -24,11 +24,13 @@ export const AgentCommonSection: React.FC<AgentCommonSectionProps> = ({ agent, o
           placeholder="https://api.example.com"
         />
       </Field>
-      <Checkbox
-        label="Use by default"
-        value={agent.default}
-        onChange={(e) => onChange('default', e.currentTarget.checked)}
-      />
+      <div style={{ marginBottom: '6px' }}>
+        <Checkbox
+          label="Use by default"
+          value={agent.default}
+          onChange={(e) => onChange('default', e.currentTarget.checked)}
+        />
+      </div>
     </>
   );
 };

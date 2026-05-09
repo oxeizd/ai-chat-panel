@@ -58,15 +58,15 @@ export class AgentClient {
     return this.on('reasoningComplete', handler);
   }
 
-    /** Получить значение из текущего контекста сессии */
-    getContextValue(key: string): any {
-      return this.ctx.context[key];
-    }
-  
-    /** Получить весь контекст (только для чтения) */
-    getContext(): Record<string, any> {
-      return { ...this.ctx.context };
-    }
+  /** Получить значение из текущего контекста сессии */
+  getContextValue(key: string): any {
+    return this.ctx.context[key];
+  }
+
+  /** Получить весь контекст (только для чтения) */
+  getContext(): Record<string, any> {
+    return { ...this.ctx.context };
+  }
 
   // ─── Управление сессией ─────────────────────────────────
   async resetSession(): Promise<void> {
@@ -135,6 +135,7 @@ export class AgentClient {
         return last.reply || last.result || JSON.stringify(last);
       }
 
+      // Fallback – прямой запрос
       let body: any = { message: userInput };
 
       if (this.config.config) {
@@ -150,22 +151,42 @@ export class AgentClient {
       }
 
       onTrace?.({ type: 'request', timestamp: Date.now(), url: this.config.api, method: 'POST', requestBody: body });
-      const response = await fetch(this.config.api, { method: 'POST', headers, body: JSON.stringify(body), signal });
 
-      if (!response.ok) {
-        const errText = await response.text().catch(() => '');
-        throw new Error(`HTTP ${response.status}: ${errText}`);
+      // Обрабатываем отмену
+      let data: any;
+      let responseStatus = 200;
+
+      try {
+        const response = await fetch(this.config.api, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+          signal,
+        });
+
+        responseStatus = response.status;
+
+        if (!response.ok) {
+          const errText = await response.text().catch(() => '');
+          throw new Error(`HTTP ${response.status}: ${errText}`);
+        }
+
+        data = await response.json();
+      } catch (error) {
+        if (signal?.aborted || (error instanceof DOMException && error.name === 'AbortError')) {
+          onTrace?.({ type: 'error', timestamp: Date.now(), errorMessage: 'Request aborted by user' });
+          throw new Error('Request cancelled');
+        }
+        throw error;
       }
-
-      const data = await response.json();
 
       if (data?.error) {
         const err: any = new Error(data.error.message || 'API error');
-        err.status = data.error.code || data.error.status || response.status;
+        err.status = data.error.code || data.error.status || responseStatus;
         throw err;
       }
 
-      onTrace?.({ type: 'response', timestamp: Date.now(), responseStatus: response.status, responseBody: data });
+      onTrace?.({ type: 'response', timestamp: Date.now(), responseStatus, responseBody: data });
 
       return data.reply || data.result || 'Ответ не получен';
     } finally {

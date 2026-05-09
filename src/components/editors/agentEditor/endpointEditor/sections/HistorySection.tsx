@@ -1,6 +1,6 @@
 import React from 'react';
 import { Switch, Field, Input, useTheme2 } from '@grafana/ui';
-import { EndpointConfig } from 'types';
+import { EndpointConfig, ConversationHistoryConfig } from 'types';
 import { CommaSeparatedInput } from 'components/editors/shared/CommaSeparatedInput';
 
 interface HistorySectionProps {
@@ -11,19 +11,52 @@ interface HistorySectionProps {
 export const HistorySection: React.FC<HistorySectionProps> = ({ endpoint, onChange }) => {
   const theme = useTheme2();
 
+  const isHistoryEnabled = (): boolean => {
+    if (!endpoint.conversationHistory) {
+      return false;
+    }
+    if (typeof endpoint.conversationHistory === 'boolean') {
+      return endpoint.conversationHistory;
+    }
+    return endpoint.conversationHistory.enabled === true;
+  };
+
+  const getHistoryConfig = (): ConversationHistoryConfig | null => {
+    if (!endpoint.conversationHistory || typeof endpoint.conversationHistory === 'boolean') {
+      return null;
+    }
+    return endpoint.conversationHistory;
+  };
+
   const handleHistoryChange = (enabled: boolean) => {
-    onChange('preserveConversationHistory', enabled);
+    if (enabled) {
+      if (!endpoint.conversationHistory || typeof endpoint.conversationHistory === 'boolean') {
+        onChange('conversationHistory', {
+          enabled: true,
+          userMessageFields: ['role', 'content'],
+          assistantMessageFields: ['role', 'replyText'],
+        });
+      } else {
+        onChange('conversationHistory', { ...endpoint.conversationHistory, enabled: true });
+      }
+    } else {
+      onChange('conversationHistory', false);
+    }
   };
 
-  const handleHistorySyncEventTypeChange = (eventType: string) => {
-    const current = endpoint.historySync || {};
-    onChange('historySync', { ...current, eventType });
+  const handleHistoryFieldChange = (field: keyof ConversationHistoryConfig, val: any) => {
+    let current = endpoint.conversationHistory;
+    if (!current || typeof current === 'boolean') {
+      current = { enabled: true };
+    }
+    if (field === 'historySync') {
+      onChange('conversationHistory', { ...current, historySync: val });
+    } else {
+      onChange('conversationHistory', { ...current, [field]: val });
+    }
   };
 
-  const handleHistorySyncMessagesPathChange = (messagesPath: string) => {
-    const current = endpoint.historySync || {};
-    onChange('historySync', { ...current, messagesPath });
-  };
+  const config = getHistoryConfig();
 
   return (
     <div style={{ marginTop: '16px' }}>
@@ -31,36 +64,43 @@ export const HistorySection: React.FC<HistorySectionProps> = ({ endpoint, onChan
         <div style={{ fontSize: '13px', fontWeight: 500, color: theme.colors.text.secondary }}>
           💬 Conversation History
         </div>
-        <Switch
-          value={endpoint.preserveConversationHistory || false}
-          onChange={(e) => handleHistoryChange(e.currentTarget.checked)}
-        />
+        <Switch value={isHistoryEnabled()} onChange={(e) => handleHistoryChange(e.currentTarget.checked)} />
       </div>
-      {endpoint.preserveConversationHistory && (
+      {isHistoryEnabled() && (
         <>
           <CommaSeparatedInput
             label="User message fields (comma‑separated)"
-            value={endpoint.userMessageFields || []}
-            onChange={(values) => onChange('userMessageFields', values)}
-            placeholder="id, sessionID"
+            value={config?.userMessageFields || []}
+            onChange={(values) => handleHistoryFieldChange('userMessageFields', values)}
+            placeholder="role, content"
           />
           <CommaSeparatedInput
             label="Assistant message fields (comma‑separated)"
-            value={endpoint.assistantMessageFields || []}
-            onChange={(values) => onChange('assistantMessageFields', values)}
-            placeholder="id, reasoning_details, tool_calls"
+            value={config?.assistantMessageFields || []}
+            onChange={(values) => handleHistoryFieldChange('assistantMessageFields', values)}
+            placeholder="role, replyText"
           />
           <Field label="History sync event type">
             <Input
-              value={endpoint.historySync?.eventType || ''}
-              onChange={(e) => handleHistorySyncEventTypeChange(e.currentTarget.value)}
+              value={config?.historySync?.eventType || ''}
+              onChange={(e) =>
+                handleHistoryFieldChange('historySync', {
+                  ...(config?.historySync || {}),
+                  eventType: e.currentTarget.value,
+                })
+              }
               placeholder="MESSAGES_SNAPSHOT"
             />
           </Field>
           <Field label="Messages path in event">
             <Input
-              value={endpoint.historySync?.messagesPath || ''}
-              onChange={(e) => handleHistorySyncMessagesPathChange(e.currentTarget.value)}
+              value={config?.historySync?.messagesPath || ''}
+              onChange={(e) =>
+                handleHistoryFieldChange('historySync', {
+                  ...(config?.historySync || {}),
+                  messagesPath: e.currentTarget.value,
+                })
+              }
               placeholder="messages"
             />
           </Field>

@@ -49,10 +49,7 @@ export const useAgent = (agentConfig: AgentConfig | null) => {
     []
   );
 
-  const getContextValue = useCallback(
-    (key: string) => clientRef.current?.getContextValue(key),
-    []
-  );
+  const getContextValue = useCallback((key: string) => clientRef.current?.getContextValue(key), []);
 
   return {
     isLoading,
@@ -62,6 +59,6 @@ export const useAgent = (agentConfig: AgentConfig | null) => {
     onChunk,
     onReasoningChunk,
     onReasoningComplete,
-    getContextValue
+    getContextValue,
   };
 };

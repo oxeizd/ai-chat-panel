@@ -50,7 +50,6 @@ export class JsonHandler implements ResponseHandler {
     }
 
     if (reasoningText) {
-      opt.eventBus.emit('thinkingComplete', reasoningText);
       opt.eventBus.emit('reasoningComplete', reasoningText);
     }
 

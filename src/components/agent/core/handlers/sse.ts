@@ -28,9 +28,12 @@ export class SseHandler implements ResponseHandler {
     let fullReasoning = '';
     let fullVisible = '';
 
+    const historyCfg = typeof ep.conversationHistory === 'object' ? ep.conversationHistory : undefined;
+    const historySync = historyCfg?.historySync;
+
     const onSync = (event: any) => {
-      if (ep.historySync && event.type === ep.historySync.eventType) {
-        const msgs = extractValueByPath(event, ep.historySync.messagesPath);
+      if (historySync && event.type === historySync.eventType) {
+        const msgs = extractValueByPath(event, historySync.messagesPath);
         if (Array.isArray(msgs)) {
           ctx.messages = msgs;
           opt.onTrace?.({
@@ -56,13 +59,11 @@ export class SseHandler implements ResponseHandler {
       (rChunk) => {
         // Чанк reasoning_content (от API)
         fullReasoning += rChunk;
-        opt.eventBus.emit('thinking', rChunk);
         opt.eventBus.emit('reasoningChunk', rChunk);
       }
     );
 
     if (fullReasoning) {
-      opt.eventBus.emit('thinkingComplete', fullReasoning);
       opt.eventBus.emit('reasoningComplete', fullReasoning);
     }
 

@@ -4,16 +4,16 @@ import { WorkflowContext } from '../context';
 import { ProcessedResponse } from '../response';
 import { HistoryManager } from '../history';
 
-/**
- * Мидлвара: добавляет ответ ассистента в историю.
- */
 export class HistoryMiddleware implements PostProcessingMiddleware {
   name = 'history';
 
   constructor(private history: HistoryManager) {}
 
   process(resp: ProcessedResponse, ep: EndpointConfig, ctx: WorkflowContext) {
-    if (ep.preserveConversationHistory && resp.replyText) {
+    const ch = ep.conversationHistory;
+    const enabled = ch === true ? true : ch && typeof ch === 'object' ? ch.enabled : false;
+
+    if (enabled && resp.replyText) {
       this.history.addAssistantMessage(ep, ctx, resp.data, resp.replyText);
     }
   }

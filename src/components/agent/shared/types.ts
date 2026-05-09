@@ -20,7 +20,11 @@ export interface EndpointConfig {
   headers?: Record<string, string>; // объект, не строка
   replyField?: string; // альтернативное поле для извлечения ответа
   streaming?: boolean | StreamingConfig;
-  preserveConversationHistory?: boolean;
+  conversationHistory?: boolean | ConversationHistoryConfig;
+}
+
+export interface ConversationHistoryConfig {
+  enabled: boolean;
   userMessageFields?: string[]; // поля для сохранения сообщения пользователя
   assistantMessageFields?: string[]; // поля для сообщения ассистента
   historySync?: {
@@ -68,7 +72,7 @@ export interface Message {
 }
 
 export interface TraceStep {
-  type: 'request' | 'response' | 'polling' | 'context_update' | 'sse_parse_error';
+  type: 'request' | 'response' | 'polling' | 'context_update' | 'sse_parse_error' | 'error';
   timestamp: number;
   endpoint?: EndpointConfig;
   url?: string;
@@ -80,6 +84,7 @@ export interface TraceStep {
   contextChanges?: Record<string, any>;
   error?: any;
   line?: string;
+  errorMessage?: string;
 }
 
 export interface DebugTrace {

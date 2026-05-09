@@ -52,7 +52,11 @@ export class EndpointExecutor {
 
     // 3. История: добавляем сообщение пользователя до запроса
     this.history.addUserMessage(endpoint, context, mergedBody);
-    if (endpoint.preserveConversationHistory) {
+
+    const ch = endpoint.conversationHistory;
+    const historyEnabled = ch === true ? true : ch && typeof ch === 'object' ? ch.enabled : false;
+
+    if (historyEnabled) {
       mergedBody.messages = context.messages;
       if (Object.keys(mergedBody).length > 0) {
         bodyString = JSON.stringify(mergedBody);

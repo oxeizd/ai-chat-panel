@@ -1,5 +1,4 @@
-﻿// Значения по умолчанию для стриминга и поллинга
-export const STREAMING_DEFAULTS = {
+﻿export const STREAMING_DEFAULTS = {
   textPath: 'choices.0.delta.content',
   delimiter: '\n\n',
   dataPrefix: 'data: ',
