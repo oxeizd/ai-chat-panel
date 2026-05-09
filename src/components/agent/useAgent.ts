@@ -49,6 +49,10 @@ export const useAgent = (agentConfig: AgentConfig | null) => {
     []
   );
 
+  const onThinkingStart = useCallback((fn: () => void) => clientRef.current?.onThinkingStart(fn) ?? (() => {}), []);
+
+  const onThinkingEnd = useCallback((fn: () => void) => clientRef.current?.onThinkingEnd(fn) ?? (() => {}), []);
+
   const getContextValue = useCallback((key: string) => clientRef.current?.getContextValue(key), []);
 
   return {
@@ -59,6 +63,8 @@ export const useAgent = (agentConfig: AgentConfig | null) => {
     onChunk,
     onReasoningChunk,
     onReasoningComplete,
+    onThinkingStart,
+    onThinkingEnd,
     getContextValue,
   };
 };

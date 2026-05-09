@@ -58,6 +58,14 @@ export class AgentClient {
     return this.on('reasoningComplete', handler);
   }
 
+  onThinkingStart(handler: () => void): () => void {
+    return this.on('thinkingStart', handler);
+  }
+
+  onThinkingEnd(handler: () => void): () => void {
+    return this.on('thinkingEnd', handler);
+  }
+
   /** Получить значение из текущего контекста сессии */
   getContextValue(key: string): any {
     return this.ctx.context[key];

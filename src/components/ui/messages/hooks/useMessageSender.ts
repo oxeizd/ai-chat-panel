@@ -12,6 +12,8 @@ interface SendCallbacks {
   onChunk?: (chunk: string) => void;
   onReasoningChunk?: (chunk: string) => void;
   onReasoningComplete?: (text: string) => void;
+  onThinkingStart?: () => void;
+  onThinkingEnd?: () => void;
   onStep?: (step: TraceStep) => void;
 }
 
@@ -24,6 +26,8 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
     onChunk: subscribeChunk,
     onReasoningChunk: subscribeReasoning,
     onReasoningComplete: subscribeReasoningComplete,
+    onThinkingStart: subscribeThinkingStart,
+    onThinkingEnd: subscribeThinkingEnd,
   } = useAgent(agent);
 
   const isSendingRef = useRef(false);
@@ -48,6 +52,13 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
         unsubs.push(subscribeReasoningComplete(callbacks.onReasoningComplete));
       }
 
+      if (callbacks?.onThinkingStart) {
+        unsubs.push(subscribeThinkingStart(callbacks.onThinkingStart));
+      }
+      if (callbacks?.onThinkingEnd) {
+        unsubs.push(subscribeThinkingEnd(callbacks.onThinkingEnd));
+      }
+
       const additionalContext: Record<string, any> = {};
       if (user) {
         additionalContext.userId = user.id;
@@ -70,7 +81,17 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
         unsubs.forEach((unsub) => unsub());
       }
     },
-    [agent, isLoading, user, agentSendMessage, subscribeChunk, subscribeReasoning, subscribeReasoningComplete]
+    [
+      agent,
+      isLoading,
+      user,
+      agentSendMessage,
+      subscribeChunk,
+      subscribeReasoning,
+      subscribeReasoningComplete,
+      subscribeThinkingEnd,
+      subscribeThinkingStart,
+    ]
   );
 
   const abort = useCallback(() => {

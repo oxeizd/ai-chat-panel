@@ -1,11 +1,12 @@
+import { css } from '@emotion/css';
 import React, { useState, forwardRef } from 'react';
 import { Button, useTheme2, Collapse } from '@grafana/ui';
-import { css } from '@emotion/css';
 import { EndpointConfig } from 'types';
-import { ResponseHandlingSection } from './sections/ResponseSection';
 import { PollingSection } from './sections/PollingSection';
-import { StreamingSection } from './sections/StreamingSection';
 import { HistorySection } from './sections/HistorySection';
+import { ReasoningSection } from './sections/ReasoningSection';
+import { StreamingSection } from './sections/StreamingSection';
+import { ResponseHandlingSection } from './sections/ResponseSection';
 import { BasicEndpointFields } from './sections/BasicEndpointFields';
 import { BodySection, HeadersSection } from './sections/BasicSections';
 
@@ -91,6 +92,9 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
 
           {/* Streaming */}
           <StreamingSection endpoint={endpoint} onChange={handleChange} />
+
+          {/* Reasoning / Thinking */}
+          <ReasoningSection endpoint={endpoint} onChange={handleChange} />
 
           {/* Conversation History */}
           <HistorySection endpoint={endpoint} onChange={handleChange} />

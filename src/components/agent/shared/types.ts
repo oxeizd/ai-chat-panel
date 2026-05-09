@@ -21,6 +21,7 @@ export interface EndpointConfig {
   replyField?: string; // альтернативное поле для извлечения ответа
   streaming?: boolean | StreamingConfig;
   conversationHistory?: boolean | ConversationHistoryConfig;
+  reasoning?: boolean | ReasoningConfig;
 }
 
 export interface ConversationHistoryConfig {
@@ -69,6 +70,45 @@ export interface Message {
   };
   thinking?: string;
   isThinking?: boolean;
+}
+
+/**
+ * Настройки извлечения мыслей (reasoning) агента.
+ */
+export interface ReasoningConfig {
+  enabled: boolean;
+
+  /**
+   * Режим извлечения мыслей:
+   *   'api_field'      – только из отдельного поля API (например, choices[0].delta.reasoning_content)
+   *   'thinking_tags'  – только из тегов <thinking>...</thinking> внутри текста ответа
+   *   'both'           – и из API, и из тегов (по умолчанию)
+   */
+  mode?: 'api_field' | 'thinking_tags' | 'both';
+
+  /**
+   * Путь к полю reasoning в чанке SSE (для mode='api_field' или 'both').
+   * По умолчанию: 'choices[0].delta.reasoning_content'
+   */
+  apiField?: string;
+
+  /**
+   * Путь к текстовому содержимому для поиска тегов (если mode включает thinking_tags).
+   * По умолчанию: 'choices[0].delta.content'
+   */
+  textPath?: string;
+
+  /**
+   * Открывающий маркер для thinking_tags.
+   * По умолчанию: '<thinking>'
+   */
+  startMarker?: string;
+
+  /**
+   * Закрывающий маркер для thinking_tags.
+   * По умолчанию: '</thinking>'
+   */
+  endMarker?: string;
 }
 
 export interface TraceStep {
