@@ -15,6 +15,8 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     setMessages,
     addAssistantPlaceholder,
     updateAssistantText,
+    updateAssistantThinking,
+    setAssistantThinkingDone,
     setAssistantFinal,
     removeAssistant,
     addErrorAsAi,
@@ -26,7 +28,6 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
   const { traces, create, addStep, setReply, setError, remove: removeTrace } = useDebugTraces(debug);
   const { send, abort, reset: resetSession, isSending } = useMessageSender({ agent: currentAgent, user });
 
-  // Отмена при размонтировании
   useEffect(() => {
     return () => {
       abort();
@@ -59,18 +60,24 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       const assistantId = assistantPlaceholder.id;
       const trace = create(userMessageId, trimmed);
 
-      const onChunk = (chunk: string) => {
-        updateAssistantText(assistantId, (prev) => prev + chunk);
-      };
-
-      const onStep = (step: any) => {
-        if (trace) {
-          addStep(userMessageId, step);
-        }
-      };
-
       try {
-        const reply = await send(trimmed, onChunk, onStep);
+        const reply = await send(trimmed, {
+          onChunk: (chunk: string) => {
+            updateAssistantText(assistantId, (prev) => prev + chunk);
+          },
+          onReasoningChunk: (chunk: string) => {
+            updateAssistantThinking(assistantId, chunk);
+          },
+          onReasoningComplete: (full: string) => {
+            setAssistantThinkingDone(assistantId, full);
+          },
+          onStep: (step: any) => {
+            if (trace) {
+              addStep(userMessageId, step);
+            }
+          },
+        });
+
         if (reply === null) {
           removeAssistant(assistantId);
           return false;
@@ -103,6 +110,8 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       addAssistantPlaceholder,
       create,
       updateAssistantText,
+      updateAssistantThinking,
+      setAssistantThinkingDone,
       send,
       removeAssistant,
       setAssistantFinal,

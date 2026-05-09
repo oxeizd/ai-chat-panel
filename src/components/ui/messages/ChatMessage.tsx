@@ -5,9 +5,9 @@ import ReactMarkdown from 'react-markdown';
 
 // @ts-ignore
 import 'katex/dist/katex.min.css';
-import { REMARK_PLUGINS, REHYPE_PLUGINS } from '../utils/markdown/plugins';
 import { MessageListStyles } from './MessageList';
-import { downloadFile } from 'components/agent/utils/fileHandler';
+import { downloadFile } from 'components/agent/shared/utils/fileHandler';
+import { REMARK_PLUGINS, REHYPE_PLUGINS } from '../utils/markdown/plugins';
 
 interface ChatMessageProps {
   message: {
@@ -22,6 +22,8 @@ interface ChatMessageProps {
       mimeType?: string;
       isUrl?: boolean;
     };
+    thinking?: string;
+    isThinking?: boolean;
   };
   styles: MessageListStyles;
   debug: boolean;
@@ -84,6 +86,54 @@ export const ChatMessage = React.memo(
             <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{message.text}</div>
           ) : (
             <>
+              {/* Мысли — спойлер */}
+              {(message.thinking || message.isThinking) && (
+                <details open={message.isThinking} style={{ marginBottom: 8 }}>
+                  <summary
+                    style={{
+                      cursor: 'pointer',
+                      color: message.isThinking ? '#fbbf24' : '#94a3b8',
+                      fontSize: '0.85rem',
+                      fontStyle: 'italic',
+                      padding: '4px 0',
+                      transition: 'color 0.2s',
+                      userSelect: 'none',
+                    }}
+                  >
+                    {message.isThinking ? ' Думает...' : ' Размышления'}
+                  </summary>
+                  <div
+                    style={{
+                      padding: '8px 12px',
+                      margin: '4px 0',
+                      background: 'rgba(148,163,184,0.08)',
+                      borderRadius: 6,
+                      borderLeft: '3px solid rgba(148,163,184,0.3)',
+                      fontSize: '0.85rem',
+                      color: '#94a3b8',
+                      whiteSpace: 'pre-wrap',
+                      maxHeight: message.isThinking ? 'none' : '300px',
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {message.thinking}
+                    {message.isThinking && (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          width: '0.5em',
+                          height: '1em',
+                          backgroundColor: '#fbbf24',
+                          marginLeft: 2,
+                          animation: 'blink 1s step-end infinite',
+                          verticalAlign: 'text-bottom',
+                        }}
+                      />
+                    )}
+                  </div>
+                </details>
+              )}
+
               <div className={styles.katex}>
                 <ReactMarkdown
                   remarkPlugins={REMARK_PLUGINS}

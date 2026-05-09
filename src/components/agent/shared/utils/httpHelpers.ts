@@ -1,4 +1,4 @@
-﻿import { WorkflowContext } from '../core/ContextManager';
+﻿import { WorkflowContext } from 'components/agent/core/context';
 import { mergeObjects } from './objectHelpers';
 import { resolveString, resolveObject } from './variableResolver';
 
@@ -18,7 +18,9 @@ export const buildUrl = (endpoint: { path: string }, context: WorkflowContext, b
   }
   const path = resolveString(endpoint.path, context);
   const combine = (base: string, relative: string) => {
-    if (!relative) return base;
+    if (!relative) {
+      return base;
+    }
     const baseClean = base.endsWith('/') ? base.slice(0, -1) : base;
     const relativeClean = relative.startsWith('/') ? relative : '/' + relative;
     return baseClean + relativeClean;
@@ -58,7 +60,9 @@ export const extractReply = (data: any, replyField?: string): { replyText?: stri
   let replyText: string | undefined;
   if (replyField) {
     const replyValue = data[replyField];
-    if (replyValue !== undefined) replyText = String(replyValue);
+    if (replyValue !== undefined) {
+      replyText = String(replyValue);
+    }
   } else {
     if (data.choices?.[0]?.message?.content) {
       replyText = data.choices[0].message.content;

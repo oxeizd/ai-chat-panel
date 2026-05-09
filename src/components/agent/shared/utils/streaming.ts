@@ -1,4 +1,4 @@
-﻿import { StreamingConfig } from '../types';
+﻿import { StreamingConfig } from 'types';
 import { extractValueByPath } from './objectHelpers';
 import { STREAMING_DEFAULTS } from '../constants';
 
@@ -61,7 +61,8 @@ export async function parseSSEStream(
   dataPrefix: string,
   onChunk?: (chunk: string) => void,
   onHistorySync?: (event: any) => void,
-  onTrace?: (step: any) => void
+  onTrace?: (step: any) => void,
+  onReasoningChunk?: (chunk: string) => void
 ): Promise<{ fullText: string; finalEvent?: any; rawEvents: any[] }> {
   if (!response.body) {
     throw new Error('Response body is empty');
@@ -117,6 +118,19 @@ export async function parseSSEStream(
           if (onHistorySync) {
             onHistorySync(event);
           }
+
+          let reasoningChunk: string | undefined;
+
+          if (event.choices?.[0]) {
+            reasoningChunk = event.choices[0].delta?.reasoning_content;
+          }
+          if (!reasoningChunk && event.type === 'REASONING' && event.delta) {
+            reasoningChunk = event.delta;
+          }
+          if (reasoningChunk !== undefined && onReasoningChunk) {
+            onReasoningChunk(reasoningChunk);
+          }
+
           finalEvent = event;
 
           let chunkText: string | undefined;

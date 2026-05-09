@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { useAgent } from 'components/agent/useAgent';
-import { AgentConfig, TraceStep } from 'types';
+import { AgentConfig, TraceStep } from 'components/agent/shared/types';
 import { GrafanaUser } from '../../../hooks/useGrafanaUser';
 
 interface UseMessageSenderOptions {
@@ -8,23 +8,45 @@ interface UseMessageSenderOptions {
   user: GrafanaUser | null;
 }
 
+interface SendCallbacks {
+  onChunk?: (chunk: string) => void;
+  onReasoningChunk?: (chunk: string) => void;
+  onReasoningComplete?: (text: string) => void;
+  onStep?: (step: TraceStep) => void;
+}
+
 export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
-  const { isLoading, sendMessage: agentSendMessage, resetSession, abort: abortAgent } = useAgent(agent);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const {
+    isLoading,
+    sendMessage: agentSendMessage,
+    resetSession,
+    abort: abortAgent,
+    onChunk: subscribeChunk,
+    onReasoningChunk: subscribeReasoning,
+    onReasoningComplete: subscribeReasoningComplete,
+  } = useAgent(agent);
+
   const isSendingRef = useRef(false);
 
   const send = useCallback(
-    async (
-      text: string,
-      onChunk: (chunk: string) => void,
-      onStep: (step: TraceStep) => void
-    ): Promise<string | null> => {
+    async (text: string, callbacks?: SendCallbacks): Promise<string | null> => {
       if (!agent || isSendingRef.current || isLoading) {
         return null;
       }
 
       isSendingRef.current = true;
-      abortControllerRef.current = new AbortController();
+
+      // Подписки на чанки и reasoning через шину
+      const unsubs: Array<() => void> = [];
+      if (callbacks?.onChunk) {
+        unsubs.push(subscribeChunk(callbacks.onChunk));
+      }
+      if (callbacks?.onReasoningChunk) {
+        unsubs.push(subscribeReasoning(callbacks.onReasoningChunk));
+      }
+      if (callbacks?.onReasoningComplete) {
+        unsubs.push(subscribeReasoningComplete(callbacks.onReasoningComplete));
+      }
 
       const additionalContext: Record<string, any> = {};
       if (user) {
@@ -35,7 +57,8 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
       }
 
       try {
-        const reply = await agentSendMessage(text, additionalContext, onStep, onChunk);
+        // Передаём только 3 аргумента: текст, контекст, колбэк трассировки
+        const reply = await agentSendMessage(text, additionalContext, callbacks?.onStep);
         return reply;
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
@@ -44,20 +67,26 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
         throw err;
       } finally {
         isSendingRef.current = false;
-        abortControllerRef.current = null;
+        unsubs.forEach((unsub) => unsub());
       }
     },
-    [agent, isLoading, user, agentSendMessage]
+    [agent, isLoading, user, agentSendMessage, subscribeChunk, subscribeReasoning, subscribeReasoningComplete]
   );
 
   const abort = useCallback(() => {
-    abortControllerRef.current?.abort();
-    abortAgent();
+    abortAgent(); // отмена через внутренний AbortController в useAgent
   }, [abortAgent]);
 
   const reset = useCallback(async () => {
     await resetSession();
   }, [resetSession]);
 
-  return { send, abort, reset, isSending: isSendingRef.current || isLoading };
+  return {
+    send,
+    abort,
+    reset,
+    isSending: isSendingRef.current || isLoading,
+    onChunk: subscribeChunk,
+    onReasoningChunk: subscribeReasoning,
+  };
 };

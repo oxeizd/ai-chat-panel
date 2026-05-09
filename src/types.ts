@@ -1,4 +1,4 @@
-import { AgentConfig } from 'components/agent/types';
+import { AgentConfig } from 'components/agent/shared/types';
 
 export interface PanelOptions {
   chatMode?: 'floating' | 'inline' | 'button';
@@ -23,4 +23,4 @@ export interface PanelOptions {
   debug?: boolean;
 }
 
-export * from 'components/agent/types';
+export * from 'components/agent/shared/types';

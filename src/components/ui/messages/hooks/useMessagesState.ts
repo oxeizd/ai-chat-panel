@@ -22,6 +22,8 @@ export const useMessagesState = () => {
       text: '',
       sender: 'ai',
       timestamp: Date.now(),
+      thinking: '',
+      isThinking: false,
     };
     setMessages((prev) => [...prev, msg]);
     return msg;
@@ -33,6 +35,41 @@ export const useMessagesState = () => {
         msg.id === assistantId && msg.sender === 'ai'
           ? { ...msg, text: typeof updater === 'function' ? updater(msg.text) : updater }
           : msg
+      )
+    );
+  }, []);
+
+  /**
+   * Добавляет чанк (или накапливает) в поле `thinking` ассистента.
+   * Устанавливает флаг `isThinking: true`.
+   */
+  const updateAssistantThinking = useCallback(
+    (assistantId: string, chunkOrUpdater: string | ((prev: string) => string)) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantId && msg.sender === 'ai'
+            ? {
+                ...msg,
+                thinking:
+                  typeof chunkOrUpdater === 'function'
+                    ? chunkOrUpdater(msg.thinking || '')
+                    : (msg.thinking || '') + chunkOrUpdater,
+                isThinking: true,
+              }
+            : msg
+        )
+      );
+    },
+    []
+  );
+
+  /**
+   * Финализирует процесс рассуждения: записывает полный текст и снимает флаг isThinking.
+   */
+  const setAssistantThinkingDone = useCallback((assistantId: string, finalThinking: string) => {
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === assistantId && msg.sender === 'ai' ? { ...msg, thinking: finalThinking, isThinking: false } : msg
       )
     );
   }, []);
@@ -83,6 +120,8 @@ export const useMessagesState = () => {
     addAssistantPlaceholder,
     setMessages,
     updateAssistantText,
+    updateAssistantThinking,
+    setAssistantThinkingDone,
     setAssistantFinal,
     removeAssistant,
     addErrorAsAi,

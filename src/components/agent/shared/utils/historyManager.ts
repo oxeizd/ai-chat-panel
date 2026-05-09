@@ -1,4 +1,4 @@
-﻿import { WorkflowContext } from "../core/ContextManager"; // обновлённый импорт
+﻿import { WorkflowContext } from 'components/agent/core/context';
 
 /**
  * Добавляет сообщение ассистента в историю контекста.
@@ -15,9 +15,17 @@ export const addAssistantMessageToHistory = (
   replyText?: string,
   skipIfAlreadySynced = false
 ): void => {
-  if (!endpoint.preserveConversationHistory) return;
-  if (skipIfAlreadySynced) return;
-  if (!replyText) return;
+  if (!endpoint.preserveConversationHistory) {
+    return;
+  }
+
+  if (skipIfAlreadySynced) {
+    return;
+  }
+
+  if (!replyText) {
+    return;
+  }
 
   if (!context.messages || !Array.isArray(context.messages)) {
     context.messages = [];
@@ -60,14 +68,18 @@ export const addUserMessageToHistory = (
   context: WorkflowContext,
   mergedBody: any
 ): void => {
-  if (!endpoint.preserveConversationHistory) return;
+  if (!endpoint.preserveConversationHistory) {
+    return;
+  }
 
   if (!context.messages || !Array.isArray(context.messages)) {
     context.messages = [];
   }
 
   const requestMessages = mergedBody.messages;
-  if (!Array.isArray(requestMessages) || requestMessages.length === 0) return;
+  if (!Array.isArray(requestMessages) || requestMessages.length === 0) {
+    return;
+  }
 
   const lastUserMessageFromRequest = requestMessages[requestMessages.length - 1];
   const lastContextMsg = context.messages[context.messages.length - 1];
@@ -77,7 +89,9 @@ export const addUserMessageToHistory = (
     lastContextMsg.role !== lastUserMessageFromRequest.role ||
     lastContextMsg.content !== lastUserMessageFromRequest.content;
 
-  if (!shouldAdd) return;
+  if (!shouldAdd) {
+    return;
+  }
 
   let messageToStore: any;
   if (endpoint.userMessageFields?.length) {

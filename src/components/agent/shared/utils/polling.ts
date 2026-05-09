@@ -1,4 +1,4 @@
-﻿import { PollingConfig } from '../types';
+﻿import { PollingConfig } from 'types';
 import { POLLING_DEFAULTS } from '../constants';
 
 /**
