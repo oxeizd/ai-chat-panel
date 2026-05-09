@@ -1,12 +1,13 @@
 import React from 'react';
 import { Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { AgentMenu } from './AgentMenu';
-import { useChat } from '../chat/ChatContext';
+import { useChatActions, useChatState } from '../chat/ChatContext';
 import { useStyles } from '../styles/styles';
 import { blurButton } from '../utils/dom';
 
 export const BottomButtons: React.FC = () => {
-  const { selectedAgent, agents, setSelectedAgent, newChat, isLoading, debug, setMessages, messages } = useChat();
+  const { messages, isLoading } = useChatState();
+  const { selectedAgent, agents, setSelectedAgent, newChat, debug, setMessages } = useChatActions();
   const theme = useTheme2();
   const styles = useStyles(theme);
 

@@ -6,7 +6,7 @@ import { useFloating, autoUpdate, flip, offset, size } from '@floating-ui/react'
 import { useStyles } from '../styles/styles';
 import { ChatMenu } from 'components/ui/toolbar/ChatMenu';
 import { useSuggestions } from 'components/ui/hooks/useSuggestions';
-import { useChat } from '../chat/ChatContext';
+import { useChatActions, useChatState } from '../chat/ChatContext';
 import { blurButton } from '../utils/dom';
 
 interface InputAreaProps {
@@ -38,15 +38,12 @@ export const InputArea = memo(
   forwardRef<HTMLDivElement, InputAreaProps>((props, ref) => {
     const theme = useTheme2();
     const styles = useStyles(theme);
-    const chat = useChat();
 
     const { className, onSend, onContinue, continueMode, onSendText } = props;
-
+    const { inputValue, isLoading } = useChatState();
     const {
-      inputValue,
       setInputValue,
       sendMessage,
-      isLoading,
       clearChat,
       exportChat,
       newChat,
@@ -61,7 +58,7 @@ export const InputArea = memo(
       welcomeMessage,
       showWelcomeMessage,
       inputAreaBackground,
-    } = chat;
+    } = useChatActions();
 
     const { showPopup, popupRef, inputRef, onFocus, onBlur, setShowPopup } = useSuggestions({
       suggestions: suggestions || [],

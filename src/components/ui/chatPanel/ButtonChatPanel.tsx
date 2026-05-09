@@ -1,21 +1,12 @@
 import React from 'react';
 import { Button } from '@grafana/ui';
-import { useChat } from '../chat/ChatContext';
+import { useChatActions, useChatState } from '../chat/ChatContext';
 import { FloatingChat } from './FloatingChat';
 
 export const ButtonChatPanel: React.FC = () => {
-  const {
-    isChatOpen,
-    openChat,
-    closeChat,
-    isFullscreen,
-    toggleFullscreen,
-    chatMessagesRef,
-    buttonText,
-    openFullscreen,
-    isLoading,
-    chatStyle,
-  } = useChat();
+  const { isChatOpen, isFullscreen, isLoading } = useChatState();
+  const { openChat, closeChat, toggleFullscreen, chatMessagesRef, buttonText, openFullscreen, chatStyle } =
+    useChatActions();
 
   const handleOpenChat = () => {
     if (isLoading) {

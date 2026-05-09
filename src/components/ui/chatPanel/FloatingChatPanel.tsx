@@ -4,27 +4,25 @@ import { cx } from '@emotion/css';
 import { useStyles } from 'components/ui/styles/styles';
 import { InputArea } from './InputArea';
 import { FloatingChat } from './FloatingChat';
-import { useChat } from '../chat/ChatContext';
+import { useChatActions, useChatState } from '../chat/ChatContext';
 
 export const FloatingChatPanel: React.FC = () => {
-  const props = useChat();
-  const theme = useTheme2();
-  const styles = useStyles(theme);
+  const { messages, isChatOpen, isFullscreen } = useChatState();
   const {
     sendMessage,
-    messages,
     maxWidth,
     centerInput,
-    isChatOpen,
     openChat,
     closeChat,
     chatStyle,
     chatMessagesRef,
     inputContainerRef,
     setFloatingChatRefCallback,
-    isFullscreen,
     toggleFullscreen,
-  } = props;
+  } = useChatActions();
+
+  const theme = useTheme2();
+  const styles = useStyles(theme);
 
   const handleSendWithOpen = useCallback(() => {
     sendMessage();

@@ -4,18 +4,20 @@ import { cx } from '@emotion/css';
 import { useStyles } from '../styles/styles';
 import { useKeyboardSubmit } from '../hooks/useKeyboardSubmit';
 import { useWheelPrevention } from '../hooks/useWheelPrevention';
-import { useChat } from '../chat/ChatContext';
+import { useChatActions, useChatState } from '../chat/ChatContext';
 
 interface ChatTextareaProps {
   disabled?: boolean;
 }
 
 export const ChatTextarea: React.FC<ChatTextareaProps> = ({ disabled }) => {
-  const { inputValue, setInputValue, sendMessage, isLoading, placeholderText } = useChat();
+  const { inputValue, isLoading } = useChatState();
+  const { setInputValue, sendMessage, placeholderText } = useChatActions();
+
   const theme = useTheme2();
   const styles = useStyles(theme);
-  const handleKeyDown = useKeyboardSubmit(() => sendMessage());
   const handleWheel = useWheelPrevention();
+  const handleKeyDown = useKeyboardSubmit(() => sendMessage());
 
   return (
     <div className={styles.input.container}>

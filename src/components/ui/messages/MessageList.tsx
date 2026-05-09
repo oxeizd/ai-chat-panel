@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { cx } from '@emotion/css';
 import { Spinner, Modal } from '@grafana/ui';
-import { useChat } from '../chat/ChatContext';
+import { useChatActions, useChatState } from '../chat/ChatContext';
 import { DebugTraceModal } from '../debug/DebugTraceModal';
 import { useMarkdownComponents } from '../utils/markdown/useComponents';
 import { ChatMessage } from './ChatMessage';
@@ -23,7 +23,8 @@ interface MessageListProps {
 }
 
 export const MessageList: React.FC<MessageListProps> = React.memo(({ showPlaceholder = true, styles }) => {
-  const { messages, isLoading, placeholderText, retryMessage, debug, getTrace } = useChat();
+  const { messages, isLoading } = useChatState();
+  const { placeholderText, retryMessage, debug, getTrace } = useChatActions();
   const [errorDetails, setErrorDetails] = useState<any>(null);
   const [traceModalOpen, setTraceModalOpen] = useState(false);
   const [selectedTrace, setSelectedTrace] = useState<any>(null);
