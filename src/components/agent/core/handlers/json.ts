@@ -3,6 +3,8 @@ import { WorkflowContext } from '../context';
 import { HttpResponse } from '../httpClient';
 import { ResponseHandler, ProcessedResponse, HandlerOptions } from '../response';
 import { isStreamingEnabled, detectSSEByContent } from '../../shared/utils/streaming';
+import { getReasoningConfig } from '../../shared/utils/reasoning';
+import { extractReply } from '../../shared/utils/httpHelpers';
 
 /**
  * Обработчик обычных JSON-ответов.
@@ -35,44 +37,24 @@ export class JsonHandler implements ResponseHandler {
       responseBody: data,
     });
 
-    // ─── Конфиг reasoning ───
-    const reasoningCfg =
-      typeof ep.reasoning === 'object'
-        ? ep.reasoning
-        : ep.reasoning === true
-          ? {
-              enabled: true,
-              mode: 'both' as const,
-              apiField: 'choices[0].delta.reasoning_content',
-              textPath: 'choices[0].delta.content',
-              startMarker: '<thinking>',
-              endMarker: '</thinking>',
-            }
-          : { enabled: false };
+    // ─── Извлечение replyText ───
+    const { replyText } = extractReply(data, ep.replyField);
 
+    // ─── Конфиг reasoning ───
+    const reasoningCfg = getReasoningConfig(ep);
     const reasoningEnabled = reasoningCfg.enabled;
     const mode = reasoningCfg.mode ?? 'both';
     const useApiField = mode === 'api_field' || mode === 'both';
     const useThinkingTags = mode === 'thinking_tags' || mode === 'both';
 
-    // ─── Извлечение текста ответа ───
-    const msg = data.choices?.[0]?.message;
-    let replyText: string | undefined;
-
-    if (msg?.content) {
-      replyText = msg.content;
-    } else if (data.reply) {
-      replyText = data.reply;
-    } else if (data.result) {
-      replyText = data.result;
-    }
-
-    let reasoningText: string | undefined;
+    let reasoningText: string | undefined = undefined;
+    let cleanReply: string | undefined = undefined; // для очищенного текста после тегов
 
     // ─── Извлечение reasoning ───
     if (reasoningEnabled && replyText) {
       // 1. Из API поля
       if (useApiField) {
+        const msg = data.choices?.[0]?.message;
         if (msg?.reasoning) {
           reasoningText = msg.reasoning;
         } else if (msg?.reasoning_details) {
@@ -91,9 +73,8 @@ export class JsonHandler implements ResponseHandler {
         const endMarker = reasoningCfg.endMarker ?? '</thinking>';
 
         let tagReasoning = '';
-        let cleanReply = replyText;
+        cleanReply = replyText;
 
-        // Ищем все вхождения тегов
         let startIdx = cleanReply.indexOf(startMarker);
         while (startIdx !== -1) {
           const endIdx = cleanReply.indexOf(endMarker, startIdx + startMarker.length);
@@ -103,13 +84,13 @@ export class JsonHandler implements ResponseHandler {
             cleanReply = cleanReply.substring(0, startIdx) + cleanReply.substring(endIdx + endMarker.length);
             startIdx = cleanReply.indexOf(startMarker);
           } else {
-            break; // незакрытый тег — оставляем как есть
+            break;
           }
         }
 
         if (tagReasoning) {
           reasoningText = reasoningText ? reasoningText + '\n' + tagReasoning : tagReasoning;
-          replyText = cleanReply; // очищенный от тегов текст
+          data.reply = cleanReply; // обновляем data.reply очищенным текстом
         }
       }
 
@@ -122,8 +103,8 @@ export class JsonHandler implements ResponseHandler {
     }
 
     return {
-      data: { ...data, reply: replyText, thinking: reasoningText },
-      replyText,
+      data: { ...data, reply: cleanReply ?? replyText, thinking: reasoningText },
+      replyText: cleanReply ?? replyText,
       reasoningText,
     };
   }

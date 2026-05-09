@@ -6,9 +6,9 @@ import { useChatOpen } from '../hooks/useChatOpen';
 import { useChatPosition } from '../hooks/useChatPosition';
 import { useChatWheelHandler } from '../hooks/useChatWheelHandler';
 import { useAutoScroll } from '../hooks/useAutoScroll';
-import { ChatContext } from './ChatContext';
 import { DEFAULT_PLACEHOLDER } from './config';
-import { ChatProviderProps } from './types';
+import { ChatActions, ChatProviderProps, ChatState } from './types';
+import { ChatActionsContext, ChatStateContext } from './ChatContext';
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({
   children,
@@ -142,12 +142,20 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     URL.revokeObjectURL(url);
   }, [messages]);
 
-  const value = useMemo(
+  const stateValue = useMemo<ChatState>(
     () => ({
-      setMessages,
       messages,
       isLoading,
       inputValue,
+      isChatOpen,
+      isFullscreen,
+    }),
+    [messages, isLoading, inputValue, isChatOpen, isFullscreen]
+  );
+
+  const actionsValue = useMemo<ChatActions>(
+    () => ({
+      setMessages,
       setInputValue,
       sendMessage,
       clearChat,
@@ -156,10 +164,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       selectedAgent,
       setSelectedAgent,
       agents,
-      isChatOpen,
       openChat,
       closeChat,
-      isFullscreen,
       toggleFullscreen,
       inputContainerRef,
       chatMessagesRef,
@@ -169,25 +175,23 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       placeholderText,
       maxWidth,
       centerInput,
+      buttonText,
+      openFullscreen,
+      centerFloatingChat,
+      fullScale,
       welcomeMessage,
       showWelcomeMessage,
       suggestions: suggestionsArray,
       suggestionsPlacement,
       showSuggestions,
+      inputAreaBackground,
       exportChat,
       handleSuggestionClick,
       debug,
       getTrace,
-      buttonText,
-      openFullscreen,
-      centerFloatingChat,
-      inputAreaBackground,
     }),
     [
       setMessages,
-      messages,
-      isLoading,
-      inputValue,
       setInputValue,
       sendMessage,
       clearChat,
@@ -196,10 +200,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       selectedAgent,
       setSelectedAgent,
       agents,
-      isChatOpen,
       openChat,
       closeChat,
-      isFullscreen,
       toggleFullscreen,
       inputContainerRef,
       chatMessagesRef,
@@ -209,21 +211,26 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       placeholderText,
       maxWidth,
       centerInput,
+      buttonText,
+      openFullscreen,
+      centerFloatingChat,
+      fullScale,
       welcomeMessage,
       showWelcomeMessage,
       suggestionsArray,
       suggestionsPlacement,
       showSuggestions,
+      inputAreaBackground,
       exportChat,
       handleSuggestionClick,
       debug,
       getTrace,
-      buttonText,
-      openFullscreen,
-      centerFloatingChat,
-      inputAreaBackground,
     ]
   );
 
-  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
+  return (
+    <ChatStateContext.Provider value={stateValue}>
+      <ChatActionsContext.Provider value={actionsValue}>{children}</ChatActionsContext.Provider>
+    </ChatStateContext.Provider>
+  );
 };

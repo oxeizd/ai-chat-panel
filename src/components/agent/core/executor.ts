@@ -100,7 +100,6 @@ export class EndpointExecutor {
       this.ctx.replace(context);
 
       return processed.data;
-    } finally {
-    }
+    } catch {}
   }
 }

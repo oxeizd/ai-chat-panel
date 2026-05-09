@@ -36,7 +36,8 @@ export class PollingHandler implements ResponseHandler {
       meta.headers,
       meta.body,
       initial.data,
-      opt.onTrace
+      opt.onTrace,
+      opt.signal
     );
 
     return { ...initial, data };

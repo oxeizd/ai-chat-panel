@@ -58,12 +58,12 @@ export const buildRequestBody = (
  */
 export const extractReply = (data: any, replyField?: string): { replyText?: string; dataWithReply: any } => {
   let replyText: string | undefined;
-  if (replyField) {
-    const replyValue = data[replyField];
-    if (replyValue !== undefined) {
-      replyText = String(replyValue);
-    }
-  } else {
+
+  if (replyField && data[replyField] !== undefined) {
+    replyText = String(data[replyField]);
+  }
+
+  if (replyText === undefined) {
     if (data.choices?.[0]?.message?.content) {
       replyText = data.choices[0].message.content;
     } else if (data.choices?.[0]?.delta?.content) {
@@ -74,8 +74,9 @@ export const extractReply = (data: any, replyField?: string): { replyText?: stri
       replyText = String(data.result);
     }
   }
+
   if (replyText !== undefined) {
-    data.reply = replyText; // мутируем объект для совместимости
+    data.reply = replyText;
   }
   return { replyText, dataWithReply: data };
 };

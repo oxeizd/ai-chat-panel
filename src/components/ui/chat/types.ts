@@ -1,37 +1,34 @@
 import React from 'react';
 import { Message, AgentConfig, DebugTrace } from 'types';
 
-export interface ChatConfig {
-  // Состояния
+// Часто меняющиеся данные
+export interface ChatState {
   messages: Message[];
   isLoading: boolean;
   inputValue: string;
+  isChatOpen: boolean;
+  isFullscreen: boolean;
+}
+
+// Стабильные колбэки + конфигурация
+export interface ChatActions {
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   setInputValue: (value: string) => void;
   sendMessage: (customText?: string) => void;
   clearChat: () => void;
   newChat: () => void;
   retryMessage?: (messageId: string) => void;
-
-  // Агенты
   selectedAgent: AgentConfig | null;
   setSelectedAgent: (agent: AgentConfig) => void;
   agents: AgentConfig[];
-
-  // UI состояние
-  isChatOpen: boolean;
   openChat: () => void;
   closeChat: () => void;
-  isFullscreen: boolean;
   toggleFullscreen: () => void;
-
-  // Refs и стили
   inputContainerRef: React.RefObject<HTMLDivElement>;
   chatMessagesRef: React.RefObject<HTMLDivElement>;
   floatingChatRef: React.RefObject<HTMLDivElement>;
   setFloatingChatRefCallback: (node: HTMLDivElement | null) => void;
   chatStyle: React.CSSProperties;
-
-  // Опции панели
   placeholderText: string;
   maxWidth?: number;
   centerInput?: boolean;
@@ -45,16 +42,13 @@ export interface ChatConfig {
   suggestionsPlacement?: 'always' | 'onFocus';
   showSuggestions?: boolean;
   inputAreaBackground?: boolean;
-  panelHeigth?: number;
-  panelWidth?: number;
-  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
-  // Действия
   exportChat: () => void;
   handleSuggestionClick: (suggestion: string) => void;
-
   debug: boolean;
   getTrace?: (messageId: string) => DebugTrace | undefined;
 }
+
+export interface ChatConfig extends ChatState, ChatActions {}
 
 export interface ChatProviderProps {
   children: React.ReactNode;

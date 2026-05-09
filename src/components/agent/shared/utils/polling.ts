@@ -22,6 +22,7 @@ const DEFAULT_POLLING_CONFIG: Required<PollingConfig> = {
  * @param body - тело запроса
  * @param initialData - данные первого ответа
  * @param onTrace - колбэк трассировки
+ * @param signal - сигнал для отмены (AbortController.signal)
  * @returns итоговые данные (возможно, извлечённые через resultField) или исходные
  */
 export const handlePolling = async (
@@ -30,8 +31,14 @@ export const handlePolling = async (
   headers: HeadersInit,
   body?: string,
   initialData?: any,
-  onTrace?: (step: any) => void
+  onTrace?: (step: any) => void,
+  signal?: AbortSignal
 ): Promise<any> => {
+  // Проверка: если сигнал уже отменён до начала поллинга
+  if (signal?.aborted) {
+    throw new DOMException('Polling aborted', 'AbortError');
+  }
+
   const polling = endpoint.polling ? { ...DEFAULT_POLLING_CONFIG, ...endpoint.polling } : null;
   if (!polling?.enabled) {
     return initialData;
@@ -40,8 +47,9 @@ export const handlePolling = async (
   let data = initialData;
   let attempts = 1;
   const retryCodes = new Set(polling.retryStatusCodes ?? []);
+
   const makeRequest = async () => {
-    const res = await fetch(url, { method: endpoint.method, headers, body });
+    const res = await fetch(url, { method: endpoint.method, headers, body, signal });
     if (!res.ok) {
       const err: any = new Error(`HTTP ${res.status}`);
       err.status = res.status;
@@ -52,10 +60,30 @@ export const handlePolling = async (
   };
 
   while (attempts < polling.maxAttempts) {
+    // Проверка отмены в начале каждой итерации
+    if (signal?.aborted) {
+      throw new DOMException('Polling aborted', 'AbortError');
+    }
+
     if (data[polling.statusField] === polling.successValue) {
       break;
     }
-    await new Promise((resolve) => setTimeout(resolve, polling.intervalMs));
+
+    // Задержка с учётом возможности отмены
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(resolve, polling.intervalMs);
+      if (signal) {
+        signal.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(timer);
+            reject(new DOMException('Polling aborted', 'AbortError'));
+          },
+          { once: true }
+        );
+      }
+    });
+
     try {
       data = await makeRequest();
       if (onTrace) {
@@ -67,6 +95,9 @@ export const handlePolling = async (
         });
       }
     } catch (err: any) {
+      if (err.name === 'AbortError') {
+        throw err;
+      }
       if (retryCodes.has(err.status)) {
         if (onTrace) {
           onTrace({
@@ -88,7 +119,6 @@ export const handlePolling = async (
     throw new Error(`Polling timeout after ${polling.maxAttempts} attempts`);
   }
 
-  // Извлечение результата через resultField, если задан
   if (endpoint.polling?.resultField && data[endpoint.polling.resultField] !== undefined) {
     return data[endpoint.polling.resultField];
   }

@@ -1,57 +1,54 @@
 import React from 'react';
 import { cx } from '@emotion/css';
 import { useTheme2 } from '@grafana/ui';
-import { useChat } from '../chat/ChatContext';
+import { useChatState, useChatActions } from '../chat/ChatContext';
+import { ChatLayout } from './ChatLayout';
 import { FloatingChat } from './FloatingChat';
-import { ChatHeader } from '../toolbar/ChatHeader';
-import { ChatTextarea } from './ChatTextarea';
-import { MessageList } from '../messages/MessageList';
-import { BottomButtons } from '../toolbar/BottomButtons';
-import { useStyles, getMessageListStyles } from '../styles/styles';
+import { useStyles } from '../styles/styles';
 
 export const InlineChat: React.FC = () => {
-  const props = useChat();
   const theme = useTheme2();
   const styles = useStyles(theme);
-  const { isFullscreen, toggleFullscreen } = props;
 
-  const showSuggestions =
-    props.showSuggestions &&
-    props.suggestionsPlacement === 'always' &&
-    props.suggestions &&
-    props.suggestions.length > 0 &&
-    props.messages.length === 0;
+  const { isFullscreen, messages } = useChatState();
+  const {
+    toggleFullscreen,
+    maxWidth,
+    centerInput,
+    suggestions,
+    suggestionsPlacement,
+    showSuggestions,
+    handleSuggestionClick,
+    chatMessagesRef,
+  } = useChatActions();
+
+  const showSuggestionsBlock =
+    showSuggestions &&
+    suggestionsPlacement === 'always' &&
+    suggestions &&
+    suggestions.length > 0 &&
+    messages.length === 0;
 
   const wrapperStyle = cx(
     styles.base.normalWrapper,
-    props.maxWidth && props.maxWidth > 0 ? styles.base.withMaxWidth(props.maxWidth) : undefined,
-    props.centerInput && styles.base.verticalCentered
+    maxWidth && maxWidth > 0 ? styles.base.withMaxWidth(maxWidth) : undefined,
+    centerInput && styles.base.verticalCentered
   );
 
   return (
     <>
       <div className={wrapperStyle} style={{ height: '100%' }}>
-        <ChatHeader onFullscreen={toggleFullscreen} isFullscreen={false} />
-        <div ref={props.chatMessagesRef} className={styles.messages.container}>
-          <MessageList styles={getMessageListStyles(styles)} showPlaceholder={!props.welcomeMessage} />
-        </div>
+        <ChatLayout onToggleFullscreen={toggleFullscreen} isFullscreen={false} messagesContainerRef={chatMessagesRef} />
 
-        {showSuggestions && (
+        {showSuggestionsBlock && (
           <div className={styles.suggestions.container}>
-            {props.suggestions!.map((suggestion, idx) => (
-              <div
-                key={idx}
-                className={styles.suggestions.item}
-                onClick={() => props.handleSuggestionClick(suggestion)}
-              >
+            {suggestions!.map((suggestion, idx) => (
+              <div key={idx} className={styles.suggestions.item} onClick={() => handleSuggestionClick(suggestion)}>
                 {suggestion}
               </div>
             ))}
           </div>
         )}
-
-        <ChatTextarea />
-        <BottomButtons />
       </div>
 
       {isFullscreen && (
@@ -60,7 +57,7 @@ export const InlineChat: React.FC = () => {
           onClose={toggleFullscreen}
           isFullscreen={true}
           onToggleFullscreen={toggleFullscreen}
-          messagesContainerRef={props.chatMessagesRef}
+          messagesContainerRef={chatMessagesRef}
         />
       )}
     </>

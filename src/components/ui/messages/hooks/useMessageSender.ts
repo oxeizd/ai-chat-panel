@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 import { useAgent } from 'components/agent/useAgent';
 import { AgentConfig, TraceStep } from 'components/agent/shared/types';
 import { GrafanaUser } from '../../../hooks/useGrafanaUser';
@@ -30,15 +30,11 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
     onThinkingEnd: subscribeThinkingEnd,
   } = useAgent(agent);
 
-  const isSendingRef = useRef(false);
-
   const send = useCallback(
     async (text: string, callbacks?: SendCallbacks): Promise<string | null> => {
-      if (!agent || isSendingRef.current || isLoading) {
+      if (!agent || isLoading) {
         return null;
       }
-
-      isSendingRef.current = true;
 
       // Подписки на чанки и reasoning через шину
       const unsubs: Array<() => void> = [];
@@ -51,7 +47,6 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
       if (callbacks?.onReasoningComplete) {
         unsubs.push(subscribeReasoningComplete(callbacks.onReasoningComplete));
       }
-
       if (callbacks?.onThinkingStart) {
         unsubs.push(subscribeThinkingStart(callbacks.onThinkingStart));
       }
@@ -68,7 +63,6 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
       }
 
       try {
-        // Передаём только 3 аргумента: текст, контекст, колбэк трассировки
         const reply = await agentSendMessage(text, additionalContext, callbacks?.onStep);
         return reply;
       } catch (err) {
@@ -77,7 +71,6 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
         }
         throw err;
       } finally {
-        isSendingRef.current = false;
         unsubs.forEach((unsub) => unsub());
       }
     },
@@ -89,13 +82,13 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
       subscribeChunk,
       subscribeReasoning,
       subscribeReasoningComplete,
-      subscribeThinkingEnd,
       subscribeThinkingStart,
+      subscribeThinkingEnd,
     ]
   );
 
   const abort = useCallback(() => {
-    abortAgent(); // отмена через внутренний AbortController в useAgent
+    abortAgent();
   }, [abortAgent]);
 
   const reset = useCallback(async () => {
@@ -106,7 +99,7 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
     send,
     abort,
     reset,
-    isSending: isSendingRef.current || isLoading,
+    isSending: isLoading,
     onChunk: subscribeChunk,
     onReasoningChunk: subscribeReasoning,
   };

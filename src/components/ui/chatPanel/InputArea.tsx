@@ -115,7 +115,7 @@ export const InputArea = memo(
           if (onSend) {
             onSend();
           } else {
-            sendMessage();
+            sendMessage(suggestion);
           }
         }
         inputRef.current?.blur();

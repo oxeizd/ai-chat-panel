@@ -5,6 +5,7 @@ import { extractValueByPath } from '../../shared/utils/objectHelpers';
 import { STREAMING_DEFAULTS } from '../../shared/constants';
 import { ResponseHandler, ProcessedResponse, HandlerOptions } from '../response';
 import { getStreamConfig, parseSSEStream, detectSSEByContent, isStreamingEnabled } from '../../shared/utils/streaming';
+import { getReasoningConfig } from 'components/agent/shared/utils/reasoning';
 
 /**
  * Обработчик потоковых ответов (SSE).
@@ -29,20 +30,7 @@ export class SseHandler implements ResponseHandler {
     const textPath = cfg?.textPath ?? STREAMING_DEFAULTS.textPath;
     const prefix = cfg?.dataPrefix ?? STREAMING_DEFAULTS.dataPrefix;
 
-    const reasoningCfg =
-      typeof ep.reasoning === 'object'
-        ? ep.reasoning
-        : ep.reasoning === true
-          ? {
-              enabled: true,
-              mode: 'both' as const,
-              apiField: 'choices[0].delta.reasoning_content',
-              textPath: 'choices[0].delta.content',
-              startMarker: '<thinking>',
-              endMarker: '</thinking>',
-            }
-          : { enabled: false };
-
+    const reasoningCfg = getReasoningConfig(ep);
     const reasoningEnabled = reasoningCfg.enabled;
     const mode = reasoningCfg.mode ?? 'both';
     const useApiField = mode === 'api_field' || mode === 'both';

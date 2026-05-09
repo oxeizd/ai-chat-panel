@@ -11,7 +11,7 @@ import { EventBus } from './eventBus';
 import { HistoryMiddleware } from './postproc/history';
 import { ContextSaveMiddleware } from './postproc/contextSave';
 import { FileExtractionMiddleware } from './postproc/fileExtraction';
-import { resolveObject } from '../shared/utils/variableResolver';
+import { extractReply } from '../shared/utils/httpHelpers';
 
 /**
  * Публичный клиент агента – основной API.
@@ -143,60 +143,26 @@ export class AgentClient {
         return last.reply || last.result || JSON.stringify(last);
       }
 
-      // Fallback – прямой запрос
-      let body: any = { message: userInput };
+      const fallbackEndpoint: EndpointConfig = {
+        operation: 'fallback',
+        method: 'POST',
+        path: '/',
+        body: { message: '{user_input}' },
+        headers: { 'Content-Type': 'application/json' },
+        saveToContext: [],
+      };
 
-      if (this.config.config) {
-        const resolved = resolveObject(this.config.config, this.ctx.context);
-        body = { ...body, ...resolved };
-      }
+      const processed = await this.executor.execute(
+        fallbackEndpoint,
+        {},
+        this.config.config,
+        this.config.headers,
+        onTrace,
+        signal
+      );
 
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-
-      if (this.config.headers) {
-        const resolved = resolveObject(this.config.headers, this.ctx.context);
-        Object.entries(resolved).forEach(([k, v]) => (headers[k] = String(v)));
-      }
-
-      onTrace?.({ type: 'request', timestamp: Date.now(), url: this.config.api, method: 'POST', requestBody: body });
-
-      // Обрабатываем отмену
-      let data: any;
-      let responseStatus = 200;
-
-      try {
-        const response = await fetch(this.config.api, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body),
-          signal,
-        });
-
-        responseStatus = response.status;
-
-        if (!response.ok) {
-          const errText = await response.text().catch(() => '');
-          throw new Error(`HTTP ${response.status}: ${errText}`);
-        }
-
-        data = await response.json();
-      } catch (error) {
-        if (signal?.aborted || (error instanceof DOMException && error.name === 'AbortError')) {
-          onTrace?.({ type: 'error', timestamp: Date.now(), errorMessage: 'Request aborted by user' });
-          throw new Error('Request cancelled');
-        }
-        throw error;
-      }
-
-      if (data?.error) {
-        const err: any = new Error(data.error.message || 'API error');
-        err.status = data.error.code || data.error.status || responseStatus;
-        throw err;
-      }
-
-      onTrace?.({ type: 'response', timestamp: Date.now(), responseStatus, responseBody: data });
-
-      return data.reply || data.result || 'Ответ не получен';
+      const { replyText } = extractReply(processed);
+      return replyText || 'Ответ не получен';
     } finally {
       this.processing = false;
     }
