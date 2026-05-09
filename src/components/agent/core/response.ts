@@ -28,6 +28,7 @@ export interface ProcessedResponse {
   reasoningText?: string; // полный текст рассуждений (если есть)
   rawText?: string; // полный сырой текст (для SSE)
   rawEvents?: any[]; // все события SSE
+  historySynced?: boolean;
 }
 
 /**

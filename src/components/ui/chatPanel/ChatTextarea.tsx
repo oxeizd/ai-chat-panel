@@ -1,8 +1,8 @@
 import React from 'react';
-import { Button, useTheme2 } from '@grafana/ui';
+import { useTheme2 } from '@grafana/ui';
 import { cx } from '@emotion/css';
 import { useStyles } from '../styles/styles';
-import { useKeyboardSubmit } from '../hooks/useKeyboardSubmit';
+import { SubmitButton, useSubmitBehavior } from '../hooks/useSubmitBehavior';
 import { useWheelPrevention } from '../hooks/useWheelPrevention';
 import { useChatActions, useChatState } from '../chat/ChatContext';
 
@@ -17,7 +17,7 @@ export const ChatTextarea: React.FC<ChatTextareaProps> = ({ disabled }) => {
   const theme = useTheme2();
   const styles = useStyles(theme);
   const handleWheel = useWheelPrevention();
-  const handleKeyDown = useKeyboardSubmit(() => sendMessage());
+  const { handleKeyDown } = useSubmitBehavior(() => sendMessage());
 
   return (
     <div className={styles.input.container}>
@@ -32,14 +32,10 @@ export const ChatTextarea: React.FC<ChatTextareaProps> = ({ disabled }) => {
           rows={3}
           disabled={disabled}
         />
-        <Button
-          variant="secondary"
-          size="sm"
-          icon="arrow-right"
+        <SubmitButton
           onClick={() => sendMessage()}
           disabled={isLoading || !inputValue.trim()}
           className={cx(styles.input.sendButton)}
-          aria-label="Отправить сообщение"
         />
       </div>
     </div>

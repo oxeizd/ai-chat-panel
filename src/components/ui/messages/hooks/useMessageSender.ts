@@ -1,7 +1,8 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useAgent } from 'components/agent/useAgent';
 import { AgentConfig, TraceStep } from 'components/agent/shared/types';
-import { GrafanaUser } from '../../../hooks/useGrafanaUser';
+import { GrafanaUser } from 'components/hooks/useGrafanaUser';
+import { useAgentEvents } from 'components/agent/useAgentEvents';
 
 interface UseMessageSenderOptions {
   agent: AgentConfig | null;
@@ -30,29 +31,26 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
     onThinkingEnd: subscribeThinkingEnd,
   } = useAgent(agent);
 
+  const callbacksRef = useRef<SendCallbacks>({});
+
+  useAgentEvents({
+    agent: {
+      onChunk: subscribeChunk,
+      onReasoningChunk: subscribeReasoning,
+      onReasoningComplete: subscribeReasoningComplete,
+      onThinkingStart: subscribeThinkingStart,
+      onThinkingEnd: subscribeThinkingEnd,
+    },
+    events: callbacksRef,
+  });
+
   const send = useCallback(
     async (text: string, callbacks?: SendCallbacks): Promise<string | null> => {
       if (!agent || isLoading) {
         return null;
       }
 
-      // Подписки на чанки и reasoning через шину
-      const unsubs: Array<() => void> = [];
-      if (callbacks?.onChunk) {
-        unsubs.push(subscribeChunk(callbacks.onChunk));
-      }
-      if (callbacks?.onReasoningChunk) {
-        unsubs.push(subscribeReasoning(callbacks.onReasoningChunk));
-      }
-      if (callbacks?.onReasoningComplete) {
-        unsubs.push(subscribeReasoningComplete(callbacks.onReasoningComplete));
-      }
-      if (callbacks?.onThinkingStart) {
-        unsubs.push(subscribeThinkingStart(callbacks.onThinkingStart));
-      }
-      if (callbacks?.onThinkingEnd) {
-        unsubs.push(subscribeThinkingEnd(callbacks.onThinkingEnd));
-      }
+      callbacksRef.current = callbacks || {};
 
       const additionalContext: Record<string, any> = {};
       if (user) {
@@ -71,20 +69,10 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
         }
         throw err;
       } finally {
-        unsubs.forEach((unsub) => unsub());
+        callbacksRef.current = {};
       }
     },
-    [
-      agent,
-      isLoading,
-      user,
-      agentSendMessage,
-      subscribeChunk,
-      subscribeReasoning,
-      subscribeReasoningComplete,
-      subscribeThinkingStart,
-      subscribeThinkingEnd,
-    ]
+    [agent, isLoading, user, agentSendMessage]
   );
 
   const abort = useCallback(() => {

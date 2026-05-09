@@ -31,9 +31,11 @@ export const formatNumber = (value: number) => {
 // Градиент
 export const createGradient = (ctx: CanvasRenderingContext2D, color: string, opacity = 0.3) => {
   const chartArea = (ctx as any).chart?.chartArea;
+
   if (!chartArea) {
-    return color;
+    return 'transparent';
   }
+
   const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
   gradient.addColorStop(0, color);
   gradient.addColorStop(0.6, color.replace(/[\d.]+\)$/, `${opacity * 0.3})`));

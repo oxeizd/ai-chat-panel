@@ -8,7 +8,7 @@ import { WorkflowOrchestrator } from './workflow';
 import { ContextManager } from './context';
 import { HistoryManager } from './history';
 import { EventBus } from './eventBus';
-import { HistoryMiddleware } from './postproc/history';
+import { HistoryMiddleware } from './postproc/historyMiddleware';
 import { ContextSaveMiddleware } from './postproc/contextSave';
 import { FileExtractionMiddleware } from './postproc/fileExtraction';
 import { extractReply } from '../shared/utils/httpHelpers';

@@ -15,6 +15,7 @@ export interface MessageListStyles {
   aiMessageBubble: string;
   katex: string;
   chartContainer: string;
+  blinkCursor: string;
 }
 
 interface MessageListProps {

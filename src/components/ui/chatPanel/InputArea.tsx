@@ -1,13 +1,14 @@
-import React, { forwardRef, memo, useEffect, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
-import { Input, Button, Dropdown, useTheme2 } from '@grafana/ui';
+import React, { forwardRef, memo, useEffect, useCallback, useMemo } from 'react';
 import { cx } from '@emotion/css';
+import { Input, Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { useFloating, autoUpdate, flip, offset, size } from '@floating-ui/react';
 import { useStyles } from '../styles/styles';
 import { ChatMenu } from 'components/ui/toolbar/ChatMenu';
 import { useSuggestions } from 'components/ui/hooks/useSuggestions';
 import { useChatActions, useChatState } from '../chat/ChatContext';
 import { blurButton } from '../utils/dom';
+import { SubmitButton, useSubmitBehavior } from '../hooks/useSubmitBehavior';
 
 interface InputAreaProps {
   className?: string;
@@ -87,22 +88,6 @@ export const InputArea = memo(
       }
     }, [inputRef, refs]);
 
-    useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (
-          showPopup &&
-          popupRef.current &&
-          !popupRef.current.contains(event.target as Node) &&
-          inputRef.current &&
-          !inputRef.current.contains(event.target as Node)
-        ) {
-          setShowPopup(false);
-        }
-      };
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [showPopup, popupRef, inputRef, setShowPopup]);
-
     const handleSuggestionClick = useCallback(
       (suggestion: string) => {
         if (onSendText) {
@@ -133,15 +118,7 @@ export const InputArea = memo(
       }
     }, [continueMode, onContinue, onSend, sendMessage]);
 
-    const handleKeyDown = useCallback(
-      (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          handleAction();
-        }
-      },
-      [handleAction]
-    );
+    const { handleKeyDown } = useSubmitBehavior(handleAction);
 
     const formattedWelcomeMessage = useMemo(() => formatWelcomeMessage(welcomeMessage || ''), [welcomeMessage]);
 
@@ -172,19 +149,7 @@ export const InputArea = memo(
         );
       }
 
-      return (
-        <Button
-          variant="secondary"
-          size="sm"
-          icon="arrow-right"
-          onClick={(e) => {
-            blurButton(e);
-            handleAction();
-          }}
-          disabled={isLoading || !inputValue.trim()}
-          aria-label="Отправить сообщение"
-        />
-      );
+      return <SubmitButton onClick={handleAction} disabled={isLoading || !inputValue.trim()} />;
     }, [continueMode, handleAction, isLoading, inputValue]);
 
     const menu = useMemo(

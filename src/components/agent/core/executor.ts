@@ -75,31 +75,29 @@ export class EndpointExecutor {
       signal
     );
 
-    try {
-      // 7. Выбор и вызов обработчика ответа
-      const handler = this.handlerFactory.get(endpoint, httpResponse);
-      const processed = await handler.handle(httpResponse, endpoint, context, {
-        eventBus: this.bus,
-        onTrace,
-        signal,
-        requestMeta: { url, headers, body: bodyString },
-      });
+    // 7. Выбор и вызов обработчика ответа
+    const handler = this.handlerFactory.get(endpoint, httpResponse);
+    const processed = await handler.handle(httpResponse, endpoint, context, {
+      eventBus: this.bus,
+      onTrace,
+      signal,
+      requestMeta: { url, headers, body: bodyString },
+    });
 
-      // 8. Извлечение reply, если не было сделано в обработчике
-      if (!processed.replyText) {
-        const { replyText } = extractReply(processed.data, endpoint.replyField);
-        processed.replyText = replyText;
-      }
+    // 8. Извлечение reply, если не было сделано в обработчике
+    if (!processed.replyText) {
+      const { replyText } = extractReply(processed.data, endpoint.replyField);
+      processed.replyText = replyText;
+    }
 
-      // 9. Цепочка постобработки (middleware)
-      for (const mw of this.middlewares) {
-        await mw.process(processed, endpoint, context, mergedBody);
-      }
+    // 9. Цепочка постобработки (middleware)
+    for (const mw of this.middlewares) {
+      await mw.process(processed, endpoint, context, mergedBody);
+    }
 
-      // 10. Сохраняем итоговый контекст
-      this.ctx.replace(context);
+    // 10. Сохраняем итоговый контекст
+    this.ctx.replace(context);
 
-      return processed.data;
-    } catch {}
+    return processed.data;
   }
 }

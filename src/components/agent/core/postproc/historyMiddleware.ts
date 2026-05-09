@@ -10,6 +10,10 @@ export class HistoryMiddleware implements PostProcessingMiddleware {
   constructor(private history: HistoryManager) {}
 
   process(resp: ProcessedResponse, ep: EndpointConfig, ctx: WorkflowContext) {
+    if (resp.historySynced) {
+      return;
+    }
+
     const ch = ep.conversationHistory;
     const enabled = ch === true ? true : ch && typeof ch === 'object' ? ch.enabled : false;
 

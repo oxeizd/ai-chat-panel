@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTheme2 } from '@grafana/ui';
 import { useChatState } from '../chat/ChatContext';
 import { ChatHeader } from '../toolbar/ChatHeader';
@@ -22,6 +22,7 @@ export const ChatLayout: React.FC<ChatLayoutProps> = ({
 }) => {
   const theme = useTheme2();
   const styles = useStyles(theme);
+  const messageListStyles = useMemo(() => getMessageListStyles(styles), [styles]);
 
   const { isFullscreen: isFs } = useChatState();
 
@@ -29,7 +30,7 @@ export const ChatLayout: React.FC<ChatLayoutProps> = ({
     <>
       <ChatHeader onBack={onBack} isFullscreen={isFullscreen ?? isFs} onFullscreen={onToggleFullscreen} />
       <div ref={messagesContainerRef} className={styles.messages.container}>
-        <MessageList styles={getMessageListStyles(styles)} />
+        <MessageList styles={messageListStyles} />
       </div>
       <ChatTextarea />
       <BottomButtons />

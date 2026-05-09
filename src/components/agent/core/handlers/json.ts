@@ -3,7 +3,7 @@ import { WorkflowContext } from '../context';
 import { HttpResponse } from '../httpClient';
 import { ResponseHandler, ProcessedResponse, HandlerOptions } from '../response';
 import { isStreamingEnabled, detectSSEByContent } from '../../shared/utils/streaming';
-import { getReasoningConfig } from '../../shared/utils/reasoning';
+import { extractTagReasoning, getReasoningConfig } from '../../shared/utils/reasoning';
 import { extractReply } from '../../shared/utils/httpHelpers';
 
 /**
@@ -72,25 +72,16 @@ export class JsonHandler implements ResponseHandler {
         const startMarker = reasoningCfg.startMarker ?? '<thinking>';
         const endMarker = reasoningCfg.endMarker ?? '</thinking>';
 
-        let tagReasoning = '';
-        cleanReply = replyText;
-
-        let startIdx = cleanReply.indexOf(startMarker);
-        while (startIdx !== -1) {
-          const endIdx = cleanReply.indexOf(endMarker, startIdx + startMarker.length);
-          if (endIdx !== -1) {
-            const inside = cleanReply.substring(startIdx + startMarker.length, endIdx);
-            tagReasoning += (tagReasoning ? '\n' : '') + inside;
-            cleanReply = cleanReply.substring(0, startIdx) + cleanReply.substring(endIdx + endMarker.length);
-            startIdx = cleanReply.indexOf(startMarker);
-          } else {
-            break;
-          }
-        }
+        const { reasoning: tagReasoning, cleanText: extractedCleanReply } = extractTagReasoning(
+          replyText,
+          startMarker,
+          endMarker
+        );
 
         if (tagReasoning) {
           reasoningText = reasoningText ? reasoningText + '\n' + tagReasoning : tagReasoning;
-          data.reply = cleanReply; // обновляем data.reply очищенным текстом
+          cleanReply = extractedCleanReply;
+          data.reply = cleanReply;
         }
       }
 

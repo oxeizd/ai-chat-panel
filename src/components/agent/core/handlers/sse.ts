@@ -44,11 +44,14 @@ export class SseHandler implements ResponseHandler {
     const historyCfg = typeof ep.conversationHistory === 'object' ? ep.conversationHistory : undefined;
     const historySync = historyCfg?.historySync;
 
+    let historyWasSynced = false;
+
     const onSync = (event: any) => {
       if (historySync && event.type === historySync.eventType) {
         const msgs = extractValueByPath(event, historySync.messagesPath);
         if (Array.isArray(msgs)) {
           ctx.messages = msgs;
+          historyWasSynced = true;
           opt.onTrace?.({
             type: 'context_update',
             timestamp: Date.now(),
@@ -58,92 +61,100 @@ export class SseHandler implements ResponseHandler {
       }
     };
 
-    // ─── Парсинг SSE ───
-    const { fullText, finalEvent, rawEvents } = await parseSSEStream(
-      res as any,
-      textPath,
-      prefix,
-      // Колбэк для обычных текстовых чанков
-      (chunk) => {
-        if (reasoningEnabled && useThinkingTags) {
-          // Парсим теги <thinking>...</thinking>
-          const startMarker = reasoningCfg.startMarker ?? '<thinking>';
-          const endMarker = reasoningCfg.endMarker ?? '</thinking>';
+    // ─── Переменные для результата парсинга ───
+    let fullText = '';
+    let finalEvent: any;
+    let rawEvents: any[] = [];
 
-          let reasoning = '';
-          let visible = chunk;
+    try {
+      // ─── Парсинг SSE (основной блок) ───
+      const result = await parseSSEStream(
+        res as any,
+        textPath,
+        prefix,
+        // Колбэк для обычных текстовых чанков
+        (chunk) => {
+          if (reasoningEnabled && useThinkingTags) {
+            const startMarker = reasoningCfg.startMarker ?? '<thinking>';
+            const endMarker = reasoningCfg.endMarker ?? '</thinking>';
 
-          // Простой парсинг: ищем startMarker и endMarker
-          if (thinkingStarted) {
-            const endIdx = visible.indexOf(endMarker);
-            if (endIdx !== -1) {
-              reasoning = visible.substring(0, endIdx);
-              visible = visible.substring(endIdx + endMarker.length);
-              thinkingStarted = false;
-              opt.eventBus.emit('thinkingEnd', {});
-              opt.eventBus.emit('reasoningComplete', fullReasoning + reasoning);
-            } else {
-              reasoning = visible;
-              visible = '';
-            }
-          } else {
-            const startIdx = visible.indexOf(startMarker);
-            if (startIdx !== -1) {
-              const beforeTag = visible.substring(0, startIdx);
-              const afterStart = visible.substring(startIdx + startMarker.length);
+            let reasoning = '';
+            let visible = chunk;
 
-              const endIdx = afterStart.indexOf(endMarker);
+            if (thinkingStarted) {
+              const endIdx = visible.indexOf(endMarker);
               if (endIdx !== -1) {
-                reasoning = afterStart.substring(0, endIdx);
-                visible = beforeTag + afterStart.substring(endIdx + endMarker.length);
-                // Тег полностью внутри одного чанка
-                opt.eventBus.emit('thinkingStart', {});
-                opt.eventBus.emit('reasoningChunk', reasoning);
+                reasoning = visible.substring(0, endIdx);
+                visible = visible.substring(endIdx + endMarker.length);
+                thinkingStarted = false;
                 opt.eventBus.emit('thinkingEnd', {});
                 opt.eventBus.emit('reasoningComplete', fullReasoning + reasoning);
-                fullReasoning += reasoning;
               } else {
-                // Тег начался, но не закончился
-                reasoning = afterStart;
-                visible = beforeTag;
-                thinkingStarted = true;
-                opt.eventBus.emit('thinkingStart', {});
+                reasoning = visible;
+                visible = '';
+              }
+            } else {
+              const startIdx = visible.indexOf(startMarker);
+              if (startIdx !== -1) {
+                const beforeTag = visible.substring(0, startIdx);
+                const afterStart = visible.substring(startIdx + startMarker.length);
+
+                const endIdx = afterStart.indexOf(endMarker);
+                if (endIdx !== -1) {
+                  reasoning = afterStart.substring(0, endIdx);
+                  visible = beforeTag + afterStart.substring(endIdx + endMarker.length);
+                  opt.eventBus.emit('thinkingStart', {});
+                  opt.eventBus.emit('reasoningChunk', reasoning);
+                  opt.eventBus.emit('thinkingEnd', {});
+                  opt.eventBus.emit('reasoningComplete', fullReasoning + reasoning);
+                  fullReasoning += reasoning;
+                } else {
+                  reasoning = afterStart;
+                  visible = beforeTag;
+                  thinkingStarted = true;
+                  opt.eventBus.emit('thinkingStart', {});
+                }
               }
             }
-          }
 
-          if (reasoning && thinkingStarted) {
-            fullReasoning += reasoning;
-            opt.eventBus.emit('reasoningChunk', reasoning);
+            if (reasoning && thinkingStarted) {
+              fullReasoning += reasoning;
+              opt.eventBus.emit('reasoningChunk', reasoning);
+            }
+            if (visible) {
+              fullVisible += visible;
+              opt.eventBus.emit('chunk', visible);
+            }
+          } else {
+            // Reasoning отключен или не thinking_tags
+            fullVisible += chunk;
+            opt.eventBus.emit('chunk', chunk);
           }
-          if (visible) {
-            fullVisible += visible;
-            opt.eventBus.emit('chunk', visible);
+        },
+        onSync,
+        opt.onTrace,
+        (rChunk) => {
+          if (reasoningEnabled && useApiField) {
+            if (!thinkingStarted) {
+              thinkingStarted = true;
+              opt.eventBus.emit('thinkingStart', {});
+            }
+            fullReasoning += rChunk;
+            opt.eventBus.emit('reasoningChunk', rChunk);
           }
-        } else {
-          // Reasoning отключен или не thinking_tags
-          fullVisible += chunk;
-          opt.eventBus.emit('chunk', chunk);
         }
-      },
-      onSync,
-      opt.onTrace,
-      (rChunk) => {
-        if (reasoningEnabled && useApiField) {
-          if (!thinkingStarted) {
-            thinkingStarted = true;
-            opt.eventBus.emit('thinkingStart', {});
-          }
-          fullReasoning += rChunk;
-          opt.eventBus.emit('reasoningChunk', rChunk);
-        }
+      );
+
+      fullText = result.fullText;
+      finalEvent = result.finalEvent;
+      rawEvents = result.rawEvents;
+    } finally {
+      // ─── Финализация thinking (выполнится всегда, даже при ошибке/отмене) ───
+      if (thinkingStarted) {
+        opt.eventBus.emit('thinkingEnd', {});
+        opt.eventBus.emit('reasoningComplete', fullReasoning);
+        thinkingStarted = false;
       }
-    );
-
-    // ─── Финализация thinking ───
-    if (thinkingStarted) {
-      opt.eventBus.emit('thinkingEnd', {});
-      opt.eventBus.emit('reasoningComplete', fullReasoning);
     }
 
     const data = {
@@ -167,6 +178,7 @@ export class SseHandler implements ResponseHandler {
       reasoningText: fullReasoning,
       rawText: fullText,
       rawEvents,
+      historySynced: historyWasSynced,
     };
   }
 }

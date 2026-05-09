@@ -16,38 +16,43 @@ interface AgentEventsHookOptions {
     onThinkingStart: (handler: () => void) => () => void;
     onThinkingEnd: (handler: () => void) => () => void;
   } | null;
-  events?: AgentEvents;
+  events: AgentEvents | React.MutableRefObject<AgentEvents>;
 }
 
 export const useAgentEvents = ({ agent, events }: AgentEventsHookOptions) => {
   const eventsRef = useRef(events);
-  useEffect(() => {
-    eventsRef.current = events;
-  }, [events]);
+  eventsRef.current = events;
 
   useEffect(() => {
     if (!agent) {
       return;
     }
 
-    const h =
-      (type: keyof AgentEvents) =>
-      (...args: any[]) => {
-        eventsRef.current?.[type]?.(args[0] as any);
-      };
+    const getEvents = (): AgentEvents => {
+      const current = eventsRef.current;
+      if (current && 'current' in current) {
+        return current.current;
+      }
+      return current as AgentEvents;
+    };
 
-    const u1 = agent.onChunk(h('onChunk'));
-    const u2 = agent.onReasoningChunk(h('onReasoningChunk'));
-    const u3 = agent.onReasoningComplete(h('onReasoningComplete'));
-    const u4 = agent.onThinkingStart(h('onThinkingStart'));
-    const u5 = agent.onThinkingEnd(h('onThinkingEnd'));
+    const callIfExists = (type: keyof AgentEvents, ...args: any[]) => {
+      const evt = getEvents();
+      evt?.[type]?.(args[0] as any);
+    };
+
+    const unsub1 = agent.onChunk((chunk) => callIfExists('onChunk', chunk));
+    const unsub2 = agent.onReasoningChunk((chunk) => callIfExists('onReasoningChunk', chunk));
+    const unsub3 = agent.onReasoningComplete((text) => callIfExists('onReasoningComplete', text));
+    const unsub4 = agent.onThinkingStart(() => callIfExists('onThinkingStart'));
+    const unsub5 = agent.onThinkingEnd(() => callIfExists('onThinkingEnd'));
 
     return () => {
-      u1();
-      u2();
-      u3();
-      u4();
-      u5();
+      unsub1();
+      unsub2();
+      unsub3();
+      unsub4();
+      unsub5();
     };
   }, [agent]);
 };

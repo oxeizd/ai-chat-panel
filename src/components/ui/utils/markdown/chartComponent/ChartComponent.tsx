@@ -1,5 +1,5 @@
 import React, { useRef, useMemo } from 'react';
-import { Line } from 'react-chartjs-2';
+import { Line, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -189,7 +189,11 @@ const ChartRenderer: React.FC<{ config: ChartData; chartType: 'line' | 'bar' }> 
 
     return (
       <div ref={containerRef} style={{ width: '100%', height: typeof height === 'number' ? height : height }}>
-        <Line ref={chartRef} data={chartData} options={options} />
+        {chartType === 'bar' ? (
+          <Bar ref={chartRef} data={chartData} options={options} />
+        ) : (
+          <Line ref={chartRef} data={chartData} options={options} />
+        )}
       </div>
     );
   }

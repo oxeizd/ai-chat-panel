@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { AgentConfig } from 'types';
 import { GrafanaUser } from 'components/hooks/useGrafanaUser';
 import { useMessageSender } from './useMessageSender';
@@ -7,6 +7,7 @@ import { useDebugTraces } from 'components/ui/debug/hooks/useDebugTraces';
 import { parseApiError } from '../../debug/hooks/utils/errorParser';
 
 export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaUser | null, debug: boolean) => {
+  const resettingRef = useRef(false);
   const [inputValue, setInputValue] = useState('');
 
   const {
@@ -137,6 +138,10 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
 
   const retryMessage = useCallback(
     async (messageId: string) => {
+      if (isSending) {
+        return;
+      }
+
       const index = messages.findIndex((m) => m.id === messageId);
       if (index === -1 || messages[index].sender !== 'user') {
         return;
@@ -144,17 +149,25 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       const originalText = messages[index].text;
       await sendText(originalText, { replaceUserMessageId: messageId });
     },
-    [messages, sendText]
+    [messages, sendText, isSending]
   );
 
   const newChat = useCallback(async () => {
-    abort();
-    resetMessages();
-    setInputValue('');
+    if (resettingRef.current) {
+      return;
+    }
+    resettingRef.current = true;
     try {
-      await resetSession();
-    } catch (err) {
-      console.warn('Failed to reset session on backend', err);
+      abort();
+      resetMessages();
+      setInputValue('');
+      try {
+        await resetSession();
+      } catch (err) {
+        console.warn('Failed to reset session on backend', err);
+      }
+    } finally {
+      resettingRef.current = false;
     }
   }, [abort, resetMessages, resetSession]);
 

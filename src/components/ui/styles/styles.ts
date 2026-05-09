@@ -458,6 +458,25 @@ export const getStyles = (theme: GrafanaTheme2) => {
       `,
     },
 
+    blinkCursor: css`
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0;
+        }
+      }
+      display: inline-block;
+      width: 0.5em;
+      height: 1em;
+      background-color: #fbbf24;
+      margin-left: 2px;
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    `,
+
     katex: css`
       .katex {
         font-size: 1.3em;
@@ -559,4 +578,5 @@ export const getMessageListStyles = (styles: ReturnType<typeof getStyles>): Mess
   aiMessageBubble: styles.messages.aiBubble,
   katex: styles.katex,
   chartContainer: styles.chartContainer,
+  blinkCursor: styles.blinkCursor,
 });

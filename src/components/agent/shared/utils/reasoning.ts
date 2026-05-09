@@ -25,3 +25,36 @@ export const getReasoningConfig = (endpoint: EndpointConfig): ReasoningConfig =>
 
   return { enabled: false };
 };
+
+/**
+ * Извлекает содержимое тегов мышления и очищает текст от этих тегов.
+ * @param text - полный текст (или чанк) для разбора
+ * @param startMarker - открывающий маркер (по умолчанию '<thinking>')
+ * @param endMarker - закрывающий маркер (по умолчанию '</thinking>')
+ * @returns объект с полями:
+ *   - reasoning: содержимое тегов (может быть пустой строкой)
+ *   - cleanText: текст без тегов и их содержимого
+ */
+export const extractTagReasoning = (
+  text: string,
+  startMarker = '<thinking>',
+  endMarker = '</thinking>'
+): { reasoning: string; cleanText: string } => {
+  let reasoning = '';
+  let cleanText = text;
+
+  let startIdx = cleanText.indexOf(startMarker);
+  while (startIdx !== -1) {
+    const endIdx = cleanText.indexOf(endMarker, startIdx + startMarker.length);
+    if (endIdx !== -1) {
+      const inside = cleanText.substring(startIdx + startMarker.length, endIdx);
+      reasoning += (reasoning ? '\n' : '') + inside;
+      cleanText = cleanText.substring(0, startIdx) + cleanText.substring(endIdx + endMarker.length);
+      startIdx = cleanText.indexOf(startMarker);
+    } else {
+      break;
+    }
+  }
+
+  return { reasoning, cleanText };
+};

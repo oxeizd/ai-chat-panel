@@ -117,19 +117,7 @@ export const ChatMessage = React.memo(
                     }}
                   >
                     {message.thinking}
-                    {message.isThinking && (
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          width: '0.5em',
-                          height: '1em',
-                          backgroundColor: '#fbbf24',
-                          marginLeft: 2,
-                          animation: 'blink 1s step-end infinite',
-                          verticalAlign: 'text-bottom',
-                        }}
-                      />
-                    )}
+                    {message.isThinking && <span className={styles.blinkCursor} />}
                   </div>
                 </details>
               )}

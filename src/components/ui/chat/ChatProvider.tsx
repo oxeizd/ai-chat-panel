@@ -89,7 +89,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     return () => {
       document.body.classList.remove('fullscreen-chat-open');
       const styleTagEl = document.getElementById('fullscreen-chat-styles');
-      if (styleTagEl && !document.querySelector('.fullscreen-chat-open')) {
+      if (styleTagEl && document.body.classList.contains('fullscreen-chat-open')) {
         styleTagEl.remove();
       }
     };
