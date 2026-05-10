@@ -1,29 +1,22 @@
-﻿import { EndpointConfig } from 'types';
-import { WorkflowContext } from '../../contextManager';
-import { HttpResponse } from '../../httpClient';
-import { isStreamingEnabled, detectSSEByContent } from '../helpers/streaming';
-import { extractReasoning, getReasoningConfig } from '../helpers/reasoning';
-import { extractReply } from 'components/agent/shared/utils/httpHelpers';
+import { ResolvedEndpointConfig } from '../../config/types';
+import { HttpResponse } from '../../execution/httpClient';
 import { ResponseHandler, ProcessedResponse, HandlerOptions } from './response';
+import { extractReply } from 'components/agent/shared/utils/httpHelpers';
+import { extractReasoning } from '../helpers/reasoning';
 
 export class JsonHandler implements ResponseHandler {
-  canHandle(ep: EndpointConfig, res: HttpResponse): boolean {
-    return !detectSSEByContent(res as any) && !isStreamingEnabled(ep);
+  canHandle(resolved: ResolvedEndpointConfig, _res: HttpResponse): boolean {
+    return resolved.streaming === null;
   }
 
-  async handle(
-    res: HttpResponse,
-    ep: EndpointConfig,
-    ctx: WorkflowContext,
-    opt: HandlerOptions
-  ): Promise<ProcessedResponse> {
+  async handle(resolved: ResolvedEndpointConfig, res: HttpResponse, opt: HandlerOptions): Promise<ProcessedResponse> {
     const data = await res.json();
 
     if (data?.error) {
-      throw Object.assign(new Error(data.error.message ?? 'API error'), {
-        status: data.error.code ?? data.error.status ?? res.status,
-        responseBody: JSON.stringify(data.error),
-      });
+      const err: any = new Error(data.error.message || 'API error');
+      err.status = data.error.code || data.error.status || res.status;
+      err.responseBody = JSON.stringify(data.error);
+      throw err;
     }
 
     opt.onTrace?.({
@@ -33,17 +26,21 @@ export class JsonHandler implements ResponseHandler {
       responseBody: data,
     });
 
-    // Извлекаем текст ответа
-    const { replyText } = extractReply(data, ep.replyField);
-
-    // Извлекаем reasoning (если включён)
-    const reasoningCfg = getReasoningConfig(ep);
-    const { reasoningText, cleanReply } = extractReasoning(data, replyText, reasoningCfg, opt.eventBus);
-
-    // Итоговый ответ: если cleanReply есть и не пустая строка, берём её, иначе исходный replyText
-    const finalReply = cleanReply && cleanReply.trim().length > 0 ? cleanReply : replyText || '';
+    // Извлечение текста ответа с помощью существующей утилиты
+    // TODO: позже заменим на replyPaths, пока оставляем replyField
+    const { replyText } = extractReply(data, resolved.replyField);
+    
+    // Извлечение reasoning и очистка основного текста от тегов мышления
+    const { reasoningText, cleanReply } = extractReasoning(
+      data,
+      replyText,
+      resolved.reasoning,
+      opt.eventBus
+    );
+    
+    const finalReply = (cleanReply && cleanReply.trim().length > 0) ? cleanReply : (replyText || '');
     const finalData = { ...data, reply: finalReply, thinking: reasoningText };
-
+    
     return {
       data: finalData,
       replyText: finalReply,

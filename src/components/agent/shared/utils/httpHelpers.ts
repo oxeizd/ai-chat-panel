@@ -1,6 +1,5 @@
-﻿import { WorkflowContext } from 'components/agent/core/contextManager';
-import { mergeObjects } from './objectHelpers';
-import { resolveString, resolveObject } from './variableResolver';
+import { resolveString } from './variableResolver';
+import { WorkflowContext } from 'components/agent/core/execution/contextManager';
 
 /**
  * Построение полного URL эндпоинта с подстановкой переменных.
@@ -26,28 +25,6 @@ export const buildUrl = (endpoint: { path: string }, context: WorkflowContext, b
     return baseClean + relativeClean;
   };
   return combine(resolvedBaseUrl, path);
-};
-
-/**
- * Формирование тела запроса из конфигурации эндпоинта и глобальной конфигурации агента.
- * @param endpoint - конфигурация эндпоинта
- * @param context - контекст
- * @param agentConfig - глобальная конфигурация (объединяется с телом эндпоинта)
- * @returns объединённое тело и его строковое представление
- */
-export const buildRequestBody = (
-  endpoint: { body?: any },
-  context: WorkflowContext,
-  agentConfig?: Record<string, any>
-): { mergedBody: any; bodyString?: string } => {
-  const resolvedAgentConfig = agentConfig ? resolveObject(agentConfig, context) : {};
-  const resolvedEndpointBody = endpoint.body ? resolveObject(endpoint.body, context) : {};
-  const mergedBody = mergeObjects(resolvedAgentConfig, resolvedEndpointBody);
-  let bodyString: string | undefined = undefined;
-  if (Object.keys(mergedBody).length > 0) {
-    bodyString = JSON.stringify(mergedBody);
-  }
-  return { mergedBody, bodyString };
 };
 
 /**
@@ -79,33 +56,4 @@ export const extractReply = (data: any, replyField?: string): { replyText?: stri
     data.reply = replyText;
   }
   return { replyText, dataWithReply: data };
-};
-
-/**
- * Сохранение указанных полей ответа в контекст (или всех, если saveToContext не задан).
- * @param endpoint - конфигурация эндпоинта
- * @param context - мутабельный контекст
- * @param data - данные ответа
- * @param additionalExcludes - дополнительные поля для исключения
- */
-export const saveToContext = (
-  endpoint: { saveToContext?: string[] },
-  context: WorkflowContext,
-  data: Record<string, any>,
-  additionalExcludes: string[] = []
-): void => {
-  const exclude = new Set([...additionalExcludes, 'messages']);
-  if (endpoint.saveToContext?.length) {
-    for (const key of endpoint.saveToContext) {
-      if (data[key] !== undefined && !exclude.has(key)) {
-        context[key] = data[key];
-      }
-    }
-  } else {
-    for (const [key, value] of Object.entries(data)) {
-      if (!exclude.has(key)) {
-        context[key] = value;
-      }
-    }
-  }
 };

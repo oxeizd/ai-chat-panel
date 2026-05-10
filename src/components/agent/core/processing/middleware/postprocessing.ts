@@ -1,64 +1,52 @@
-import { EndpointConfig } from '../../../shared/types';
-import { WorkflowContext } from '../../contextManager';
+import { ResolvedEndpointConfig } from '../../config/types';
+import { WorkflowContext } from '../../execution/contextManager';
 import { ProcessedResponse } from '../handlers/response';
-import { HistoryManager } from '../../historyManager';
+import { HistoryManager } from '../../execution/historyManager';
 import { parseFileFromResponse } from '../helpers/fileHandler';
-import { saveToContext } from '../../../shared/utils/httpHelpers';
 
-/**
- * Интерфейс мидлвары постобработки ответа.
- */
 export interface PostProcessingMiddleware {
   name: string;
   process(
     response: ProcessedResponse,
-    endpoint: EndpointConfig,
+    endpoint: ResolvedEndpointConfig,
     context: WorkflowContext,
     requestBody?: any
   ): void | Promise<void>;
 }
 
-/**
- * Мидлвара: сохраняет историю (сообщение ассистента)
- */
-export class HistoryMiddleware {
+export class HistoryMiddleware implements PostProcessingMiddleware {
   name = 'history';
-
   constructor(private history: HistoryManager) {}
 
-  process(resp: ProcessedResponse, ep: EndpointConfig, ctx: WorkflowContext) {
+  process(resp: ProcessedResponse, endpoint: ResolvedEndpointConfig, ctx: WorkflowContext) {
     if (resp.historySynced) {
       return;
     }
-
-    const ch = ep.conversationHistory;
-    const enabled = ch === true ? true : ch && typeof ch === 'object' ? ch.enabled : false;
-
-    if (enabled && resp.replyText) {
-      this.history.addAssistantMessage(ep, ctx, resp.data, resp.replyText);
+    if (endpoint.conversationHistory && resp.replyText) {
+      this.history.addAssistantMessage(endpoint, ctx, resp.data, resp.replyText);
     }
   }
 }
 
-/**
- * Мидлвара: сохраняет поля ответа в контекст
- */
-export class ContextSaveMiddleware {
+export class ContextSaveMiddleware implements PostProcessingMiddleware {
   name = 'context-save';
-
-  process(resp: ProcessedResponse, ep: EndpointConfig, ctx: WorkflowContext) {
+  process(resp: ProcessedResponse, endpoint: ResolvedEndpointConfig, ctx: WorkflowContext) {
     const data = { ...resp.data, reply: resp.replyText };
-    saveToContext(ep, ctx, data, ['reply', 'result', 'status']);
+    const { saveToContext } = endpoint;
+  
+    if (!saveToContext || saveToContext.length === 0) return;
+  
+    for (const key of saveToContext) {
+      if (data[key] !== undefined && key !== 'messages') {
+        ctx[key] = data[key];
+      }
+    }
   }
 }
 
-/**
- * Мидлвара: извлекает файл из ответа и сохраняет в контекст
- */
-export class FileExtractionMiddleware {
+export class FileExtractionMiddleware implements PostProcessingMiddleware {
   name = 'file-extract';
-
-  process(resp: ProcessedResponse, ep: EndpointConfig, ctx: WorkflowContext) {
+  process(resp: ProcessedResponse, _endpoint: ResolvedEndpointConfig, ctx: WorkflowContext) {
     const file = parseFileFromResponse(resp.data);
     if (file) {
       resp.data.fileAttachment = file;

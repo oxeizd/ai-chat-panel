@@ -1,4 +1,4 @@
-﻿import { TraceStep } from '../shared/types';
+import { TraceStep } from "types";
 
 /**
  * Конфигурация одного HTTP-запроса.
@@ -29,30 +29,9 @@ export interface HttpResponse {
  * Добавляет базовый URL ко всем запросам и опционально трассирует их.
  */
 export class HttpClient {
-  private base: string;
-
-  /**
-   * @param baseUrl - базовый URL API (например, 'https://api.example.com')
-   */
-  constructor(baseUrl: string) {
-    this.base = baseUrl.replace(/\/$/, ''); // убираем завершающий слеш
-  }
-
-  /** Собирает полный URL из базового и относительного пути */
-  private fullUrl(path: string): string {
-    return this.base + (path.startsWith('/') ? path : '/' + path);
-  }
-
-  /**
-   * Выполнить HTTP-запрос.
-   * @param request - параметры запроса
-   * @param signal - сигнал для отмены (AbortController.signal)
-   * @returns унифицированный ответ
-   */
   async execute(request: RequestConfig, signal?: AbortSignal): Promise<HttpResponse> {
-    const url = this.fullUrl(request.url);
+    const url = request.url;
 
-    // Трассировка запроса
     request.onTrace?.({
       type: 'request',
       timestamp: Date.now(),
@@ -68,7 +47,6 @@ export class HttpClient {
       signal,
     });
 
-    // Оборачиваем стандартный Response в наш интерфейс
     return {
       ok: res.ok,
       status: res.status,

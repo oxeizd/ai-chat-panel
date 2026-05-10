@@ -1,34 +1,4 @@
-﻿import { StreamingConfig } from 'types';
-import { extractValueByPath } from 'components/agent/shared/utils/objectHelpers';
-import { STREAMING_DEFAULTS } from 'components/agent/shared/constants';
-
-export const isStreamingEnabled = (endpoint: { streaming?: boolean | StreamingConfig }): boolean => {
-  return endpoint.streaming === true || (endpoint.streaming as StreamingConfig)?.enabled === true;
-};
-
-export const getStreamConfig = (endpoint: { streaming?: boolean | StreamingConfig }) => {
-  const defaultConfig: StreamingConfig = {
-    enabled: true,
-    textPath: STREAMING_DEFAULTS.textPath,
-    delimiter: STREAMING_DEFAULTS.delimiter,
-    dataPrefix: STREAMING_DEFAULTS.dataPrefix,
-  };
-
-  const streamingEnabled = isStreamingEnabled(endpoint);
-  if (!streamingEnabled) {
-    return null;
-  }
-
-  if (typeof endpoint.streaming === 'object') {
-    return { ...defaultConfig, ...endpoint.streaming };
-  }
-  return defaultConfig;
-};
-
-export const detectSSEByContent = (response: Response): boolean => {
-  const contentType = response.headers.get('content-type') || '';
-  return contentType.includes('text/event-stream');
-};
+import { extractValueByPath } from "components/agent/shared/utils/objectHelpers";
 
 export interface ParseSSEOptions {
   textPath: string;
@@ -62,45 +32,36 @@ export async function parseSSEStream(
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
+      if (done) break;
+
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
 
       for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith(':')) {
-          continue;
+        if (!trimmed || trimmed.startsWith(':')) continue;
+
+        // Нормализуем содержимое: убираем dataPrefix, если есть
+        let content = trimmed;
+        if (trimmed.startsWith(dataPrefix)) {
+          content = trimmed.slice(dataPrefix.length).trim();
         }
 
-        let isDone = false;
-        if (trimmed === '[DONE]') {
-          isDone = true;
-        } else if (dataPrefix && trimmed.startsWith(dataPrefix)) {
-          const afterPrefix = trimmed.slice(dataPrefix.length).trim();
-          if (afterPrefix === '[DONE]') {
-            isDone = true;
-          }
-        }
-        if (isDone) {
+        // Проверка на [DONE]
+        if (content === '[DONE]') {
           return { fullText: fullResponse, finalEvent, rawEvents };
         }
 
-        let jsonStr = trimmed;
-        if (dataPrefix && trimmed.startsWith(dataPrefix)) {
-          jsonStr = trimmed.slice(dataPrefix.length).trim();
-        }
-
         try {
-          const event = JSON.parse(jsonStr);
+          const event = JSON.parse(content);
           rawEvents.push(event);
+
           if (onHistorySync) {
             onHistorySync(event);
           }
 
-          // Извлечение reasoning с поддержкой кастомного пути
+          // Извлечение reasoning (если необходимо)
           let reasoningChunk: string | undefined;
           if (reasoningApiField) {
             const extracted = extractValueByPath(event, reasoningApiField);
@@ -108,7 +69,7 @@ export async function parseSSEStream(
               reasoningChunk = extracted;
             }
           }
-          // Fallback для стандартных полей, если по кастомному пути не нашли
+          // Fallback для стандартных полей OpenAI reasoning
           if (!reasoningChunk && event.choices?.[0]) {
             reasoningChunk = event.choices[0].delta?.reasoning_content;
           }
@@ -168,3 +129,9 @@ export async function parseSSEStream(
     }
   }
 }
+
+// Функция определения SSE по Content-Type (может быть полезна)
+export const detectSSEByContent = (response: Response): boolean => {
+  const contentType = response.headers.get('content-type') || '';
+  return contentType.includes('text/event-stream');
+};

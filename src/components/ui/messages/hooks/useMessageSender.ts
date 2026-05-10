@@ -1,8 +1,8 @@
 import { useCallback, useRef } from 'react';
-import { useAgent } from 'components/agent/useAgent';
+import { useAgent } from 'components/agent/hooks/useAgent';
 import { AgentConfig, TraceStep } from 'components/agent/shared/types';
 import { GrafanaUser } from 'components/hooks/useGrafanaUser';
-import { useAgentEvents } from 'components/agent/useAgentEvents';
+import { useAgentEvents } from 'components/agent/hooks/useAgentEvents';
 
 interface UseMessageSenderOptions {
   agent: AgentConfig | null;

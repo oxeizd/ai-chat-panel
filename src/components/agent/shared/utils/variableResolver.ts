@@ -1,4 +1,4 @@
-﻿export type VariableContext = Record<string, any>;
+export type VariableContext = Record<string, any>;
 
 /** Генерация UUID v4 */
 function generateUUID(): string {

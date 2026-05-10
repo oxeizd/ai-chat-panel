@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Контекст выполнения агента – хранит переменные и массив сообщений.
  */
 export interface WorkflowContext extends Record<string, any> {

@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { AgentClient } from './core/agentClient';
+import { AgentClient } from '../core/agentClient';
 import { AgentConfig, TraceStep } from 'types';
 
 export const useAgent = (agentConfig: AgentConfig | null) => {
@@ -15,7 +15,7 @@ export const useAgent = (agentConfig: AgentConfig | null) => {
   const sendMessage = useCallback(
     async (userInput: string, additionalCtx?: Record<string, any>, onTrace?: (step: TraceStep) => void) => {
       if (!clientRef.current) {
-        throw new Error('Агент не выбран');
+        throw new Error('Agent not selected');
       }
 
       abortRef.current?.abort();

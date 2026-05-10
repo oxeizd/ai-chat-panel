@@ -4,7 +4,6 @@ import { AgentConfig } from 'types';
 import { EndpointEditorHandle } from '../endpointEditor/endpointEditor';
 import { EndpointsSection } from './sections/EndpointsSection';
 import { AgentCommonSection } from './sections/AgentCommonSection';
-import { AgentJsonSection } from './sections/AgentJsonSection';
 import { WorkflowSection } from './sections/WorkflowSection';
 
 interface AgentEditModalProps {
@@ -19,8 +18,6 @@ const emptyAgent = (): AgentConfig => ({
   name: '',
   api: '',
   default: false,
-  config: {},
-  headers: {},
   endpoints: [],
   workflow: [],
   startupOperation: '',
@@ -30,8 +27,6 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
   const theme = useTheme2();
 
   const endpointRefs = useRef<Array<EndpointEditorHandle | null>>([]);
-
-  const [isCommonOpen, setIsCommonOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const [editedAgent, setEditedAgent] = useState<AgentConfig>(() => (agent ? { ...agent } : emptyAgent()));
@@ -50,7 +45,6 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
       return;
     }
 
-    // Проверка уникальности имени
     const nameExists = existingAgents.some((a) => a.name === editedAgent.name && a !== agent);
     if (nameExists) {
       setValidationError('An agent with this name already exists');
@@ -76,12 +70,6 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
     });
 
     let agentToSave = { ...editedAgent, endpoints: updatedEndpoints };
-    if (!agentToSave.config) {
-      agentToSave.config = {};
-    }
-    if (!agentToSave.headers) {
-      agentToSave.headers = {};
-    }
 
     onSave(agentToSave);
     onDismiss();
@@ -97,14 +85,6 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
     <Modal title={agent ? 'Edit Agent' : 'New Agent'} isOpen={isOpen} onDismiss={onDismiss}>
       {/* name, url, use by deafult */}
       <AgentCommonSection agent={editedAgent} onChange={updateField} />
-
-      {/* Единый Collapse для общих заголовков и тела */}
-      <AgentJsonSection
-        agent={editedAgent}
-        onChange={updateField}
-        isOpen={isCommonOpen}
-        onToggle={() => setIsCommonOpen(!isCommonOpen)}
-      />
 
       <EndpointsSection
         endpoints={editedAgent.endpoints || []}
