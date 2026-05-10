@@ -1,4 +1,4 @@
-import { TraceStep } from "types";
+import { TraceStep } from 'types';
 
 /**
  * Конфигурация одного HTTP-запроса.

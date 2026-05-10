@@ -1,179 +1,217 @@
-import React from 'react';
-import { Switch, Field, Input, Combobox, useTheme2 } from '@grafana/ui';
-import { EndpointConfig, ReasoningConfig } from 'types';
+import React, { useCallback } from 'react';
+import { Switch, Field, Input, Combobox, useStyles2 } from '@grafana/ui';
+import { css } from '@emotion/css';
+import { EndpointConfig, EmbeddedReasoning, SeparateReasoning, ReasoningConfig } from 'types';
 
 interface ReasoningSectionProps {
   endpoint: EndpointConfig;
   onChange: (field: keyof EndpointConfig, value: any) => void;
 }
 
-/**
- * Опции для выбора режима извлечения мыслей.
- */
+// Опции для embedded-режима (без Both)
 const MODE_OPTIONS = [
-  { label: 'Both (API field + tags)', value: 'both' },
   { label: 'API field only', value: 'api_field' },
   { label: 'Thinking tags only', value: 'thinking_tags' },
 ];
 
-/**
- * Секция настройки Reasoning / Thinking в редакторе эндпоинта.
- *
- * Позволяет:
- * - Включить/отключить извлечение мыслей ассистента.
- * - Выбрать режим (через API, через теги <thinking>, оба).
- * - Настроить пути и маркеры.
- */
+const FORMAT_OPTIONS = [
+  { label: 'Embedded (in API fields or tags)', value: 'embedded' },
+  { label: 'Separate (thinking events)', value: 'separate' },
+];
+
+// Дефолтные конфигурации
+const DEFAULT_EMBEDDED: EmbeddedReasoning = {
+  enabled: true,
+  format: 'embedded',
+  mode: 'api_field',
+  apiField: 'choices[0].delta.reasoning_content',
+  textPath: 'choices[0].delta.content',
+  startMarker: '<thinking>',
+  endMarker: '</thinking>',
+};
+
+const DEFAULT_SEPARATE: SeparateReasoning = {
+  enabled: true,
+  format: 'separate',
+  eventMapping: {
+    thinkingStart: 'THINKING_START',
+    thinkingContent: 'THINKING_TEXT_MESSAGE_CONTENT',
+    thinkingEnd: 'THINKING_END',
+  },
+};
+
+// Type guards
+const isEmbedded = (config: ReasoningConfig): config is EmbeddedReasoning =>
+  config !== false && config.format === 'embedded';
+
+const isSeparate = (config: ReasoningConfig): config is SeparateReasoning =>
+  config !== false && config.format === 'separate';
+
+const isEnabled = (config: ReasoningConfig): config is EmbeddedReasoning | SeparateReasoning => config !== false;
+
+// Нормализация входного значения (учитываем старые форматы)
+const normalizeConfig = (raw: any): ReasoningConfig => {
+  if (raw == null || raw === false) {
+    return false;
+  }
+  if (raw === true) {
+    return DEFAULT_EMBEDDED;
+  }
+  if (typeof raw === 'object' && !('format' in raw)) {
+    return {
+      ...DEFAULT_EMBEDDED,
+      ...raw,
+      enabled: true,
+      format: 'embedded',
+    };
+  }
+  return raw as ReasoningConfig;
+};
+
+const getStyles = () => ({
+  container: css`
+    margin-top: 16px;
+  `,
+  header: css`
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  `,
+  fields: css`
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+  `,
+});
+
 export const ReasoningSection: React.FC<ReasoningSectionProps> = ({ endpoint, onChange }) => {
-  const theme = useTheme2();
+  const styles = useStyles2(getStyles);
+  const reasoning = normalizeConfig(endpoint.reasoning);
+  const enabled = isEnabled(reasoning);
+  const currentFormat = reasoning !== false ? reasoning.format : 'embedded';
 
-  /**
-   * Проверяет, включено ли сейчас reasoning.
-   */
-  const isEnabled = (): boolean => {
-    if (!endpoint.reasoning) {
-      return false;
-    }
-    if (typeof endpoint.reasoning === 'boolean') {
-      return endpoint.reasoning;
-    }
-    return endpoint.reasoning.enabled === true;
-  };
+  const handleToggle = useCallback(
+    (checked: boolean) => {
+      onChange('reasoning', checked ? DEFAULT_EMBEDDED : false);
+    },
+    [onChange]
+  );
 
-  /**
-   * Возвращает объект конфигурации, если он задан.
-   */
-  const getConfig = (): ReasoningConfig | null => {
-    if (!endpoint.reasoning || typeof endpoint.reasoning === 'boolean') {
-      return null;
-    }
-    return endpoint.reasoning;
-  };
+  const handleFormatChange = useCallback(
+    (format: 'embedded' | 'separate') => {
+      onChange('reasoning', format === 'embedded' ? DEFAULT_EMBEDDED : DEFAULT_SEPARATE);
+    },
+    [onChange]
+  );
 
-  /**
-   * Обработчик включения/выключения.
-   *
-   * При включении подставляет дефолтные значения,
-   * если до этого был просто boolean или undefined.
-   */
-  const handleToggle = (enabled: boolean) => {
-    if (enabled) {
-      if (!endpoint.reasoning || typeof endpoint.reasoning === 'boolean') {
-        onChange('reasoning', {
-          enabled: true,
-          mode: 'both',
-          apiField: 'choices[0].delta.reasoning_content',
-          textPath: 'choices[0].delta.content',
-          startMarker: '<thinking>',
-          endMarker: '</thinking>',
-        });
-      } else {
-        onChange('reasoning', { ...endpoint.reasoning, enabled: true });
+  const handleEmbeddedChange = useCallback(
+    <K extends keyof EmbeddedReasoning>(field: K, value: EmbeddedReasoning[K]) => {
+      if (!isEmbedded(reasoning)) {
+        return;
       }
-    } else {
-      // Полностью отключаем — ответ будет показываться сразу
-      onChange('reasoning', false);
-    }
-  };
+      onChange('reasoning', { ...reasoning, [field]: value });
+    },
+    [reasoning, onChange]
+  );
 
-  /**
-   * Обработчик изменения отдельного поля внутри ReasoningConfig.
-   */
-  const handleFieldChange = (field: keyof ReasoningConfig, val: any) => {
-    let current = endpoint.reasoning;
-    if (!current || typeof current === 'boolean') {
-      // Если по какой-то причине конфига ещё нет, создаём с дефолтами
-      current = {
-        enabled: true,
-        mode: 'both',
-        apiField: 'choices[0].delta.reasoning_content',
-        textPath: 'choices[0].delta.content',
-        startMarker: '<thinking>',
-        endMarker: '</thinking>',
-      };
-    }
-    onChange('reasoning', { ...current, [field]: val });
-  };
+  const handleSeparateChange = useCallback(
+    <K extends keyof SeparateReasoning>(field: K, value: SeparateReasoning[K]) => {
+      if (!isSeparate(reasoning)) {
+        return;
+      }
+      onChange('reasoning', { ...reasoning, [field]: value });
+    },
+    [reasoning, onChange]
+  );
 
-  const config = getConfig();
-  const showApiField = config?.mode === 'api_field' || config?.mode === 'both';
-  const showTagsField = config?.mode === 'thinking_tags' || config?.mode === 'both';
+  const handleMappingChange = (key: keyof NonNullable<SeparateReasoning['eventMapping']>, val: string) => {
+    if (!isSeparate(reasoning)) {
+      return;
+    }
+    const current = reasoning.eventMapping ?? {};
+    handleSeparateChange('eventMapping', { ...current, [key]: val });
+  };
 
   return (
-    <div style={{ marginTop: '16px' }}>
-      {/* Заголовок с переключателем */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '12px',
-        }}
-      >
-        <div
-          style={{
-            fontSize: '13px',
-            fontWeight: 500,
-            color: theme.colors.text.secondary,
-          }}
-        >
-          🤔 Reasoning / Thinking
-        </div>
-        <Switch value={isEnabled()} onChange={(e) => handleToggle(e.currentTarget.checked)} />
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>🤔 Reasoning / Thinking</div>
+        <Switch value={enabled} onChange={(e) => handleToggle(e.currentTarget.checked)} />
       </div>
 
-      {/* Дополнительные поля, если включено */}
-      {isEnabled() && (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            marginTop: '12px',
-          }}
-        >
-          {/* Выбор режима */}
-          <Field label="Extraction mode">
+      {enabled && (
+        <div className={styles.fields}>
+          <Field label="Format">
             <Combobox
-              options={MODE_OPTIONS}
-              value={config?.mode ?? 'both'}
-              onChange={(opt) => handleFieldChange('mode', opt?.value)}
+              options={FORMAT_OPTIONS}
+              value={currentFormat}
+              onChange={(opt) => handleFormatChange(opt?.value as 'embedded' | 'separate')}
             />
           </Field>
 
-          {/* Поля, видимые только для API‑режима */}
-          {showApiField && (
-            <Field label="API field path for reasoning">
-              <Input
-                value={config?.apiField ?? 'choices[0].delta.reasoning_content'}
-                onChange={(e) => handleFieldChange('apiField', e.currentTarget.value)}
-                placeholder="choices[0].delta.reasoning_content"
-              />
-            </Field>
+          {isEmbedded(reasoning) && (
+            <>
+              <Field label="Extraction mode">
+                <Combobox
+                  options={MODE_OPTIONS}
+                  value={reasoning.mode}
+                  onChange={(opt) => handleEmbeddedChange('mode', opt?.value as 'api_field' | 'thinking_tags')}
+                />
+              </Field>
+
+              {reasoning.mode === 'api_field' && (
+                <Field label="API field path">
+                  <Input
+                    value={reasoning.apiField ?? DEFAULT_EMBEDDED.apiField}
+                    onChange={(e) => handleEmbeddedChange('apiField', e.currentTarget.value)}
+                  />
+                </Field>
+              )}
+
+              {reasoning.mode === 'thinking_tags' && (
+                <>
+                  <Field label="Text path for tags">
+                    <Input
+                      value={reasoning.textPath ?? DEFAULT_EMBEDDED.textPath}
+                      onChange={(e) => handleEmbeddedChange('textPath', e.currentTarget.value)}
+                    />
+                  </Field>
+                  <Field label="Start marker">
+                    <Input
+                      value={reasoning.startMarker ?? DEFAULT_EMBEDDED.startMarker}
+                      onChange={(e) => handleEmbeddedChange('startMarker', e.currentTarget.value)}
+                    />
+                  </Field>
+                  <Field label="End marker">
+                    <Input
+                      value={reasoning.endMarker ?? DEFAULT_EMBEDDED.endMarker}
+                      onChange={(e) => handleEmbeddedChange('endMarker', e.currentTarget.value)}
+                    />
+                  </Field>
+                </>
+              )}
+            </>
           )}
 
-          {/* Поля, видимые только для режима тегов */}
-          {showTagsField && (
+          {isSeparate(reasoning) && (
             <>
-              <Field label="Text path for tag search">
+              <Field label="Thinking start event" description="Default: THINKING_START">
                 <Input
-                  value={config?.textPath ?? 'choices[0].delta.content'}
-                  onChange={(e) => handleFieldChange('textPath', e.currentTarget.value)}
-                  placeholder="choices[0].delta.content"
+                  value={reasoning.eventMapping?.thinkingStart ?? 'THINKING_START'}
+                  onChange={(e) => handleMappingChange('thinkingStart', e.currentTarget.value)}
                 />
               </Field>
-              <Field label="Start marker">
+              <Field label="Thinking content event" description="Default: THINKING_TEXT_MESSAGE_CONTENT">
                 <Input
-                  value={config?.startMarker ?? '<thinking>'}
-                  onChange={(e) => handleFieldChange('startMarker', e.currentTarget.value)}
-                  placeholder="<thinking>"
+                  value={reasoning.eventMapping?.thinkingContent ?? 'THINKING_TEXT_MESSAGE_CONTENT'}
+                  onChange={(e) => handleMappingChange('thinkingContent', e.currentTarget.value)}
                 />
               </Field>
-              <Field label="End marker">
+              <Field label="Thinking end event" description="Default: THINKING_END">
                 <Input
-                  value={config?.endMarker ?? '</thinking>'}
-                  onChange={(e) => handleFieldChange('endMarker', e.currentTarget.value)}
-                  placeholder="</thinking>"
+                  value={reasoning.eventMapping?.thinkingEnd ?? 'THINKING_END'}
+                  onChange={(e) => handleMappingChange('thinkingEnd', e.currentTarget.value)}
                 />
               </Field>
             </>

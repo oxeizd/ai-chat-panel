@@ -4,9 +4,10 @@ import { HistoryManager } from './historyManager';
 import { buildEndpointConfig } from '../config/resolver';
 import { HttpClient, HttpResponse } from './httpClient';
 import { handlePolling } from '../processing/helpers/polling';
-import { ResponseHandlerFactory } from '../processing/handlers/response';
+import { HandlerRegistry } from '../processing/handlers/response';
 import { AgentConfig, EndpointConfig, TraceStep } from '../../shared/types';
 import { PostProcessingMiddleware } from '../processing/middleware/postprocessing';
+import { ResolvedEndpointConfig } from '../config/types';
 
 export class EndpointExecutor {
   constructor(
@@ -15,33 +16,42 @@ export class EndpointExecutor {
     private history: HistoryManager,
     private bus: EventBus,
     private agentConfig: AgentConfig,
-    private handlerFactory: ResponseHandlerFactory,
+    private handlerFactory: HandlerRegistry,
     private middlewares: PostProcessingMiddleware[] = []
   ) {}
 
   async execute(
-    rawEndpoint: EndpointConfig,
+    endpoint: EndpointConfig,
     additionalCtx: Record<string, any> = {},
     onTrace?: (step: TraceStep) => void,
     signal?: AbortSignal
   ): Promise<any> {
     const context = { ...this.ctx.context, ...additionalCtx };
-    const resolved = buildEndpointConfig(rawEndpoint, this.agentConfig, context);
-    console.log(resolved)
-    
-    let body;
-    if (resolved.conversationHistory && context.messages?.length) {
-      body = { ...resolved.body, messages: context.messages };
-    } else {
-      body = resolved.body;
-    }
-    
-    // Теперь передаём готовый body в addUserMessage
-    if (resolved.conversationHistory) {
-      this.history.addUserMessage(resolved, context);
+    const executeConfig = buildEndpointConfig(endpoint, this.agentConfig, context);
+    const body = this.buildBody(executeConfig, context);
+
+    const finalResponse = await this.executeHttpRequest(executeConfig, body, onTrace, signal);
+    const handler = this.handlerFactory.get(executeConfig, finalResponse);
+    const processed = await handler.handle(executeConfig, finalResponse, {
+      eventBus: this.bus,
+      onTrace,
+      signal,
+    });
+
+    for (const mw of this.middlewares) {
+      await mw.process(processed, executeConfig, context);
     }
 
-    // Первый запрос
+    this.ctx.replace(context);
+    return processed.data;
+  }
+
+  private async executeHttpRequest(
+    resolved: ResolvedEndpointConfig,
+    body: any,
+    onTrace?: (step: TraceStep) => void,
+    signal?: AbortSignal
+  ): Promise<HttpResponse> {
     let httpResponse = await this.http.execute(
       {
         url: resolved.url,
@@ -53,54 +63,50 @@ export class EndpointExecutor {
       signal
     );
 
-    let finalResponse: HttpResponse;
-
-    if (resolved.polling) {
-      let initialData = null;
-      if (httpResponse.ok) {
-        try {
-          initialData = await httpResponse.json();
-        } catch {}
-      }
-      const pollingData = await handlePolling(
-        resolved.polling,
-        resolved.method,
-        resolved.url,
-        resolved.headers,
-        JSON.stringify(resolved.body),
-        initialData,
-        onTrace,
-        signal
-      );
-      finalResponse = {
-        ok: true,
-        status: 200,
-        headers: new Headers(),
-        body: null,
-        clone: () => finalResponse,
-        text: async () => JSON.stringify(pollingData),
-        json: async () => pollingData,
-      };
-    } else {
-      finalResponse = httpResponse;
+    if (!resolved.polling) {
+      return httpResponse;
     }
 
-    // Выбираем обработчик
-    const handler = this.handlerFactory.get(resolved, finalResponse);
-    const processed = await handler.handle(resolved, finalResponse, {
-      eventBus: this.bus,
+    let initialData = null;
+
+    if (httpResponse.ok) {
+      try {
+        initialData = await httpResponse.json();
+      } catch {}
+    }
+
+    const pollingData = await handlePolling(
+      resolved.polling,
+      resolved.method,
+      resolved.url,
+      resolved.headers,
+      JSON.stringify(resolved.body),
+      initialData,
       onTrace,
-      signal,
-    });
+      signal
+    );
 
-    // Постобработка
-    for (const mw of this.middlewares) {
-      await mw.process(processed, resolved, context);
+    return {
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      body: null,
+      clone: () => undefined as any,
+      text: async () => JSON.stringify(pollingData),
+      json: async () => pollingData,
+    };
+  }
+
+  private buildBody(resolved: ResolvedEndpointConfig, context: Record<string, any>): any {
+    if (!resolved.conversationHistory) {
+      return resolved.body;
     }
 
-    this.ctx.replace(context);
-    console.log(this.ctx)
+    this.history.addUserMessage(resolved, context);
 
-    return processed.data;
+    if (context.messages?.length) {
+      return { ...resolved.body, messages: context.messages };
+    }
+    return resolved.body;
   }
 }

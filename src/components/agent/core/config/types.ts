@@ -1,8 +1,21 @@
-import { StreamingConfig, ReasoningConfig } from '../../shared/types';
+import { StreamingConfig } from '../../shared/types';
 
-export type ResolvedReasoningConfig = Required<Omit<ReasoningConfig, 'enabled'>> & {
+export interface ResolvedReasoningConfig {
   enabled: true;
-};
+  format: 'embedded' | 'separate';
+  // для embedded
+  mode?: 'api_field' | 'thinking_tags';
+  apiField?: string;
+  textPath?: string;
+  startMarker?: string;
+  endMarker?: string;
+  // для separate
+  eventMapping?: {
+    thinkingStart: string;
+    thinkingContent: string;
+    thinkingEnd: string;
+  };
+}
 
 export type ResolvedStreamingConfig = Required<Omit<StreamingConfig, 'enabled'>> & {
   enabled: true;

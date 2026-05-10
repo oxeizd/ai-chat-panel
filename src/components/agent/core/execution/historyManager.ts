@@ -1,4 +1,4 @@
-import { ResolvedEndpointConfig } from "../config/types";
+import { ResolvedEndpointConfig } from '../config/types';
 import { WorkflowContext } from './contextManager';
 
 export class HistoryManager {
@@ -60,7 +60,7 @@ export class HistoryManager {
     resolved: ResolvedEndpointConfig,
     ctx: WorkflowContext,
     responseData: any,
-    replyText?: string,
+    replyText?: string
   ): void {
     const hist = resolved.conversationHistory;
 
@@ -71,7 +71,7 @@ export class HistoryManager {
     if (!replyText) {
       return;
     }
-    
+
     if (!ctx.messages) {
       ctx.messages = [];
     }

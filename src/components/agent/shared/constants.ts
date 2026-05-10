@@ -13,7 +13,7 @@ export const POLLING_DEFAULTS = {
 } as const;
 
 export const REASONING_DEFAULTS = {
-  mode: 'both' as const,
+  mode: 'api_field' as const,
   apiField: 'choices[0].delta.reasoning_content',
   textPath: 'choices[0].delta.content',
   startMarker: '<thinking>',

@@ -18,7 +18,7 @@ export interface EndpointConfig {
   polling?: PollingConfig;
   streaming?: boolean | StreamingConfig;
   conversationHistory?: boolean | ConversationHistoryConfig;
-  reasoning?: boolean | ReasoningConfig;
+  reasoning?: ReasoningConfig;
 }
 
 export interface PollingConfig {
@@ -48,14 +48,29 @@ export interface ConversationHistoryConfig {
   };
 }
 
-export interface ReasoningConfig {
-  enabled: boolean;
-  mode?: 'api_field' | 'thinking_tags' | 'both';
-  apiField?: string;
-  textPath?: string;
+interface BaseReasoning {
+  enabled: true;
+}
+
+export interface EmbeddedReasoning extends BaseReasoning {
+  format: 'embedded';
+  mode: 'api_field' | 'thinking_tags';
+  apiField?: string; // для mode = api_field
+  textPath?: string; // для mode = thinking_tags
   startMarker?: string;
   endMarker?: string;
 }
+
+export interface SeparateReasoning extends BaseReasoning {
+  format: 'separate';
+  eventMapping?: {
+    thinkingStart?: string;
+    thinkingContent?: string;
+    thinkingEnd?: string;
+  };
+}
+
+export type ReasoningConfig = false | EmbeddedReasoning | SeparateReasoning;
 
 export interface Message {
   id: string;

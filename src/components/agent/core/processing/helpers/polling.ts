@@ -1,4 +1,4 @@
-﻿import { ResolvedPollingConfig } from "../../config/types";
+﻿import { ResolvedPollingConfig } from '../../config/types';
 
 export const handlePolling = async (
   polling: ResolvedPollingConfig,

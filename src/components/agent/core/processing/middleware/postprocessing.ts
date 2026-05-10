@@ -33,9 +33,11 @@ export class ContextSaveMiddleware implements PostProcessingMiddleware {
   process(resp: ProcessedResponse, endpoint: ResolvedEndpointConfig, ctx: WorkflowContext) {
     const data = { ...resp.data, reply: resp.replyText };
     const { saveToContext } = endpoint;
-  
-    if (!saveToContext || saveToContext.length === 0) return;
-  
+
+    if (!saveToContext || saveToContext.length === 0) {
+      return;
+    }
+
     for (const key of saveToContext) {
       if (data[key] !== undefined && key !== 'messages') {
         ctx[key] = data[key];

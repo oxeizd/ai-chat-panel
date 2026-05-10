@@ -1,4 +1,4 @@
-import { extractValueByPath } from "components/agent/shared/utils/objectHelpers";
+import { extractValueByPath } from 'components/agent/shared/utils/objectHelpers';
 
 export interface ParseSSEOptions {
   textPath: string;
@@ -32,7 +32,9 @@ export async function parseSSEStream(
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        break;
+      }
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
@@ -40,7 +42,9 @@ export async function parseSSEStream(
 
       for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith(':')) continue;
+        if (!trimmed || trimmed.startsWith(':')) {
+          continue;
+        }
 
         // Нормализуем содержимое: убираем dataPrefix, если есть
         let content = trimmed;

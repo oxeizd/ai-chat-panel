@@ -1,9 +1,10 @@
 import { ResolvedEndpointConfig } from '../../config/types';
 import { HttpResponse } from '../../execution/httpClient';
 import { ResponseHandler, ProcessedResponse, HandlerOptions } from './response';
-import { parseSSEStream } from '../parsers/sseParser';
-import { extractValueByPath } from 'components/agent/shared/utils/objectHelpers';
+import { parseSSEStream } from '../parsers/embeddedSseParser';
+import { parseSeparateSSE } from '../parsers/separateSseParser';
 import { extractReasoning } from '../helpers/reasoning';
+import { extractValueByPath } from 'components/agent/shared/utils/objectHelpers';
 
 export class SseHandler implements ResponseHandler {
   canHandle(resolved: ResolvedEndpointConfig, _res: HttpResponse): boolean {
@@ -16,81 +17,83 @@ export class SseHandler implements ResponseHandler {
     }
 
     const { streaming, reasoning, conversationHistory } = resolved;
-    const { textPath, dataPrefix } = streaming!;
     const historySync = conversationHistory?.historySync;
 
     let fullReasoning = '';
     let fullVisible = '';
     let historyWasSynced = false;
 
-    const onSync = (event: any) => {
-      if (historySync && event.type === historySync.eventType) {
-        const msgs = extractValueByPath(event, historySync.messagesPath);
-        if (Array.isArray(msgs)) {
-          opt.eventBus.emit('contextUpdate', { messages: msgs });
-          historyWasSynced = true;
-          opt.onTrace?.({
-            type: 'context_update',
-            timestamp: Date.now(),
-            contextChanges: { messages_snapshot: msgs },
-          });
+    // Separate – новый протокол событий
+    if (reasoning?.format === 'separate') {
+      const eventMapping = {
+        thinkingContent: reasoning.eventMapping?.thinkingContent ?? 'THINKING_TEXT_MESSAGE_CONTENT',
+        thinkingStart: reasoning.eventMapping?.thinkingStart,
+        thinkingEnd: reasoning.eventMapping?.thinkingEnd,
+      };
+      const { fullText, fullReasoning: reas } = await parseSeparateSSE(res as any, eventMapping, {
+        onChunk: (chunk) => {
+          fullVisible += chunk;
+          opt.eventBus.emit('chunk', chunk);
+        },
+        onReasoningChunk: (chunk) => {
+          fullReasoning += chunk;
+          opt.eventBus.emit('reasoningChunk', chunk);
+        },
+        onThinkingStart: (title) => opt.eventBus.emit('thinkingStart', title),
+        onThinkingEnd: () => opt.eventBus.emit('thinkingEnd'),
+        onTrace: opt.onTrace,
+      });
+      fullVisible = fullText;
+      fullReasoning = reas;
+    }
+    // Embedded – старый способ (по полям или тегам)
+    else {
+      const { textPath, dataPrefix } = streaming!;
+      const result = await parseSSEStream(res as any, {
+        textPath,
+        dataPrefix,
+        reasoningApiField: reasoning?.apiField,
+        onChunk: (chunk) => {
+          fullVisible += chunk;
+          opt.eventBus.emit('chunk', chunk);
+        },
+        onReasoningChunk: (chunk) => {
+          if (reasoning) {
+            fullReasoning += chunk;
+            opt.eventBus.emit('reasoningChunk', chunk);
+          }
+        },
+        onHistorySync: (event) => {
+          if (historySync && event.type === historySync.eventType) {
+            const msgs = extractValueByPath(event, historySync.messagesPath);
+            if (Array.isArray(msgs)) {
+              opt.eventBus.emit('contextUpdate', { messages: msgs });
+              historyWasSynced = true;
+            }
+          }
+        },
+        onTrace: opt.onTrace,
+      });
+      fullVisible = result.fullText;
+      if (reasoning && reasoning.format === 'embedded') {
+        const { reasoningText, cleanReply } = extractReasoning({ reply: fullVisible }, fullVisible, reasoning);
+        if (reasoningText) {
+          fullReasoning = fullReasoning ? `${fullReasoning}\n${reasoningText}` : reasoningText;
         }
+        fullVisible = cleanReply;
       }
-    };
-
-    const onChunk = (chunk: string) => {
-      fullVisible += chunk;
-      opt.eventBus.emit('chunk', chunk);
-    };
-
-    const onReasoningChunk = (rChunk: string) => {
-      if (reasoning) {
-        fullReasoning += rChunk;
-        opt.eventBus.emit('reasoningChunk', rChunk);
-      }
-    };
-
-    const result = await parseSSEStream(res as any, {
-      textPath,
-      dataPrefix,
-      reasoningApiField: reasoning?.apiField,
-      onChunk,
-      onReasoningChunk,
-      onHistorySync: onSync,
-      onTrace: opt.onTrace,
-    });
-
-    // После получения полного текста – удаляем теги мышления, как в json.ts
-    let finalReply = fullVisible;
-    let finalReasoning = fullReasoning;
-    if (reasoning) {
-      // Используем extractReasoning для очистки fullVisible от тегов
-      const { reasoningText, cleanReply } = extractReasoning(
-        { reply: fullVisible }, // передаём фиктивный объект, извлекать будем из replyText
-        fullVisible,
-        reasoning,
-        opt.eventBus
-      );
-      if (reasoningText) {
-        // Если в процессе уже накоплен reasoning из стрима, объединяем (на случай дублей)
-        finalReasoning = fullReasoning ? `${fullReasoning}\n${reasoningText}` : reasoningText;
-      }
-      finalReply = cleanReply;
     }
 
+    // Формируем ответ
     const data = {
-      reply: finalReply,
-      thinking: finalReasoning,
-      finalMetadata: result.finalEvent,
-      rawEvents: result.rawEvents,
+      reply: fullVisible,
+      thinking: fullReasoning,
     };
 
     return {
       data,
-      replyText: finalReply,
-      reasoningText: finalReasoning,
-      rawText: result.fullText,
-      rawEvents: result.rawEvents,
+      replyText: fullVisible,
+      reasoningText: fullReasoning,
       historySynced: historyWasSynced,
     };
   }

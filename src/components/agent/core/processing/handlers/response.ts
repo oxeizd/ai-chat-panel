@@ -23,7 +23,7 @@ export interface ResponseHandler {
   handle(resolved: ResolvedEndpointConfig, response: HttpResponse, options: HandlerOptions): Promise<ProcessedResponse>;
 }
 
-export class ResponseHandlerFactory {
+export class HandlerRegistry {
   private handlers: ResponseHandler[];
 
   constructor(handlers: ResponseHandler[] = []) {

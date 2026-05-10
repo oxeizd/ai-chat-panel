@@ -26,21 +26,19 @@ export class JsonHandler implements ResponseHandler {
       responseBody: data,
     });
 
-    // Извлечение текста ответа с помощью существующей утилиты
-    // TODO: позже заменим на replyPaths, пока оставляем replyField
     const { replyText } = extractReply(data, resolved.replyField);
-    
-    // Извлечение reasoning и очистка основного текста от тегов мышления
-    const { reasoningText, cleanReply } = extractReasoning(
-      data,
-      replyText,
-      resolved.reasoning,
-      opt.eventBus
-    );
-    
-    const finalReply = (cleanReply && cleanReply.trim().length > 0) ? cleanReply : (replyText || '');
+    const { reasoningText, cleanReply } = extractReasoning(data, replyText, resolved.reasoning);
+
+    if (reasoningText) {
+      opt.eventBus.emit('thinkingStart');
+      opt.eventBus.emit('reasoningChunk', reasoningText);
+      opt.eventBus.emit('reasoningComplete', reasoningText);
+      opt.eventBus.emit('thinkingEnd');
+    }
+
+    const finalReply = cleanReply && cleanReply.trim().length > 0 ? cleanReply : replyText || '';
     const finalData = { ...data, reply: finalReply, thinking: reasoningText };
-    
+
     return {
       data: finalData,
       replyText: finalReply,
