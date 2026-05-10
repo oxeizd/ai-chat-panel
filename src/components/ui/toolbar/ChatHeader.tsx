@@ -9,10 +9,11 @@ interface ChatHeaderProps {
   onBack?: () => void;
   isFullscreen?: boolean;
   onFullscreen?: () => void;
+  threadId?: string;
 }
 
-export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, isFullscreen, onFullscreen }) => {
-  const { agents, clearChat, exportChat, setSelectedAgent, selectedAgent, newChat } = useChatActions();
+export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, isFullscreen, onFullscreen, threadId }) => {
+  const { agents, clearChat, exportChat, setSelectedAgent, selectedAgent, newChat, debug } = useChatActions();
 
   const theme = useTheme2();
   const styles = useStyles(theme);
@@ -71,6 +72,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, isFullscreen, on
           className={styles.header.iconButton}
           aria-label="Назад"
         />
+      )}
+      {debug && threadId && (
+        <span style={{ fontSize: '10px', color: theme.colors.text.secondary, marginLeft: '8px' }}>
+          Thread: {threadId}
+        </span>
       )}
     </div>
   );

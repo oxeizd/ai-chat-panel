@@ -8,6 +8,7 @@ export interface ChatState {
   inputValue: string;
   isChatOpen: boolean;
   isFullscreen: boolean;
+  threadId?: string | null;
 }
 
 // Стабильные колбэки + конфигурация

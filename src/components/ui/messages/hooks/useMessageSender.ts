@@ -29,6 +29,7 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
     onReasoningComplete: subscribeReasoningComplete,
     onThinkingStart: subscribeThinkingStart,
     onThinkingEnd: subscribeThinkingEnd,
+    getContextValue,
   } = useAgent(agent);
 
   const callbacksRef = useRef<SendCallbacks>({});
@@ -75,13 +76,12 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
     [agent, isLoading, user, agentSendMessage]
   );
 
-  const abort = useCallback(() => {
-    abortAgent();
-  }, [abortAgent]);
+  const abort = useCallback(() => abortAgent(), [abortAgent]);
+  const reset = useCallback(async () => await resetSession(), [resetSession]);
 
-  const reset = useCallback(async () => {
-    await resetSession();
-  }, [resetSession]);
+  const getThreadId = useCallback(() => {
+    return getContextValue?.('thread_id');
+  }, [getContextValue]);
 
   return {
     send,
@@ -90,5 +90,6 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
     isSending: isLoading,
     onChunk: subscribeChunk,
     onReasoningChunk: subscribeReasoning,
+    getThreadId,
   };
 };

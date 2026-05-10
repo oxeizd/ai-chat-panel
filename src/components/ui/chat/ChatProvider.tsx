@@ -50,6 +50,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     newChat,
     retryMessage,
     getTrace,
+    threadId,
   } = useChatMessages(selectedAgent, user, debug);
 
   useEffect(() => {
@@ -149,8 +150,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       inputValue,
       isChatOpen,
       isFullscreen,
+      threadId,
     }),
-    [messages, isLoading, inputValue, isChatOpen, isFullscreen]
+    [messages, isLoading, inputValue, isChatOpen, isFullscreen, threadId]
   );
 
   const actionsValue = useMemo<ChatActions>(
