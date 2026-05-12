@@ -27,7 +27,8 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
   } = useMessagesState();
 
   const { traces, create, addStep, setReply, setError, remove: removeTrace } = useDebugTraces(debug);
-  const { send, abort, reset: resetSession, isSending } = useMessageSender({ agent: currentAgent, user });
+  const { send, abort, reset: resetSession, isSending, getThreadId } = useMessageSender({ agent: currentAgent, user });
+  const [threadId, setThreadId] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -79,6 +80,11 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
           },
         });
 
+        const newThreadId = getThreadId();
+        if (newThreadId) {
+          setThreadId(newThreadId);
+        }
+
         if (reply === null) {
           removeAssistant(assistantId);
           return false;
@@ -120,6 +126,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       markUserError,
       addErrorAsAi,
       setError,
+      getThreadId,
     ]
   );
 
@@ -161,6 +168,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       abort();
       resetMessages();
       setInputValue('');
+      setThreadId(null);
       try {
         await resetSession();
       } catch (err) {
@@ -190,5 +198,6 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     retryMessage,
     traces,
     getTrace,
+    threadId,
   };
 };

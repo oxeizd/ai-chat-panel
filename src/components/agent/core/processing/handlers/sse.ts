@@ -22,8 +22,10 @@ export class SseHandler implements ResponseHandler {
     let fullReasoning = '';
     let fullVisible = '';
     let historyWasSynced = false;
+    let reasoningStarted = false;
+    let reasoningCompleted = false;
 
-    // Separate – новый протокол событий
+    // Separate – протокол событий (например, от DeepSeek API)
     if (reasoning?.format === 'separate') {
       const eventMapping = {
         thinkingContent: reasoning.eventMapping?.thinkingContent ?? 'THINKING_TEXT_MESSAGE_CONTENT',
@@ -32,21 +34,42 @@ export class SseHandler implements ResponseHandler {
       };
       const { fullText, fullReasoning: reas } = await parseSeparateSSE(res as any, eventMapping, {
         onChunk: (chunk) => {
+          // При получении обычного текста после reasoning завершаем режим мышления
+          if (reasoningStarted && !reasoningCompleted) {
+            reasoningCompleted = true;
+            opt.eventBus.emit('reasoningComplete', fullReasoning);
+            opt.eventBus.emit('thinkingEnd');
+          }
           fullVisible += chunk;
           opt.eventBus.emit('chunk', chunk);
         },
         onReasoningChunk: (chunk) => {
+          if (!reasoningStarted) {
+            reasoningStarted = true;
+            opt.eventBus.emit('thinkingStart');
+          }
           fullReasoning += chunk;
           opt.eventBus.emit('reasoningChunk', chunk);
         },
-        onThinkingStart: (title) => opt.eventBus.emit('thinkingStart', title),
-        onThinkingEnd: () => opt.eventBus.emit('thinkingEnd'),
+        onThinkingStart: (title) => {
+          if (!reasoningStarted) {
+            reasoningStarted = true;
+            opt.eventBus.emit('thinkingStart', title);
+          }
+        },
+        onThinkingEnd: () => {
+          if (reasoningStarted && !reasoningCompleted) {
+            reasoningCompleted = true;
+            opt.eventBus.emit('reasoningComplete', fullReasoning);
+            opt.eventBus.emit('thinkingEnd');
+          }
+        },
         onTrace: opt.onTrace,
       });
       fullVisible = fullText;
       fullReasoning = reas;
     }
-    // Embedded – старый способ (по полям или тегам)
+    // Embedded – стандартный SSE с полем delta.content и, возможно, reasoningApiField
     else {
       const { textPath, dataPrefix } = streaming!;
       const result = await parseSSEStream(res as any, {
@@ -54,11 +77,21 @@ export class SseHandler implements ResponseHandler {
         dataPrefix,
         reasoningApiField: reasoning?.apiField,
         onChunk: (chunk) => {
+          // При первом обычном тексте после завершения reasoning — финализируем reasoning
+          if (reasoningStarted && !reasoningCompleted) {
+            reasoningCompleted = true;
+            opt.eventBus.emit('reasoningComplete', fullReasoning);
+            opt.eventBus.emit('thinkingEnd');
+          }
           fullVisible += chunk;
           opt.eventBus.emit('chunk', chunk);
         },
         onReasoningChunk: (chunk) => {
           if (reasoning) {
+            if (!reasoningStarted) {
+              reasoningStarted = true;
+              opt.eventBus.emit('thinkingStart');
+            }
             fullReasoning += chunk;
             opt.eventBus.emit('reasoningChunk', chunk);
           }
@@ -75,6 +108,7 @@ export class SseHandler implements ResponseHandler {
         onTrace: opt.onTrace,
       });
       fullVisible = result.fullText;
+      // Если используется режим thinking_tags (извлечение из финального текста)
       if (reasoning && reasoning.format === 'embedded') {
         const { reasoningText, cleanReply } = extractReasoning({ reply: fullVisible }, fullVisible, reasoning);
         if (reasoningText) {
@@ -84,7 +118,12 @@ export class SseHandler implements ResponseHandler {
       }
     }
 
-    // Формируем ответ
+    // Если reasoning начался, но не завершился (например, не было обычных чанков)
+    if (reasoningStarted && !reasoningCompleted) {
+      opt.eventBus.emit('reasoningComplete', fullReasoning);
+      opt.eventBus.emit('thinkingEnd');
+    }
+
     const data = {
       reply: fullVisible,
       thinking: fullReasoning,

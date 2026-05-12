@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { ChatMenu } from './ChatMenu';
-import { useChatActions } from '../chat/ChatContext';
+import { useChatActions, useChatState } from '../chat/ChatContext';
 import { useStyles } from 'components/ui/styles/styles';
 import { blurButton } from '../utils/dom';
 
@@ -9,29 +9,17 @@ interface ChatHeaderProps {
   onBack?: () => void;
   isFullscreen?: boolean;
   onFullscreen?: () => void;
+  threadId?: string;
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, isFullscreen, onFullscreen }) => {
-  const { agents, clearChat, exportChat, setSelectedAgent, selectedAgent, newChat } = useChatActions();
-
+  const { debug } = useChatActions();
+  const { threadId } = useChatState();
   const theme = useTheme2();
   const styles = useStyles(theme);
 
   const menuButton = (
-    <Dropdown
-      overlay={
-        <ChatMenu
-          agents={agents}
-          onClearChat={clearChat}
-          onExportChat={exportChat}
-          onSelectAgent={setSelectedAgent}
-          selectedAgent={selectedAgent}
-          onNewChat={newChat}
-          className={styles.menu.customMenu}
-        />
-      }
-      placement="bottom-end"
-    >
+    <Dropdown overlay={<ChatMenu className={styles.menu.customMenu} />} placement="bottom-end">
       <Button
         variant="secondary"
         size="sm"
@@ -71,6 +59,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, isFullscreen, on
           className={styles.header.iconButton}
           aria-label="Назад"
         />
+      )}
+      {debug && threadId && (
+        <span style={{ fontSize: '10px', color: theme.colors.text.secondary, marginLeft: '8px' }}>
+          Thread: {threadId}
+        </span>
       )}
     </div>
   );

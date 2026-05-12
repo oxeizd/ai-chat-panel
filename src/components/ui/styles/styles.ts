@@ -248,7 +248,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
       container: css`
         flex: 1;
         overflow-y: auto;
-        padding: ${theme.spacing(2)};
         display: flex;
         flex-direction: column;
         gap: ${theme.spacing(1)};
@@ -256,8 +255,8 @@ export const getStyles = (theme: GrafanaTheme2) => {
         scrollbar-width: thin;
         scrollbar-color: ${theme.colors.border.weak} transparent;
         &::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
+          width: 4px;
+          height: 4px;
         }
         &::-webkit-scrollbar-track {
           background: transparent;
@@ -469,9 +468,9 @@ export const getStyles = (theme: GrafanaTheme2) => {
         }
       }
       display: inline-block;
-      width: 0.5em;
+      width: 0.2em;
       height: 1em;
-      background-color: #fbbf24;
+      background-color: rgb(90, 134, 222);
       margin-left: 2px;
       vertical-align: text-bottom;
       animation: blink 1s step-end infinite;

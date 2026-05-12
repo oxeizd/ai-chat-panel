@@ -45,12 +45,7 @@ export const InputArea = memo(
     const {
       setInputValue,
       sendMessage,
-      clearChat,
-      exportChat,
-      newChat,
       selectedAgent,
-      setSelectedAgent,
-      agents,
       placeholderText,
       centerInput,
       suggestions,
@@ -152,20 +147,7 @@ export const InputArea = memo(
       return <SubmitButton onClick={handleAction} disabled={isLoading || !inputValue.trim()} />;
     }, [continueMode, handleAction, isLoading, inputValue]);
 
-    const menu = useMemo(
-      () => (
-        <ChatMenu
-          agents={agents}
-          onClearChat={clearChat}
-          onExportChat={exportChat}
-          onSelectAgent={setSelectedAgent}
-          selectedAgent={selectedAgent}
-          onNewChat={newChat}
-          className={styles.menu.customMenu}
-        />
-      ),
-      [agents, clearChat, exportChat, setSelectedAgent, selectedAgent, newChat, styles.menu.customMenu]
-    );
+    const menu = useMemo(() => <ChatMenu className={styles.menu.customMenu} />, [styles.menu.customMenu]);
 
     const showSuggestionsAlways = useMemo(
       () => showSuggestions && suggestionsPlacement === 'always' && suggestions && suggestions.length > 0,

@@ -28,7 +28,7 @@ export const resolveString = (str: string, context: VariableContext): string => 
     }
 
     if (trimmed.startsWith('$uuid4:')) {
-      const varName = trimmed.substring(6).trim();
+      const varName = trimmed.substring(7).trim();
       if (varName) {
         if (context[varName] !== undefined) {
           return context[varName];

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTheme2 } from '@grafana/ui';
 import { useChatState } from '../chat/ChatContext';
 import { ChatHeader } from '../toolbar/ChatHeader';
@@ -14,23 +14,39 @@ interface ChatLayoutProps {
   messagesContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
-export const ChatLayout: React.FC<ChatLayoutProps> = ({
-  onBack,
-  isFullscreen,
-  onToggleFullscreen,
-  messagesContainerRef,
-}) => {
+export const ChatLayout: React.FC<ChatLayoutProps> = ({ onBack, isFullscreen, onToggleFullscreen }) => {
   const theme = useTheme2();
   const styles = useStyles(theme);
   const messageListStyles = useMemo(() => getMessageListStyles(styles), [styles]);
+  const { isFullscreen: isFs, messages } = useChatState();
 
-  const { isFullscreen: isFs } = useChatState();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [autoScroll, setAutoScroll] = useState(true);
+
+  const handleScroll = useCallback(() => {
+    if (containerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+      const atBottom = scrollHeight - scrollTop - clientHeight < 10;
+      setAutoScroll(atBottom);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (autoScroll && containerRef.current) {
+      containerRef.current.scrollTo({
+        top: containerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, [messages, autoScroll]);
 
   return (
     <>
       <ChatHeader onBack={onBack} isFullscreen={isFullscreen ?? isFs} onFullscreen={onToggleFullscreen} />
-      <div ref={messagesContainerRef} className={styles.messages.container}>
-        <MessageList styles={messageListStyles} />
+      <div ref={containerRef} className={styles.messages.container} onScroll={handleScroll}>
+        <div style={{ padding: theme.spacing(2), display: 'flex', flexDirection: 'column', gap: theme.spacing(1) }}>
+          <MessageList styles={messageListStyles} />
+        </div>
       </div>
       <ChatTextarea />
       <BottomButtons />

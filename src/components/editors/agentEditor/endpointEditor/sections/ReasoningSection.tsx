@@ -8,7 +8,6 @@ interface ReasoningSectionProps {
   onChange: (field: keyof EndpointConfig, value: any) => void;
 }
 
-// Опции для embedded-режима (без Both)
 const MODE_OPTIONS = [
   { label: 'API field only', value: 'api_field' },
   { label: 'Thinking tags only', value: 'thinking_tags' },
@@ -20,11 +19,17 @@ const FORMAT_OPTIONS = [
 ];
 
 // Дефолтные конфигурации
-const DEFAULT_EMBEDDED: EmbeddedReasoning = {
+const DEFAULT_EMBEDDED_API: EmbeddedReasoning = {
   enabled: true,
   format: 'embedded',
   mode: 'api_field',
   apiField: 'choices[0].delta.reasoning_content',
+};
+
+const DEFAULT_EMBEDDED_TAGS: EmbeddedReasoning = {
+  enabled: true,
+  format: 'embedded',
+  mode: 'thinking_tags',
   textPath: 'choices[0].delta.content',
   startMarker: '<thinking>',
   endMarker: '</thinking>',
@@ -41,32 +46,13 @@ const DEFAULT_SEPARATE: SeparateReasoning = {
 };
 
 // Type guards
-const isEmbedded = (config: ReasoningConfig): config is EmbeddedReasoning =>
-  config !== false && config.format === 'embedded';
+function isEmbedded(config: ReasoningConfig): config is EmbeddedReasoning {
+  return config !== false && config.format === 'embedded';
+}
 
-const isSeparate = (config: ReasoningConfig): config is SeparateReasoning =>
-  config !== false && config.format === 'separate';
-
-const isEnabled = (config: ReasoningConfig): config is EmbeddedReasoning | SeparateReasoning => config !== false;
-
-// Нормализация входного значения (учитываем старые форматы)
-const normalizeConfig = (raw: any): ReasoningConfig => {
-  if (raw == null || raw === false) {
-    return false;
-  }
-  if (raw === true) {
-    return DEFAULT_EMBEDDED;
-  }
-  if (typeof raw === 'object' && !('format' in raw)) {
-    return {
-      ...DEFAULT_EMBEDDED,
-      ...raw,
-      enabled: true,
-      format: 'embedded',
-    };
-  }
-  return raw as ReasoningConfig;
-};
+function isSeparate(config: ReasoningConfig): config is SeparateReasoning {
+  return config !== false && config.format === 'separate';
+}
 
 const getStyles = () => ({
   container: css`
@@ -87,25 +73,39 @@ const getStyles = () => ({
 
 export const ReasoningSection: React.FC<ReasoningSectionProps> = ({ endpoint, onChange }) => {
   const styles = useStyles2(getStyles);
-  const reasoning = normalizeConfig(endpoint.reasoning);
-  const enabled = isEnabled(reasoning);
-  const currentFormat = reasoning !== false ? reasoning.format : 'embedded';
+  const reasoning: ReasoningConfig = endpoint.reasoning ?? false;
+  const enabled = reasoning !== false;
+  const currentFormat = enabled && 'format' in reasoning ? reasoning.format : 'embedded';
 
   const handleToggle = useCallback(
     (checked: boolean) => {
-      onChange('reasoning', checked ? DEFAULT_EMBEDDED : false);
+      onChange('reasoning', checked ? DEFAULT_EMBEDDED_API : false);
     },
     [onChange]
   );
 
   const handleFormatChange = useCallback(
     (format: 'embedded' | 'separate') => {
-      onChange('reasoning', format === 'embedded' ? DEFAULT_EMBEDDED : DEFAULT_SEPARATE);
+      onChange('reasoning', format === 'embedded' ? DEFAULT_EMBEDDED_API : DEFAULT_SEPARATE);
     },
     [onChange]
   );
 
-  const handleEmbeddedChange = useCallback(
+  const handleModeChange = useCallback(
+    (mode: 'api_field' | 'thinking_tags') => {
+      if (!enabled) {
+        return;
+      }
+      const newConfig: EmbeddedReasoning =
+        mode === 'api_field'
+          ? { ...DEFAULT_EMBEDDED_API, mode: 'api_field' }
+          : { ...DEFAULT_EMBEDDED_TAGS, mode: 'thinking_tags' };
+      onChange('reasoning', newConfig);
+    },
+    [enabled, onChange]
+  );
+
+  const handleEmbeddedFieldChange = useCallback(
     <K extends keyof EmbeddedReasoning>(field: K, value: EmbeddedReasoning[K]) => {
       if (!isEmbedded(reasoning)) {
         return;
@@ -156,15 +156,15 @@ export const ReasoningSection: React.FC<ReasoningSectionProps> = ({ endpoint, on
                 <Combobox
                   options={MODE_OPTIONS}
                   value={reasoning.mode}
-                  onChange={(opt) => handleEmbeddedChange('mode', opt?.value as 'api_field' | 'thinking_tags')}
+                  onChange={(opt) => handleModeChange(opt?.value as 'api_field' | 'thinking_tags')}
                 />
               </Field>
 
               {reasoning.mode === 'api_field' && (
                 <Field label="API field path">
                   <Input
-                    value={reasoning.apiField ?? DEFAULT_EMBEDDED.apiField}
-                    onChange={(e) => handleEmbeddedChange('apiField', e.currentTarget.value)}
+                    value={reasoning.apiField ?? DEFAULT_EMBEDDED_API.apiField}
+                    onChange={(e) => handleEmbeddedFieldChange('apiField', e.currentTarget.value)}
                   />
                 </Field>
               )}
@@ -173,20 +173,20 @@ export const ReasoningSection: React.FC<ReasoningSectionProps> = ({ endpoint, on
                 <>
                   <Field label="Text path for tags">
                     <Input
-                      value={reasoning.textPath ?? DEFAULT_EMBEDDED.textPath}
-                      onChange={(e) => handleEmbeddedChange('textPath', e.currentTarget.value)}
+                      value={reasoning.textPath ?? DEFAULT_EMBEDDED_TAGS.textPath}
+                      onChange={(e) => handleEmbeddedFieldChange('textPath', e.currentTarget.value)}
                     />
                   </Field>
                   <Field label="Start marker">
                     <Input
-                      value={reasoning.startMarker ?? DEFAULT_EMBEDDED.startMarker}
-                      onChange={(e) => handleEmbeddedChange('startMarker', e.currentTarget.value)}
+                      value={reasoning.startMarker ?? DEFAULT_EMBEDDED_TAGS.startMarker}
+                      onChange={(e) => handleEmbeddedFieldChange('startMarker', e.currentTarget.value)}
                     />
                   </Field>
                   <Field label="End marker">
                     <Input
-                      value={reasoning.endMarker ?? DEFAULT_EMBEDDED.endMarker}
-                      onChange={(e) => handleEmbeddedChange('endMarker', e.currentTarget.value)}
+                      value={reasoning.endMarker ?? DEFAULT_EMBEDDED_TAGS.endMarker}
+                      onChange={(e) => handleEmbeddedFieldChange('endMarker', e.currentTarget.value)}
                     />
                   </Field>
                 </>
