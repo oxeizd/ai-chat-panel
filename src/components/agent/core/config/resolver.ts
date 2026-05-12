@@ -12,67 +12,45 @@ import {
 } from './types';
 
 function resolveReasoning(raw: any): ResolvedReasoningConfig | null {
-  // null, undefined, false -> выключено
-  if (raw == null || raw === false) {
+  const r = raw.reasoning;
+
+  if (r == null || r === false) {
     return null;
   }
-
-  // true -> embedded с дефолтами
-  if (raw === true) {
+  if (r === true) {
     return {
       enabled: true,
       format: 'embedded',
-      mode: REASONING_DEFAULTS.mode,
+      mode: 'api_field',
       apiField: REASONING_DEFAULTS.apiField,
-      textPath: REASONING_DEFAULTS.textPath,
-      startMarker: REASONING_DEFAULTS.startMarker,
-      endMarker: REASONING_DEFAULTS.endMarker,
     };
   }
-
-  // Старый объект без поля format (в т.ч. с mode='both')
-  if (typeof raw === 'object' && !('format' in raw)) {
-    let mode = raw.mode;
-    if (mode === 'both') {
-      mode = 'api_field'; // оба не поддерживаем, выбираем api_field
+  if (typeof r !== 'object' || !r.format) {
+    return null;
+  }
+  if (r.format === 'embedded') {
+    const mode = r.mode ?? 'api_field';
+    const result: ResolvedReasoningConfig = { enabled: true, format: 'embedded', mode };
+    if (mode === 'api_field') {
+      result.apiField = r.apiField ?? REASONING_DEFAULTS.apiField;
+    } else {
+      result.textPath = r.textPath ?? REASONING_DEFAULTS.textPath;
+      result.startMarker = r.startMarker ?? REASONING_DEFAULTS.startMarker;
+      result.endMarker = r.endMarker ?? REASONING_DEFAULTS.endMarker;
     }
-    return {
-      enabled: true,
-      format: 'embedded',
-      mode: mode ?? REASONING_DEFAULTS.mode,
-      apiField: raw.apiField ?? REASONING_DEFAULTS.apiField,
-      textPath: raw.textPath ?? REASONING_DEFAULTS.textPath,
-      startMarker: raw.startMarker ?? REASONING_DEFAULTS.startMarker,
-      endMarker: raw.endMarker ?? REASONING_DEFAULTS.endMarker,
-    };
+    return result;
   }
-
-  // Новый embedded
-  if (raw.format === 'embedded') {
-    return {
-      enabled: true,
-      format: 'embedded',
-      mode: raw.mode ?? REASONING_DEFAULTS.mode,
-      apiField: raw.apiField ?? REASONING_DEFAULTS.apiField,
-      textPath: raw.textPath ?? REASONING_DEFAULTS.textPath,
-      startMarker: raw.startMarker ?? REASONING_DEFAULTS.startMarker,
-      endMarker: raw.endMarker ?? REASONING_DEFAULTS.endMarker,
-    };
-  }
-
-  // Новый separate
-  if (raw.format === 'separate') {
+  if (r.format === 'separate') {
     return {
       enabled: true,
       format: 'separate',
       eventMapping: {
-        thinkingStart: raw.eventMapping?.thinkingStart ?? 'THINKING_START',
-        thinkingContent: raw.eventMapping?.thinkingContent ?? 'THINKING_TEXT_MESSAGE_CONTENT',
-        thinkingEnd: raw.eventMapping?.thinkingEnd ?? 'THINKING_END',
+        thinkingStart: r.eventMapping?.thinkingStart ?? 'THINKING_START',
+        thinkingContent: r.eventMapping?.thinkingContent ?? 'THINKING_TEXT_MESSAGE_CONTENT',
+        thinkingEnd: r.eventMapping?.thinkingEnd ?? 'THINKING_END',
       },
     };
   }
-
   return null;
 }
 

@@ -13,26 +13,13 @@ interface ChatHeaderProps {
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, isFullscreen, onFullscreen, threadId }) => {
-  const { agents, clearChat, exportChat, setSelectedAgent, selectedAgent, newChat, debug } = useChatActions();
+  const { debug } = useChatActions();
 
   const theme = useTheme2();
   const styles = useStyles(theme);
 
   const menuButton = (
-    <Dropdown
-      overlay={
-        <ChatMenu
-          agents={agents}
-          onClearChat={clearChat}
-          onExportChat={exportChat}
-          onSelectAgent={setSelectedAgent}
-          selectedAgent={selectedAgent}
-          onNewChat={newChat}
-          className={styles.menu.customMenu}
-        />
-      }
-      placement="bottom-end"
-    >
+    <Dropdown overlay={<ChatMenu className={styles.menu.customMenu} />} placement="bottom-end">
       <Button
         variant="secondary"
         size="sm"

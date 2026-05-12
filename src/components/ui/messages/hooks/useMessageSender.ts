@@ -80,7 +80,7 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
   const reset = useCallback(async () => await resetSession(), [resetSession]);
 
   const getThreadId = useCallback(() => {
-    return getContextValue?.('thread_id');
+    return getContextValue?.(':thread_id');
   }, [getContextValue]);
 
   return {

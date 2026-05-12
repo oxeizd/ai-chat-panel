@@ -92,7 +92,7 @@ export const ChatMessage = React.memo(
                   <summary
                     style={{
                       cursor: 'pointer',
-                      color: message.isThinking ? '#fbbf24' : '#94a3b8',
+                      color: message.isThinking ? 'rgb(90, 134, 222)' : '#94a3b8',
                       fontSize: '0.85rem',
                       fontStyle: 'italic',
                       padding: '4px 0',

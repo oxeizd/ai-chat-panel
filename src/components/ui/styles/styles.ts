@@ -469,9 +469,9 @@ export const getStyles = (theme: GrafanaTheme2) => {
         }
       }
       display: inline-block;
-      width: 0.5em;
+      width: 0.2em;
       height: 1em;
-      background-color: #fbbf24;
+      background-color: rgb(90, 134, 222);
       margin-left: 2px;
       vertical-align: text-bottom;
       animation: blink 1s step-end infinite;

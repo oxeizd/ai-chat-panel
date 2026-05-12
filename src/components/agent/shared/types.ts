@@ -48,20 +48,18 @@ export interface ConversationHistoryConfig {
   };
 }
 
-interface BaseReasoning {
+export interface EmbeddedReasoning {
   enabled: true;
-}
-
-export interface EmbeddedReasoning extends BaseReasoning {
   format: 'embedded';
   mode: 'api_field' | 'thinking_tags';
-  apiField?: string; // для mode = api_field
-  textPath?: string; // для mode = thinking_tags
+  apiField?: string;
+  textPath?: string;
   startMarker?: string;
   endMarker?: string;
 }
 
-export interface SeparateReasoning extends BaseReasoning {
+export interface SeparateReasoning {
+  enabled: true;
   format: 'separate';
   eventMapping?: {
     thinkingStart?: string;

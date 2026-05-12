@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { cx } from '@emotion/css';
 import { Spinner, Modal } from '@grafana/ui';
 import { useChatActions, useChatState } from '../chat/ChatContext';
@@ -29,6 +29,26 @@ export const MessageList: React.FC<MessageListProps> = React.memo(({ showPlaceho
   const [errorDetails, setErrorDetails] = useState<any>(null);
   const [traceModalOpen, setTraceModalOpen] = useState(false);
   const [selectedTrace, setSelectedTrace] = useState<any>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [autoScroll, setAutoScroll] = useState(true);
+
+  const handleScroll = useCallback(() => {
+    if (containerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+      const atBottom = scrollHeight - scrollTop - clientHeight < 10;
+      setAutoScroll(atBottom);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (autoScroll && containerRef.current) {
+      containerRef.current.scrollTo({
+        top: containerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, [messages, autoScroll]);
 
   const lastUserMessageIndex = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -72,31 +92,33 @@ export const MessageList: React.FC<MessageListProps> = React.memo(({ showPlaceho
 
   return (
     <>
-      {messages.length === 0 && showPlaceholder && placeholderText && (
-        <div style={{ textAlign: 'center', opacity: 0.7, padding: '20px' }}>{placeholderText}</div>
-      )}
+      <div ref={containerRef} onScroll={handleScroll} style={{ overflowY: 'auto', flex: 1, height: '100%' }}>
+        {messages.length === 0 && showPlaceholder && placeholderText && (
+          <div style={{ textAlign: 'center', opacity: 0.7, padding: '20px' }}>{placeholderText}</div>
+        )}
 
-      {messages.map((msg, idx) => (
-        <ChatMessage
-          key={msg.id}
-          message={msg}
-          styles={styles}
-          debug={debug}
-          isLastUserMessage={idx === lastUserMessageIndex}
-          onRetry={handleRetry}
-          onUserMessageClick={handleUserMessageClick}
-          onAiMessageClick={handleAiMessageClick}
-          markdownComponents={markdownComponents}
-        />
-      ))}
+        {messages.map((msg, idx) => (
+          <ChatMessage
+            key={msg.id}
+            message={msg}
+            styles={styles}
+            debug={debug}
+            isLastUserMessage={idx === lastUserMessageIndex}
+            onRetry={handleRetry}
+            onUserMessageClick={handleUserMessageClick}
+            onAiMessageClick={handleAiMessageClick}
+            markdownComponents={markdownComponents}
+          />
+        ))}
 
-      {isLoading && (
-        <div className={cx(styles.messageWrapper, styles.aiMessageWrapper)}>
-          <div className={cx(styles.messageBubble, styles.aiMessageBubble)}>
-            <Spinner />
+        {isLoading && (
+          <div className={cx(styles.messageWrapper, styles.aiMessageWrapper)}>
+            <div className={cx(styles.messageBubble, styles.aiMessageBubble)}>
+              <Spinner />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {debug && errorDetails && (
         <Modal title="Детали ошибки" isOpen={!!errorDetails} onDismiss={() => setErrorDetails(null)}>

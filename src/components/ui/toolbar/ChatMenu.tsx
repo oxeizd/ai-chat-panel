@@ -1,41 +1,37 @@
 import React from 'react';
 import { Menu } from '@grafana/ui';
-import { AgentConfig } from 'types';
+import { useChatState, useChatActions } from '../chat/ChatContext';
 
 interface ChatMenuProps {
-  agents: AgentConfig[];
-  onClearChat: () => void;
-  onExportChat: () => void;
-  onSelectAgent: (agent: AgentConfig) => void;
-  selectedAgent: AgentConfig | null;
-  onNewChat: () => void;
   className?: string;
 }
 
-export const ChatMenu: React.FC<ChatMenuProps> = ({
-  agents,
-  onClearChat,
-  onExportChat,
-  onSelectAgent,
-  selectedAgent,
-  onNewChat,
-  className,
-}) => (
-  <Menu className={className}>
-    <Menu.Item label="Очистить чат" onClick={onClearChat} />
-    <Menu.Item label="Новый чат" onClick={onNewChat} />
-    <Menu.Divider />
-    <Menu.Item label="Экспорт чата" onClick={onExportChat} />
-    <Menu.Divider />
-    <Menu.Item label="Выбор агента" disabled />
-    {agents.map((agent, i) => (
-      <React.Fragment key={agent.name}>
-        {i > 0 && <Menu.Divider />}
-        <Menu.Item
-          label={selectedAgent?.name === agent.name ? `${agent.name}\u00A0✔` : agent.name}
-          onClick={() => onSelectAgent(agent)}
-        />
-      </React.Fragment>
-    ))}
-  </Menu>
-);
+export const ChatMenu: React.FC<ChatMenuProps> = ({ className }) => {
+  const { isLoading } = useChatState();
+  const { clearChat, exportChat, setSelectedAgent, selectedAgent, agents, newChat } = useChatActions();
+
+  return (
+    <Menu className={className}>
+      {isLoading && <Menu.Item label="⏳ Отправка..." disabled icon="fa fa-spinner" />}
+      <Menu.Item label="История" onClick={clearChat} disabled={isLoading} />
+      <Menu.Divider />
+      <Menu.Item label="Новый чат" onClick={newChat} disabled={isLoading} />
+      <Menu.Divider />
+      <Menu.Item label="Очистить чат" onClick={clearChat} disabled={isLoading} />
+      <Menu.Divider />
+      <Menu.Item label="Экспорт чата" onClick={exportChat} disabled={isLoading} />
+      <Menu.Divider />
+      <Menu.Item label="Выбор агента" disabled />
+      {agents.map((agent, i) => (
+        <React.Fragment key={agent.name}>
+          {i > 0 && <Menu.Divider />}
+          <Menu.Item
+            label={selectedAgent?.name === agent.name ? `${agent.name} ✓` : agent.name}
+            onClick={() => !isLoading && setSelectedAgent(agent)}
+            disabled={isLoading}
+          />
+        </React.Fragment>
+      ))}
+    </Menu>
+  );
+};

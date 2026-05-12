@@ -29,7 +29,6 @@ export class EndpointExecutor {
     const context = { ...this.ctx.context, ...additionalCtx };
     const executeConfig = buildEndpointConfig(endpoint, this.agentConfig, context);
     const body = this.buildBody(executeConfig, context);
-
     const finalResponse = await this.executeHttpRequest(executeConfig, body, onTrace, signal);
     const handler = this.handlerFactory.get(executeConfig, finalResponse);
     const processed = await handler.handle(executeConfig, finalResponse, {
