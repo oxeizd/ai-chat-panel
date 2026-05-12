@@ -13,8 +13,8 @@ export const ChatMenu: React.FC<ChatMenuProps> = ({ className }) => {
   return (
     <Menu className={className}>
       {isLoading && <Menu.Item label="⏳ Отправка..." disabled icon="fa fa-spinner" />}
-      <Menu.Item label="История" onClick={clearChat} disabled={isLoading} />
-      <Menu.Divider />
+      {/* <Menu.Item label="История" onClick={clearChat} disabled={isLoading} />
+      <Menu.Divider /> */}
       <Menu.Item label="Новый чат" onClick={newChat} disabled={isLoading} />
       <Menu.Divider />
       <Menu.Item label="Очистить чат" onClick={clearChat} disabled={isLoading} />
