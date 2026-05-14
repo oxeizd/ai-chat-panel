@@ -24,11 +24,13 @@ export class SseHandler implements ResponseHandler {
     let historyWasSynced = false;
     let reasoningStarted = false;
     let reasoningCompleted = false;
-    let finalEvent: any = null;
     let rawEvents: any[] = [];
-    let finalMetadata: { threadId?: string; runId?: string } | null = null;
+    let runFinishedEvent: any = null;
+    let lastAssistantMessageId: string | null = null;
+    let assistantRole = 'assistant';
+    let extraFields: any = {};
 
-    // ----- Separate protocol (e.g., DeepSeek) -----
+    // ----- Separate protocol -----
     if (reasoning?.format === 'separate') {
       const eventMapping = {
         thinkingContent: reasoning.eventMapping?.thinkingContent ?? 'THINKING_TEXT_MESSAGE_CONTENT',
@@ -41,7 +43,7 @@ export class SseHandler implements ResponseHandler {
             reasoningCompleted = true;
             opt.eventBus.emit('reasoningComplete', fullReasoning);
             opt.eventBus.emit('thinkingEnd');
-            opt.onTrace?.({ type: 'reasoning_complete', timestamp: Date.now(), fullReasoning });
+            opt.onTrace?.({ type: 'reasoning_complete', timestamp: Date.now() });
           }
           fullVisible += chunk;
           opt.eventBus.emit('chunk', chunk);
@@ -67,7 +69,7 @@ export class SseHandler implements ResponseHandler {
             reasoningCompleted = true;
             opt.eventBus.emit('reasoningComplete', fullReasoning);
             opt.eventBus.emit('thinkingEnd');
-            opt.onTrace?.({ type: 'reasoning_complete', timestamp: Date.now(), fullReasoning });
+            opt.onTrace?.({ type: 'reasoning_complete', timestamp: Date.now() });
           }
         },
         onTrace: opt.onTrace,
@@ -75,7 +77,7 @@ export class SseHandler implements ResponseHandler {
       fullVisible = fullText;
       fullReasoning = reas;
     }
-    // ----- Embedded SSE (standard) -----
+    // ----- Embedded SSE -----
     else {
       const { textPath, dataPrefix } = streaming!;
       const result = await parseSSEStream(res as any, {
@@ -87,7 +89,7 @@ export class SseHandler implements ResponseHandler {
             reasoningCompleted = true;
             opt.eventBus.emit('reasoningComplete', fullReasoning);
             opt.eventBus.emit('thinkingEnd');
-            opt.onTrace?.({ type: 'reasoning_complete', timestamp: Date.now(), fullReasoning });
+            opt.onTrace?.({ type: 'reasoning_complete', timestamp: Date.now() });
           }
           fullVisible += chunk;
           opt.eventBus.emit('chunk', chunk);
@@ -104,55 +106,62 @@ export class SseHandler implements ResponseHandler {
           }
         },
         onHistorySync: (event) => {
-          // Custom historySync from endpoint config
           if (historySync && event.type === historySync.eventType) {
             const msgs = extractValueByPath(event, historySync.messagesPath);
             if (Array.isArray(msgs)) {
               historyWasSynced = true;
-              opt.onTrace?.({
-                type: 'history_sync',
-                timestamp: Date.now(),
-                messagesCount: msgs.length,
-              });
+              opt.onTrace?.({ type: 'history_sync', timestamp: Date.now(), messagesCount: msgs.length });
               opt.eventBus.emit('contextUpdate', { messages: msgs });
             }
           }
-          // Fallback for MESSAGES_SNAPSHOT (when no custom historySync)
           if (!historySync && event.type === 'MESSAGES_SNAPSHOT' && Array.isArray(event.messages)) {
             historyWasSynced = true;
-            opt.onTrace?.({
-              type: 'history_sync',
-              timestamp: Date.now(),
-              messagesCount: event.messages.length,
-            });
+            opt.onTrace?.({ type: 'history_sync', timestamp: Date.now(), messagesCount: event.messages.length });
             opt.eventBus.emit('contextUpdate', { messages: event.messages });
           }
-          // Capture run metadata if needed (not used for history, just available in final response)
           if (event.type === 'RUN_FINISHED') {
-            finalMetadata = { threadId: event.threadId, runId: event.runId };
+            runFinishedEvent = event;
           }
+          if (event.type === 'TEXT_MESSAGE_START' && event.role === 'assistant') {
+            lastAssistantMessageId = event.messageId;
+            assistantRole = event.role;
+          }
+          // Собираем все поля из каждого события (кроме type) для последующего добавления в ответ
+          Object.keys(event).forEach((key) => {
+            if (key !== 'type' && extraFields[key] === undefined) {
+              extraFields[key] = event[key];
+            }
+          });
         },
         onTrace: opt.onTrace,
       });
 
       fullVisible = result.fullText || fullVisible;
-      finalEvent = result.finalEvent;
       rawEvents = result.rawEvents;
 
-      // Extract metadata from rawEvents if not already captured
-      if (!finalMetadata) {
-        const runFinished = rawEvents.find((e) => e.type === 'RUN_FINISHED');
-        if (runFinished) {
-          finalMetadata = { threadId: runFinished.threadId, runId: runFinished.runId };
+      if (!runFinishedEvent) {
+        runFinishedEvent = rawEvents.find((e) => e.type === 'RUN_FINISHED');
+      }
+      if (!lastAssistantMessageId) {
+        const startEvent = rawEvents.find((e) => e.type === 'TEXT_MESSAGE_START' && e.role === 'assistant');
+        if (startEvent) {
+          lastAssistantMessageId = startEvent.messageId;
+          assistantRole = startEvent.role;
         }
       }
+      // Дополнительный сбор полей из rawEvents, которые могли быть пропущены
+      for (const ev of rawEvents) {
+        Object.keys(ev).forEach((key) => {
+          if (key !== 'type' && extraFields[key] === undefined) {
+            extraFields[key] = ev[key];
+          }
+        });
+      }
 
-      // Handle thinking_tags mode (extract reasoning from final text)
       if (reasoning && reasoning.format === 'embedded') {
         const { reasoningText, cleanReply } = extractReasoning({ reply: fullVisible }, fullVisible, reasoning);
         if (reasoningText) {
           fullReasoning = fullReasoning ? `${fullReasoning}\n${reasoningText}` : reasoningText;
-          opt.onTrace?.({ type: 'reasoning_extracted_from_tags', timestamp: Date.now(), reasoningText });
         }
         if (cleanReply !== fullVisible) {
           opt.onTrace?.({ type: 'text_cleaned_from_tags', timestamp: Date.now(), cleanedText: cleanReply });
@@ -161,46 +170,62 @@ export class SseHandler implements ResponseHandler {
       }
     }
 
-    // Finalize reasoning if started but not completed
     if (reasoningStarted && !reasoningCompleted) {
       opt.eventBus.emit('reasoningComplete', fullReasoning);
       opt.eventBus.emit('thinkingEnd');
-      opt.onTrace?.({ type: 'reasoning_complete', timestamp: Date.now(), fullReasoning });
     }
 
-    // Construct the final response object – exactly what came from the API,
-    // without adding artificial 'choices', 'role', or 'content'.
     const data: any = {
       reply: fullVisible,
-      result: fullVisible,
       thinking: fullReasoning,
-      rawEvents: rawEvents,
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: assistantRole,
+            content: fullVisible,
+          },
+          finish_reason: 'stop',
+        },
+      ],
     };
-    if (finalMetadata) {
-      data.finalMetadata = finalMetadata;
-      if (finalMetadata.threadId) {
-        data.threadId = finalMetadata.threadId;
-      }
-      if (finalMetadata.runId) {
-        data.runId = finalMetadata.runId;
-      }
+
+    if (runFinishedEvent) {
+      Object.keys(runFinishedEvent).forEach((key) => {
+        if (key !== 'type' && data[key] === undefined) {
+          data[key] = runFinishedEvent[key];
+        }
+      });
     }
-    if (finalEvent) {
-      // Include any top-level fields from the final event (e.g., id, messageId)
-      if (finalEvent.id) {
-        data.id = finalEvent.id;
-      }
-      if (finalEvent.messageId) {
-        data.messageId = finalEvent.messageId;
-      }
+
+    if (lastAssistantMessageId) {
+      data.messageId = lastAssistantMessageId;
+      data.id = lastAssistantMessageId;
     }
+
+    const excludedKeys = ['delta', 'finish_reason', 'index', 'choices', 'message'];
+    Object.keys(extraFields).forEach((key) => {
+      if (!excludedKeys.includes(key) && data[key] === undefined) {
+        data[key] = extraFields[key];
+      }
+    });
+
+    const usageEvent = rawEvents.find((e) => e.usage);
+    if (usageEvent?.usage) {
+      data.usage = usageEvent.usage;
+    }
+
+    opt.onTrace?.({
+      type: 'final_response',
+      timestamp: Date.now(),
+      responseBody: data,
+    });
 
     return {
       data,
       replyText: fullVisible,
       reasoningText: fullReasoning,
       historySynced: historyWasSynced,
-      rawEvents: rawEvents,
     };
   }
 }

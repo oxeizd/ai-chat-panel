@@ -15,16 +15,7 @@ export async function parseSSEStream(
   response: Response,
   options: ParseSSEOptions
 ): Promise<{ fullText: string; finalEvent?: any; rawEvents: any[] }> {
-  const {
-    textPath,
-    dataPrefix,
-    reasoningApiField,
-    onChunk,
-    onHistorySync,
-    onTrace,
-    onReasoningChunk,
-    verboseTrace = false,
-  } = options;
+  const { textPath, dataPrefix, reasoningApiField, onChunk, onHistorySync, onTrace, onReasoningChunk } = options;
 
   if (!response.body) {
     throw new Error('Response body is empty');
@@ -56,16 +47,6 @@ export async function parseSSEStream(
           continue;
         }
 
-        // Сырая строка до обработки (полезно для отладки)
-        if (verboseTrace && onTrace) {
-          onTrace({
-            type: 'raw_sse_line',
-            timestamp: Date.now(),
-            rawLine: trimmed,
-          });
-        }
-
-        // Нормализуем: убираем dataPrefix
         let content = trimmed;
         if (trimmed.startsWith(dataPrefix)) {
           content = trimmed.slice(dataPrefix.length).trim();
@@ -73,29 +54,12 @@ export async function parseSSEStream(
 
         // [DONE] маркер
         if (content === '[DONE]') {
-          if (onTrace) {
-            onTrace({
-              type: 'sse_stream_end',
-              timestamp: Date.now(),
-              reason: 'DONE marker',
-            });
-          }
           return { fullText: fullResponse, finalEvent, rawEvents };
         }
 
         try {
           const event = JSON.parse(content);
           rawEvents.push(event);
-
-          // Успешное событие
-          if (onTrace) {
-            onTrace({
-              type: 'sse_event',
-              timestamp: Date.now(),
-              eventType: event.type || event.object || 'unknown',
-              eventData: event,
-            });
-          }
 
           if (onHistorySync) {
             onHistorySync(event);
@@ -117,13 +81,6 @@ export async function parseSSEStream(
           }
           if (reasoningChunk && onReasoningChunk) {
             onReasoningChunk(reasoningChunk);
-            if (onTrace) {
-              onTrace({
-                type: 'reasoning_chunk',
-                timestamp: Date.now(),
-                chunk: reasoningChunk,
-              });
-            }
           }
 
           finalEvent = event;
@@ -148,13 +105,6 @@ export async function parseSSEStream(
             if (onChunk) {
               onChunk(chunkText);
             }
-            if (onTrace) {
-              onTrace({
-                type: 'text_chunk',
-                timestamp: Date.now(),
-                chunk: chunkText,
-              });
-            }
           }
         } catch (err) {
           // Ошибка парсинга – выводим строку целиком
@@ -168,14 +118,6 @@ export async function parseSSEStream(
           }
         }
       }
-    }
-
-    if (onTrace) {
-      onTrace({
-        type: 'sse_stream_end',
-        timestamp: Date.now(),
-        reason: 'stream_closed',
-      });
     }
 
     return { fullText: fullResponse, finalEvent, rawEvents };
