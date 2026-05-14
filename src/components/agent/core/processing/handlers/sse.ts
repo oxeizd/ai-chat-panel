@@ -28,7 +28,7 @@ export class SseHandler implements ResponseHandler {
     let rawEvents: any[] = [];
     let finalMetadata: { threadId?: string; runId?: string } | null = null;
 
-    // Separate – протокол событий
+    // ----- Separate protocol (e.g., DeepSeek) -----
     if (reasoning?.format === 'separate') {
       const eventMapping = {
         thinkingContent: reasoning.eventMapping?.thinkingContent ?? 'THINKING_TEXT_MESSAGE_CONTENT',
@@ -41,11 +41,7 @@ export class SseHandler implements ResponseHandler {
             reasoningCompleted = true;
             opt.eventBus.emit('reasoningComplete', fullReasoning);
             opt.eventBus.emit('thinkingEnd');
-            opt.onTrace?.({
-              type: 'reasoning_complete',
-              timestamp: Date.now(),
-              fullReasoning,
-            });
+            opt.onTrace?.({ type: 'reasoning_complete', timestamp: Date.now(), fullReasoning });
           }
           fullVisible += chunk;
           opt.eventBus.emit('chunk', chunk);
@@ -79,7 +75,7 @@ export class SseHandler implements ResponseHandler {
       fullVisible = fullText;
       fullReasoning = reas;
     }
-    // Embedded – стандартный SSE
+    // ----- Embedded SSE (standard) -----
     else {
       const { textPath, dataPrefix } = streaming!;
       const result = await parseSSEStream(res as any, {
@@ -108,41 +104,42 @@ export class SseHandler implements ResponseHandler {
           }
         },
         onHistorySync: (event) => {
-          // Кастомный historySync из конфига
+          // Custom historySync from endpoint config
           if (historySync && event.type === historySync.eventType) {
             const msgs = extractValueByPath(event, historySync.messagesPath);
             if (Array.isArray(msgs)) {
-              opt.eventBus.emit('contextUpdate', { messages: msgs });
               historyWasSynced = true;
               opt.onTrace?.({
                 type: 'history_sync',
                 timestamp: Date.now(),
                 messagesCount: msgs.length,
               });
+              opt.eventBus.emit('contextUpdate', { messages: msgs });
             }
           }
-          // fallback для MESSAGES_SNAPSHOT
+          // Fallback for MESSAGES_SNAPSHOT (when no custom historySync)
           if (!historySync && event.type === 'MESSAGES_SNAPSHOT' && Array.isArray(event.messages)) {
-            opt.eventBus.emit('contextUpdate', { messages: event.messages });
             historyWasSynced = true;
             opt.onTrace?.({
               type: 'history_sync',
               timestamp: Date.now(),
               messagesCount: event.messages.length,
             });
+            opt.eventBus.emit('contextUpdate', { messages: event.messages });
           }
-          // захват финальных метаданных
+          // Capture run metadata if needed (not used for history, just available in final response)
           if (event.type === 'RUN_FINISHED') {
             finalMetadata = { threadId: event.threadId, runId: event.runId };
           }
         },
         onTrace: opt.onTrace,
       });
-      fullVisible = result.fullText;
+
+      fullVisible = result.fullText || fullVisible;
       finalEvent = result.finalEvent;
       rawEvents = result.rawEvents;
 
-      // Если в rawEvents есть RUN_FINISHED, извлекаем метаданные
+      // Extract metadata from rawEvents if not already captured
       if (!finalMetadata) {
         const runFinished = rawEvents.find((e) => e.type === 'RUN_FINISHED');
         if (runFinished) {
@@ -150,55 +147,51 @@ export class SseHandler implements ResponseHandler {
         }
       }
 
-      // Режим thinking_tags
+      // Handle thinking_tags mode (extract reasoning from final text)
       if (reasoning && reasoning.format === 'embedded') {
         const { reasoningText, cleanReply } = extractReasoning({ reply: fullVisible }, fullVisible, reasoning);
         if (reasoningText) {
           fullReasoning = fullReasoning ? `${fullReasoning}\n${reasoningText}` : reasoningText;
-          opt.onTrace?.({
-            type: 'reasoning_extracted_from_tags',
-            timestamp: Date.now(),
-            reasoningText,
-          });
+          opt.onTrace?.({ type: 'reasoning_extracted_from_tags', timestamp: Date.now(), reasoningText });
         }
         if (cleanReply !== fullVisible) {
-          opt.onTrace?.({
-            type: 'text_cleaned_from_tags',
-            timestamp: Date.now(),
-            cleanedText: cleanReply,
-          });
+          opt.onTrace?.({ type: 'text_cleaned_from_tags', timestamp: Date.now(), cleanedText: cleanReply });
         }
         fullVisible = cleanReply;
       }
     }
 
-    // Если reasoning начался, но не завершился
+    // Finalize reasoning if started but not completed
     if (reasoningStarted && !reasoningCompleted) {
       opt.eventBus.emit('reasoningComplete', fullReasoning);
       opt.eventBus.emit('thinkingEnd');
       opt.onTrace?.({ type: 'reasoning_complete', timestamp: Date.now(), fullReasoning });
     }
 
-    // Формируем полный ответ (как в старом executionEngine)
+    // Construct the final response object – exactly what came from the API,
+    // without adding artificial 'choices', 'role', or 'content'.
     const data: any = {
       reply: fullVisible,
       result: fullVisible,
       thinking: fullReasoning,
-      finalMetadata: finalMetadata,
       rawEvents: rawEvents,
-      choices: [{ message: { content: fullVisible, role: 'assistant' } }],
     };
-
-    // Добавляем поля из финального события, если есть
+    if (finalMetadata) {
+      data.finalMetadata = finalMetadata;
+      if (finalMetadata.threadId) {
+        data.threadId = finalMetadata.threadId;
+      }
+      if (finalMetadata.runId) {
+        data.runId = finalMetadata.runId;
+      }
+    }
     if (finalEvent) {
-      if (finalEvent.threadId) {
-        data.threadId = finalEvent.threadId;
-      }
-      if (finalEvent.runId) {
-        data.runId = finalEvent.runId;
-      }
+      // Include any top-level fields from the final event (e.g., id, messageId)
       if (finalEvent.id) {
         data.id = finalEvent.id;
+      }
+      if (finalEvent.messageId) {
+        data.messageId = finalEvent.messageId;
       }
     }
 
