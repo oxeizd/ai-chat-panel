@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Dropdown, useTheme2 } from '@grafana/ui';
 import { ChatMenu } from './ChatMenu';
-import { useChatActions, useChatState } from '../chat/ChatContext';
+import { useChatState } from '../chat/ChatContext';
 import { useStyles } from 'components/ui/styles/styles';
 import { blurButton } from '../utils/dom';
 
@@ -13,7 +13,6 @@ interface ChatHeaderProps {
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, isFullscreen, onFullscreen }) => {
-  const { debug } = useChatActions();
   const { threadId } = useChatState();
   const theme = useTheme2();
   const styles = useStyles(theme);
@@ -60,7 +59,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, isFullscreen, on
           aria-label="Назад"
         />
       )}
-      {debug && threadId && (
+      {threadId && (
         <span style={{ fontSize: '10px', color: theme.colors.text.secondary, marginLeft: '8px' }}>
           Thread: {threadId}
         </span>
