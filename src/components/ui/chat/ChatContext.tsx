@@ -21,9 +21,3 @@ export const useChatActions = () => {
   }
   return ctx;
 };
-
-// Оставлен для обратной совместимости, но лучше использовать раздельные хуки
-export const useChat = () => ({
-  ...useChatState(),
-  ...useChatActions(),
-});

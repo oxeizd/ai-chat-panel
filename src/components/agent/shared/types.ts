@@ -91,16 +91,27 @@ export interface Message {
   isThinking?: boolean;
 }
 
-export interface DebugTrace {
-  userMessageId: string;
-  userInput: string;
-  steps: TraceStep[];
-  finalReply?: string;
-  error?: any;
-}
-
 export interface TraceStep {
-  type: 'request' | 'response' | 'polling' | 'context_update' | 'sse_parse_error' | 'error';
+  type:
+    | 'request'
+    | 'response'
+    | 'polling'
+    | 'context_update'
+    | 'sse_parse_error'
+    | 'raw_sse_line'
+    | 'sse_event'
+    | 'sse_separate_event'
+    | 'sse_stream_end'
+    | 'sse_separate_end'
+    | 'text_chunk'
+    | 'reasoning_chunk'
+    | 'reasoning_complete'
+    | 'reasoning_extracted_from_tags'
+    | 'text_cleaned_from_tags'
+    | 'thinking_start'
+    | 'thinking_end'
+    | 'history_sync'
+    | 'error';
   timestamp: number;
   endpoint?: EndpointConfig;
   url?: string;
@@ -112,5 +123,23 @@ export interface TraceStep {
   contextChanges?: Record<string, any>;
   error?: any;
   line?: string;
-  errorMessage?: string;
+  rawLine?: string;
+  eventType?: string;
+  eventData?: any;
+  chunk?: string;
+  fullReasoning?: string;
+  reasoningText?: string;
+  cleanedText?: string;
+  originalText?: string;
+  title?: string;
+  messagesCount?: number;
+  reason?: string;
+}
+
+export interface DebugTrace {
+  userMessageId: string;
+  userInput: string;
+  steps: TraceStep[];
+  finalReply?: string;
+  error?: any;
 }

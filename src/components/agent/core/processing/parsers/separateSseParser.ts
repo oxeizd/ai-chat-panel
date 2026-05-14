@@ -4,6 +4,7 @@ export interface SeparateSSECallbacks {
   onThinkingStart?: (title?: string) => void;
   onThinkingEnd?: () => void;
   onTrace?: (step: any) => void;
+  verboseTrace?: boolean; // выводить каждую сырую строку
 }
 
 export async function parseSeparateSSE(
@@ -25,6 +26,8 @@ export async function parseSeparateSSE(
   let fullText = '';
   let fullReasoning = '';
 
+  const { onChunk, onReasoningChunk, onThinkingStart, onThinkingEnd, onTrace, verboseTrace = false } = callbacks;
+
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -42,12 +45,22 @@ export async function parseSeparateSSE(
           continue;
         }
 
-        // Удаляем префикс data: если есть
+        if (verboseTrace && onTrace) {
+          onTrace({
+            type: 'raw_sse_line',
+            timestamp: Date.now(),
+            rawLine: trimmed,
+          });
+        }
+
         let content = trimmed;
         if (trimmed.startsWith('data: ')) {
           content = trimmed.slice(6);
         }
         if (content === '[DONE]') {
+          if (onTrace) {
+            onTrace({ type: 'sse_separate_end', timestamp: Date.now(), reason: 'DONE' });
+          }
           continue;
         }
 
@@ -55,34 +68,62 @@ export async function parseSeparateSSE(
         try {
           event = JSON.parse(content);
         } catch (err) {
-          callbacks.onTrace?.({ type: 'sse_parse_error', timestamp: Date.now(), line: trimmed, error: String(err) });
+          if (onTrace) {
+            onTrace({
+              type: 'sse_parse_error',
+              timestamp: Date.now(),
+              rawLine: trimmed,
+              error: String(err),
+            });
+          }
           continue;
         }
 
         const type = event.type;
 
+        if (onTrace) {
+          onTrace({
+            type: 'sse_separate_event',
+            timestamp: Date.now(),
+            eventType: type,
+            eventData: event,
+          });
+        }
+
         // Обычный текст
         if (type === 'TEXT_MESSAGE_CONTENT' || type === 'TEXT_MESSAGE_CHUNK') {
           if (event.delta) {
             fullText += event.delta;
-            callbacks.onChunk(event.delta);
+            onChunk(event.delta);
+            if (onTrace) {
+              onTrace({ type: 'text_chunk', timestamp: Date.now(), chunk: event.delta });
+            }
           }
         }
 
-        // Текст мысли
+        // Reasoning текст
         if (type === eventMapping.thinkingContent && event.delta) {
           fullReasoning += event.delta;
-          callbacks.onReasoningChunk(event.delta);
+          onReasoningChunk(event.delta);
+          if (onTrace) {
+            onTrace({ type: 'reasoning_chunk', timestamp: Date.now(), chunk: event.delta });
+          }
         }
 
-        // Начало мышления (опционально)
+        // Начало мышления
         if (eventMapping.thinkingStart && type === eventMapping.thinkingStart) {
-          callbacks.onThinkingStart?.(event.title);
+          onThinkingStart?.(event.title);
+          if (onTrace) {
+            onTrace({ type: 'thinking_start', timestamp: Date.now(), title: event.title });
+          }
         }
 
-        // Конец мышления (опционально)
+        // Конец мышления
         if (eventMapping.thinkingEnd && type === eventMapping.thinkingEnd) {
-          callbacks.onThinkingEnd?.();
+          onThinkingEnd?.();
+          if (onTrace) {
+            onTrace({ type: 'thinking_end', timestamp: Date.now() });
+          }
         }
       }
     }

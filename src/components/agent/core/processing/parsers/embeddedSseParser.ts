@@ -8,13 +8,23 @@ export interface ParseSSEOptions {
   onHistorySync?: (event: any) => void;
   onTrace?: (step: any) => void;
   onReasoningChunk?: (chunk: string) => void;
+  verboseTrace?: boolean;
 }
 
 export async function parseSSEStream(
   response: Response,
   options: ParseSSEOptions
 ): Promise<{ fullText: string; finalEvent?: any; rawEvents: any[] }> {
-  const { textPath, dataPrefix, reasoningApiField, onChunk, onHistorySync, onTrace, onReasoningChunk } = options;
+  const {
+    textPath,
+    dataPrefix,
+    reasoningApiField,
+    onChunk,
+    onHistorySync,
+    onTrace,
+    onReasoningChunk,
+    verboseTrace = false,
+  } = options;
 
   if (!response.body) {
     throw new Error('Response body is empty');
@@ -46,14 +56,30 @@ export async function parseSSEStream(
           continue;
         }
 
-        // Нормализуем содержимое: убираем dataPrefix, если есть
+        // Сырая строка до обработки (полезно для отладки)
+        if (verboseTrace && onTrace) {
+          onTrace({
+            type: 'raw_sse_line',
+            timestamp: Date.now(),
+            rawLine: trimmed,
+          });
+        }
+
+        // Нормализуем: убираем dataPrefix
         let content = trimmed;
         if (trimmed.startsWith(dataPrefix)) {
           content = trimmed.slice(dataPrefix.length).trim();
         }
 
-        // Проверка на [DONE]
+        // [DONE] маркер
         if (content === '[DONE]') {
+          if (onTrace) {
+            onTrace({
+              type: 'sse_stream_end',
+              timestamp: Date.now(),
+              reason: 'DONE marker',
+            });
+          }
           return { fullText: fullResponse, finalEvent, rawEvents };
         }
 
@@ -61,11 +87,21 @@ export async function parseSSEStream(
           const event = JSON.parse(content);
           rawEvents.push(event);
 
+          // Успешное событие
+          if (onTrace) {
+            onTrace({
+              type: 'sse_event',
+              timestamp: Date.now(),
+              eventType: event.type || event.object || 'unknown',
+              eventData: event,
+            });
+          }
+
           if (onHistorySync) {
             onHistorySync(event);
           }
 
-          // Извлечение reasoning (если необходимо)
+          // Извлечение reasoning
           let reasoningChunk: string | undefined;
           if (reasoningApiField) {
             const extracted = extractValueByPath(event, reasoningApiField);
@@ -73,7 +109,6 @@ export async function parseSSEStream(
               reasoningChunk = extracted;
             }
           }
-          // Fallback для стандартных полей OpenAI reasoning
           if (!reasoningChunk && event.choices?.[0]) {
             reasoningChunk = event.choices[0].delta?.reasoning_content;
           }
@@ -82,6 +117,13 @@ export async function parseSSEStream(
           }
           if (reasoningChunk && onReasoningChunk) {
             onReasoningChunk(reasoningChunk);
+            if (onTrace) {
+              onTrace({
+                type: 'reasoning_chunk',
+                timestamp: Date.now(),
+                chunk: reasoningChunk,
+              });
+            }
           }
 
           finalEvent = event;
@@ -100,26 +142,51 @@ export async function parseSSEStream(
               chunkText = String(maybe);
             }
           }
+
           if (chunkText) {
             fullResponse += chunkText;
             if (onChunk) {
               onChunk(chunkText);
             }
+            if (onTrace) {
+              onTrace({
+                type: 'text_chunk',
+                timestamp: Date.now(),
+                chunk: chunkText,
+              });
+            }
           }
-        } catch (e) {
+        } catch (err) {
+          // Ошибка парсинга – выводим строку целиком
           if (onTrace) {
             onTrace({
               type: 'sse_parse_error',
               timestamp: Date.now(),
-              line: trimmed,
-              error: e instanceof Error ? e.message : String(e),
+              rawLine: trimmed,
+              error: err instanceof Error ? err.message : String(err),
             });
           }
         }
       }
     }
+
+    if (onTrace) {
+      onTrace({
+        type: 'sse_stream_end',
+        timestamp: Date.now(),
+        reason: 'stream_closed',
+      });
+    }
+
     return { fullText: fullResponse, finalEvent, rawEvents };
   } catch (err) {
+    if (onTrace) {
+      onTrace({
+        type: 'error',
+        timestamp: Date.now(),
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
     try {
       await response.body?.cancel();
     } catch {}
@@ -134,7 +201,6 @@ export async function parseSSEStream(
   }
 }
 
-// Функция определения SSE по Content-Type (может быть полезна)
 export const detectSSEByContent = (response: Response): boolean => {
   const contentType = response.headers.get('content-type') || '';
   return contentType.includes('text/event-stream');

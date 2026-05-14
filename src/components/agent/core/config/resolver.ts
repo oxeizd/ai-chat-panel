@@ -125,7 +125,7 @@ export function buildEndpointConfig(
   const conversationHistory = resolveConversationHistory(endpointConfig);
 
   const url = buildUrl(endpointConfig, context, agent.api);
-  const headers = resolveObject(endpointConfig.headers ?? {}, context) as Record<string, string>;
+  const headers = resolveObject(endpointConfig.headers ?? {}, context);
   const body = endpointConfig.body ? resolveObject(endpointConfig.body, context) : {};
 
   return {

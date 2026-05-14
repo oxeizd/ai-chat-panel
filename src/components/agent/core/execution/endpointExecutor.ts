@@ -1,86 +1,92 @@
+import { ResolvedEndpointConfig } from '../config/types';
+import { buildEndpointConfig } from '../config/resolver';
 import { EventBus } from '../events/eventBus';
 import { ContextManager } from './contextManager';
 import { HistoryManager } from './historyManager';
-import { buildEndpointConfig } from '../config/resolver';
 import { HttpClient, HttpResponse } from './httpClient';
 import { handlePolling } from '../processing/helpers/polling';
 import { HandlerRegistry } from '../processing/handlers/response';
 import { AgentConfig, EndpointConfig, TraceStep } from '../../shared/types';
 import { PostProcessingMiddleware } from '../processing/middleware/postprocessing';
-import { ResolvedEndpointConfig } from '../config/types';
 
 export class EndpointExecutor {
   constructor(
-    private http: HttpClient,
-    private ctx: ContextManager,
-    private history: HistoryManager,
-    private bus: EventBus,
+    private httpClient: HttpClient,
+    private contextManager: ContextManager,
+    private historyManager: HistoryManager,
+    private eventBus: EventBus,
     private agentConfig: AgentConfig,
-    private handlerFactory: HandlerRegistry,
-    private middlewares: PostProcessingMiddleware[] = []
+    private handlerRegistry: HandlerRegistry,
+    private postProcessingMiddlewares: PostProcessingMiddleware[] = []
   ) {}
 
   async execute(
-    endpoint: EndpointConfig,
-    additionalCtx: Record<string, any> = {},
+    endpointConfig: EndpointConfig,
+    addedContext: Record<string, any> = {},
     onTrace?: (step: TraceStep) => void,
     signal?: AbortSignal
   ): Promise<any> {
-    const context = { ...this.ctx.context, ...additionalCtx };
-    const executeConfig = buildEndpointConfig(endpoint, this.agentConfig, context);
-    const body = this.buildBody(executeConfig, context);
-    const finalResponse = await this.executeHttpRequest(executeConfig, body, onTrace, signal);
-    const handler = this.handlerFactory.get(executeConfig, finalResponse);
-    const processed = await handler.handle(executeConfig, finalResponse, {
-      eventBus: this.bus,
+    const mergedContext = { ...this.contextManager.context, ...addedContext };
+    const resolvedConfig = buildEndpointConfig(endpointConfig, this.agentConfig, mergedContext);
+
+    const requestBody = this.buildRequestBody(resolvedConfig, mergedContext);
+    const httpResponse = await this.performHttpRequest(resolvedConfig, requestBody, onTrace, signal);
+    const responseHandler = this.handlerRegistry.get(resolvedConfig, httpResponse);
+
+    const handledResult = await responseHandler.handle(resolvedConfig, httpResponse, {
+      eventBus: this.eventBus,
       onTrace,
       signal,
     });
 
-    for (const mw of this.middlewares) {
-      await mw.process(processed, executeConfig, context);
+    for (const middleware of this.postProcessingMiddlewares) {
+      await middleware.process(handledResult, resolvedConfig, mergedContext);
     }
 
-    this.ctx.replace(context);
-    return processed.data;
+    this.contextManager.replace(mergedContext);
+    return handledResult.data;
   }
 
-  private async executeHttpRequest(
+  private async performHttpRequest(
     resolved: ResolvedEndpointConfig,
     body: any,
     onTrace?: (step: TraceStep) => void,
     signal?: AbortSignal
   ): Promise<HttpResponse> {
-    let httpResponse = await this.http.execute(
+    const methodUpper = resolved.method.toUpperCase();
+    const bodyAllowed = !['GET', 'HEAD'].includes(methodUpper);
+    const serializedBody = bodyAllowed && body !== undefined && body !== null ? JSON.stringify(body) : undefined;
+
+    let response = await this.httpClient.execute(
       {
         url: resolved.url,
         method: resolved.method,
         headers: resolved.headers,
-        body: JSON.stringify(body),
+        body: serializedBody,
         onTrace,
       },
       signal
     );
 
     if (!resolved.polling) {
-      return httpResponse;
+      return response;
     }
 
-    let initialData = null;
+    let initialResponseData = null;
 
-    if (httpResponse.ok) {
+    if (response.ok) {
       try {
-        initialData = await httpResponse.json();
+        initialResponseData = await response.json();
       } catch {}
     }
 
-    const pollingData = await handlePolling(
+    const pollingResult = await handlePolling(
       resolved.polling,
       resolved.method,
       resolved.url,
       resolved.headers,
       JSON.stringify(resolved.body),
-      initialData,
+      initialResponseData,
       onTrace,
       signal
     );
@@ -91,17 +97,17 @@ export class EndpointExecutor {
       headers: new Headers(),
       body: null,
       clone: () => undefined as any,
-      text: async () => JSON.stringify(pollingData),
-      json: async () => pollingData,
+      text: async () => JSON.stringify(pollingResult),
+      json: async () => pollingResult,
     };
   }
 
-  private buildBody(resolved: ResolvedEndpointConfig, context: Record<string, any>): any {
+  private buildRequestBody(resolved: ResolvedEndpointConfig, context: Record<string, any>): any {
     if (!resolved.conversationHistory) {
       return resolved.body;
     }
 
-    this.history.addUserMessage(resolved, context);
+    this.historyManager.addUserMessage(resolved, context);
 
     if (context.messages?.length) {
       return { ...resolved.body, messages: context.messages };

@@ -34,7 +34,7 @@ export const HistorySection: React.FC<HistorySectionProps> = ({ endpoint, onChan
         onChange('conversationHistory', {
           enabled: true,
           userMessageFields: ['role', 'content'],
-          assistantMessageFields: ['role', 'replyText'],
+          assistantMessageFields: [],
         });
       } else {
         onChange('conversationHistory', { ...endpoint.conversationHistory, enabled: true });
