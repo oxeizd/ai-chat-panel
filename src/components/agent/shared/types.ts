@@ -111,6 +111,7 @@ export interface TraceStep {
     | 'thinking_start'
     | 'thinking_end'
     | 'history_sync'
+    | 'final_response'
     | 'error';
   timestamp: number;
   endpoint?: EndpointConfig;

@@ -4,7 +4,6 @@ export interface SeparateSSECallbacks {
   onThinkingStart?: (title?: string) => void;
   onThinkingEnd?: () => void;
   onTrace?: (step: any) => void;
-  verboseTrace?: boolean; // выводить каждую сырую строку
 }
 
 export async function parseSeparateSSE(
@@ -26,7 +25,7 @@ export async function parseSeparateSSE(
   let fullText = '';
   let fullReasoning = '';
 
-  const { onChunk, onReasoningChunk, onThinkingStart, onThinkingEnd, onTrace, verboseTrace = false } = callbacks;
+  const { onChunk, onReasoningChunk, onThinkingStart, onThinkingEnd, onTrace = false } = callbacks;
 
   try {
     while (true) {
@@ -45,22 +44,11 @@ export async function parseSeparateSSE(
           continue;
         }
 
-        if (verboseTrace && onTrace) {
-          onTrace({
-            type: 'raw_sse_line',
-            timestamp: Date.now(),
-            rawLine: trimmed,
-          });
-        }
-
         let content = trimmed;
         if (trimmed.startsWith('data: ')) {
           content = trimmed.slice(6);
         }
         if (content === '[DONE]') {
-          if (onTrace) {
-            onTrace({ type: 'sse_separate_end', timestamp: Date.now(), reason: 'DONE' });
-          }
           continue;
         }
 
@@ -81,23 +69,11 @@ export async function parseSeparateSSE(
 
         const type = event.type;
 
-        if (onTrace) {
-          onTrace({
-            type: 'sse_separate_event',
-            timestamp: Date.now(),
-            eventType: type,
-            eventData: event,
-          });
-        }
-
         // Обычный текст
         if (type === 'TEXT_MESSAGE_CONTENT' || type === 'TEXT_MESSAGE_CHUNK') {
           if (event.delta) {
             fullText += event.delta;
             onChunk(event.delta);
-            if (onTrace) {
-              onTrace({ type: 'text_chunk', timestamp: Date.now(), chunk: event.delta });
-            }
           }
         }
 
@@ -105,25 +81,16 @@ export async function parseSeparateSSE(
         if (type === eventMapping.thinkingContent && event.delta) {
           fullReasoning += event.delta;
           onReasoningChunk(event.delta);
-          if (onTrace) {
-            onTrace({ type: 'reasoning_chunk', timestamp: Date.now(), chunk: event.delta });
-          }
         }
 
         // Начало мышления
         if (eventMapping.thinkingStart && type === eventMapping.thinkingStart) {
           onThinkingStart?.(event.title);
-          if (onTrace) {
-            onTrace({ type: 'thinking_start', timestamp: Date.now(), title: event.title });
-          }
         }
 
         // Конец мышления
         if (eventMapping.thinkingEnd && type === eventMapping.thinkingEnd) {
           onThinkingEnd?.();
-          if (onTrace) {
-            onTrace({ type: 'thinking_end', timestamp: Date.now() });
-          }
         }
       }
     }
