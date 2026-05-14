@@ -114,11 +114,6 @@ export class SseHandler implements ResponseHandler {
               opt.eventBus.emit('contextUpdate', { messages: msgs });
             }
           }
-          if (!historySync && event.type === 'MESSAGES_SNAPSHOT' && Array.isArray(event.messages)) {
-            historyWasSynced = true;
-            opt.onTrace?.({ type: 'history_sync', timestamp: Date.now(), messagesCount: event.messages.length });
-            opt.eventBus.emit('contextUpdate', { messages: event.messages });
-          }
           if (event.type === 'RUN_FINISHED') {
             runFinishedEvent = event;
           }
@@ -177,7 +172,7 @@ export class SseHandler implements ResponseHandler {
 
     const data: any = {
       reply: fullVisible,
-      thinking: fullReasoning,
+      reasoning: fullReasoning,
       choices: [
         {
           index: 0,

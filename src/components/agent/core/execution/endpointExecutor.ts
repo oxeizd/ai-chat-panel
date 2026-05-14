@@ -43,7 +43,8 @@ export class EndpointExecutor {
       await middleware.process(handledResult, resolvedConfig, mergedContext);
     }
 
-    this.contextManager.replace(mergedContext);
+    const finalContext = { ...mergedContext, ...this.contextManager.context };
+    this.contextManager.replace(finalContext);
     return handledResult.data;
   }
 
