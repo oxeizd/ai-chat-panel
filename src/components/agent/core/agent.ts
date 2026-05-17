@@ -73,7 +73,6 @@ export class Agent {
         user_input: userInput,
       };
 
-      console.log(this.session.context);
       const result = await executeWorkflow(this.config, this.session, this.bus, {
         onTrace,
         abortOnError: true,
