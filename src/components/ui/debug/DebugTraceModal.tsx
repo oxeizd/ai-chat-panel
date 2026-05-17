@@ -135,31 +135,29 @@ export const DebugTraceModal: React.FC<DebugTraceModalProps> = ({ isOpen, trace,
 
   return (
     <Modal title="Debug Trace" isOpen={isOpen} onDismiss={onDismiss} className={styles.modalStyle}>
-      <div className={styles.container}>
-        <div className={styles.keyValue}>
-          <strong>User input:</strong> {trace.userInput}
-        </div>
-        {trace.finalReply && (
-          <div className={styles.keyValue}>
-            <strong>Final reply:</strong> {trace.finalReply}
-          </div>
-        )}
-        {trace.error && (
-          <div style={{ color: theme.colors.error.main }} className={styles.keyValue}>
-            <strong>Error:</strong> {trace.error.message}
-            {trace.error.raw && <pre className={styles.pre}>{trace.error.raw}</pre>}
-          </div>
-        )}
-        <h4>Steps ({trace.steps.length})</h4>
-        {trace.steps.map((step, idx) => (
-          <div key={idx} className={styles.step}>
-            <div>
-              <strong>{step.type.toUpperCase()}</strong> @ {new Date(step.timestamp).toLocaleTimeString()}
-            </div>
-            {renderStepDetails(step)}
-          </div>
-        ))}
+      <div className={styles.keyValue}>
+        <strong>User input:</strong> {trace.userInput}
       </div>
+      {trace.finalReply && (
+        <div className={styles.keyValue}>
+          <strong>Final reply:</strong> {trace.finalReply}
+        </div>
+      )}
+      {trace.error && (
+        <div style={{ color: theme.colors.error.main }} className={styles.keyValue}>
+          <strong>Error:</strong> {trace.error.message}
+          {trace.error.raw && <pre className={styles.pre}>{trace.error.raw}</pre>}
+        </div>
+      )}
+      <h4>Steps ({trace.steps.length})</h4>
+      {trace.steps.map((step, idx) => (
+        <div key={idx} className={styles.step}>
+          <div>
+            <strong>{step.type.toUpperCase()}</strong> @ {new Date(step.timestamp).toLocaleTimeString()}
+          </div>
+          {renderStepDetails(step)}
+        </div>
+      ))}
       <Modal.ButtonRow>
         <Button variant="secondary" onClick={onDismiss}>
           Close

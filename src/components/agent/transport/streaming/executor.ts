@@ -29,6 +29,9 @@ export async function handleStreamingResponse(
       ok: true,
       data: result.reply,
       context: result.context,
+      reasoningText: result.reasoningText,
+      isStreaming: true,
+      lastEvent: result.lastEvent,
     };
   } else if (streaming.parseStrategy === 'jsonl') {
     const result = await handleNdjsonStream(op, response, context, eventBus, onTrace);
@@ -37,6 +40,9 @@ export async function handleStreamingResponse(
       ok: true,
       data: result.reply,
       context: result.context,
+      reasoningText: result.reasoningText,
+      isStreaming: true,
+      lastEvent: result.lastEvent,
     };
   } else {
     return {
@@ -52,11 +58,12 @@ async function handleSSEStream(
   context: Record<string, any>,
   eventBus: EventBus,
   onTrace?: (step: TraceStep) => void
-): Promise<{ reply: string; reasoningText: string | undefined; context: Record<string, any> }> {
+): Promise<{ reply: string; reasoningText: string | undefined; context: Record<string, any>; lastEvent: any }> {
   if (!res.body) {
     throw new Error('SSE response has no body');
   }
 
+  let lastEvent: any;
   const rawMessages: string[] = [];
 
   const reader = res.body.getReader();
@@ -84,6 +91,7 @@ async function handleSSEStream(
         let event: any;
         try {
           event = JSON.parse(msg.data);
+          lastEvent = event;
         } catch (e) {
           onTrace?.({
             type: 'sse_parse_error',
@@ -124,13 +132,12 @@ async function handleSSEStream(
       type: 'response',
       timestamp: Date.now(),
       responseBody: rawMessages.join('\n'),
-      isStreaming: true,
     });
 
-    console.log(state.reasoningState.fullText)
     return {
       reply: state.fullReply,
-      reasoningText: state.reasoningState.fullText || undefined,
+      reasoningText: state.reasoningState.fullText,
+      lastEvent: lastEvent,
       context,
     };
   } finally {
@@ -144,7 +151,7 @@ async function handleNdjsonStream(
   context: Record<string, any>,
   eventBus: EventBus,
   onTrace?: (step: TraceStep) => void
-): Promise<{ reply: string; reasoningText: string | undefined; context: Record<string, any> }> {
+): Promise<{ reply: string; reasoningText: string | undefined; context: Record<string, any>; lastEvent: any }> {
   if (!res.body) {
     throw new Error('NDJSON response has no body');
   }
@@ -153,6 +160,7 @@ async function handleNdjsonStream(
   const decoder = new TextDecoder();
   const parser = new NdjsonParser();
   let state = createInitialStreamState();
+  let lastEvent: any;
 
   try {
     while (true) {
@@ -164,6 +172,7 @@ async function handleNdjsonStream(
       const chunk = decoder.decode(value, { stream: true });
       const objects = parser.feed(chunk);
       for (const obj of objects) {
+        lastEvent = obj;
         state = processStreamChunk(obj, op, context, state, eventBus, { onTrace });
       }
     }
@@ -184,7 +193,8 @@ async function handleNdjsonStream(
 
     return {
       reply: state.fullReply,
-      reasoningText: state.reasoningState.fullText || undefined,
+      lastEvent: lastEvent,
+      reasoningText: state.reasoningState.fullText,
       context,
     };
   } finally {

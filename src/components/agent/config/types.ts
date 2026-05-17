@@ -129,6 +129,7 @@ export interface SendResult {
   context?: Record<string, any>;
   isStreaming?: boolean;
   reasoningText?: string;
+  lastEvent?: any;
 }
 
 /**

@@ -2,11 +2,11 @@ import { EventBus } from '../core/eventBus';
 import { executeHttpRequest } from '../http/httpClient';
 import { handlePolling } from './polling/executor';
 import { handleStreamingResponse } from './streaming/executor';
-import { DEFAULT_RETRY, DEFAULT_TIMEOUT } from '../config/defaults';
+import { DEFAULT_CHAT_REPLY_FIELD, DEFAULT_RETRY, DEFAULT_TIMEOUT } from '../config/defaults';
 import { extractReasoningFromFullResponse } from './reasoning/processor';
 import { applySaveToContext, dotGet, parseHttpResponse } from '../utils/utils';
 import { AgentConfig, EndpointConfig, SendResult, TraceStep } from '../config/types';
-import { recordChatHistory } from '../core/historyManager';
+import { saveAssistantMessage } from '../core/historyManager';
 import { buildRequestConfig } from './requestBuilder';
 
 export async function sendOperation(
@@ -60,7 +60,7 @@ export async function sendOperation(
     }
 
     if (!res.body) {
-      const { body, reply } = await parseHttpResponse(res, op.replyField);
+      const { body, reply } = await parseHttpResponse(res, op.replyField || DEFAULT_CHAT_REPLY_FIELD.streaming);
       const { finalReply } = await processApiResponse(op, body, reply, context, eventBus, { onTrace });
 
       return {
@@ -74,6 +74,8 @@ export async function sendOperation(
 
     if (streamResult.ok) {
       const { finalReply } = await processApiResponse(op, null, streamResult.data, context, eventBus, {
+        lastEvent: streamResult.lastEvent,
+        isStreaming: streamResult.isStreaming,
         streamingReasoningText: streamResult.reasoningText,
         onTrace,
       });
@@ -98,7 +100,14 @@ export async function sendOperation(
         throw new Error(`HTTP ${res.status}: ${errorText}`);
       }
 
-      const { body, reply } = await parseHttpResponse(res, op.replyField);
+      const { body, reply } = await parseHttpResponse(res, op.replyField || DEFAULT_CHAT_REPLY_FIELD.json);
+
+      onTrace?.({
+        type: 'response',
+        timestamp: Date.now(),
+        responseBody: body,
+      });
+
       const { finalReply } = await processApiResponse(op, body, reply, context, eventBus, { onTrace });
 
       return {
@@ -128,6 +137,8 @@ async function processApiResponse(
   context: Record<string, any>,
   eventBus: EventBus,
   options?: {
+    isStreaming?: boolean;
+    lastEvent?: any;
     streamingReasoningText?: string;
     onTrace?: (step: TraceStep) => void;
   }
@@ -137,14 +148,8 @@ async function processApiResponse(
   let finalReply = rawReply;
   let reasoningText = options?.streamingReasoningText;
 
-  if (op.reasoning?.enabled && !reasoningText) {
-    const result = extractReasoningFromFullResponse(
-      parsedBody, 
-      rawReply, 
-      op.reasoning,
-      eventBus, 
-      options?.onTrace
-    );
+  if (!options?.isStreaming && op.reasoning?.enabled && !reasoningText) {
+    const result = extractReasoningFromFullResponse(parsedBody, rawReply, op.reasoning, eventBus, options?.onTrace);
 
     finalReply = result.cleanedReply;
 
@@ -153,10 +158,15 @@ async function processApiResponse(
     }
   }
 
-  if (op.historyConfig?.enabled && op.historyConfig.mode === 'local') {
-    recordChatHistory(context, op, finalReply, reasoningText, options?.onTrace);
+  let rawBody = parsedBody;
+
+  if (options?.isStreaming) {
+    rawBody = options?.lastEvent;
   }
 
-  console.log(reasoningText)
+  if (op.historyConfig?.enabled && op.historyConfig.mode === 'local') {
+    saveAssistantMessage(context, rawBody, finalReply, reasoningText, op, options?.isStreaming, options?.onTrace);
+  }
+
   return { finalReply, reasoningText, context };
 }
