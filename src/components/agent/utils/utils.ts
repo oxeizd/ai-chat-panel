@@ -9,37 +9,6 @@ export function safeParseJson(s: string) {
   }
 }
 
-// export function saveLastAiResponse(
-//   context: Record<string, any>,
-//   event: any | null,
-//   reply: string | undefined,
-//   reasoning: string | undefined
-// ): void {
-//   if (!event) {
-//     return;
-//   }
-
-//   const cloned = JSON.parse(JSON.stringify(event));
-
-//   if (reply && cloned.choices?.[0]) {
-//     if (cloned.choices[0].message) {
-//       cloned.choices[0].message.content = reply;
-//     } else if (cloned.choices[0].delta) {
-//       cloned.choices[0].delta.content = reply;
-//     } else {
-//       cloned.fullContent = reply;
-//     }
-//   } else if (reply && !cloned.choices) {
-//     cloned.content = reply;
-//   }
-
-//   if (reasoning) {
-//     cloned.reasoning = reasoning;
-//   }
-
-//   context.__lastAssistantMsg = cloned;
-// }
-
 export function applySaveToContext(context: Record<string, any>, saves: string[] | undefined, source: any) {
   if (!saves || !Array.isArray(saves)) {
     return;

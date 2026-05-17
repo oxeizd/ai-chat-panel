@@ -360,22 +360,23 @@ export const getStyles = (theme: GrafanaTheme2) => {
         }
 
         /* Блоки кода */
-        pre {
-          margin: 0.5rem 0;
-          padding: 0.8rem;
-          background: ${theme.colors.background.secondary};
-          border-radius: ${theme.shape.radius.default};
-          overflow-x: auto;
-          white-space: pre;
-          word-break: normal;
-          font-family: monospace;
-          font-size: 0.85rem;
-          max-width: 100%;
+        pre: {
+          margin: '0.3rem 0'; // уменьшенный отступ
+          padding: '0.5rem'; // уменьшенный паддинг
+          background: theme.colors.background.secondary;
+          overflowx: 'auto';
+          whitespace: 'pre';
+          wordbreak: 'normal';
+          fontfamily: 'monospace';
+          fontsize: '0.85rem';
+          maxwidth: '100%';
+          position: 'relative';
           border: none;
           outline: none;
           box-shadow: none;
         }
 
+        ,
         pre code {
           background: transparent;
           padding: 0;
@@ -524,27 +525,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
       background: toRgba(bgColor, 0.7),
       backdropFilter: 'blur(8px)',
     } as React.CSSProperties,
-
-    copyMessageButton: css`
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      padding: 4px 8px;
-      border-radius: ${theme.shape.radius.sm};
-      color: ${theme.colors.text.secondary};
-      font-size: 0.75rem;
-      transition:
-        background 0.2s,
-        color 0.2s;
-
-      &:hover {
-        background: ${theme.colors.action.hover};
-        color: ${theme.colors.text.primary};
-      }
-    `,
 
     // === Графики =====
     chartContainer: css`

@@ -57,9 +57,7 @@ export function buildRequestConfig(
         const bodyObj = JSON.parse(body);
         const messages = bodyObj[historyField];
         if (Array.isArray(messages)) {
-          // Сохраняем user-сообщение ДО запроса
           saveUserMessages(context, messages, ep.historyConfig, onTrace);
-          // Подставляем обновлённую историю
           body = injectHistory(body, context, ep.historyConfig) as string;
         }
       } catch {}

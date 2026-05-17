@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { ChartComponent } from './chartComponent/ChartComponent';
 import { parseChartConfig, isValidChartConfig } from './chartParsing';
+import { CodeBlock } from 'components/ui/utils/markdown/CodeBlock';
 
 export const useMarkdownComponents = (chartContainerClass: string) => {
   return useMemo(
@@ -55,11 +56,9 @@ export const useMarkdownComponents = (chartContainerClass: string) => {
         // Обычный блок кода
         if (!inline) {
           return (
-            <pre>
-              <code className={className} {...props}>
-                {children}
-              </code>
-            </pre>
+            <CodeBlock className={className} language={language}>
+              {children}
+            </CodeBlock>
           );
         }
 

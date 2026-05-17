@@ -69,7 +69,7 @@ export function saveUserMessages(context: any, messages: any[], cfg: any, onTrac
   }
 
   const history = context[CONTEXT_KEYS.HISTORY];
-  const toStore = cfg.userMessageFields?.length ? extractFields(userMsg, cfg.userMessageFields) : { ...messages };
+  const toStore = cfg.userMessageFields?.length ? extractFields(userMsg, cfg.userMessageFields) : { ...userMsg };
 
   const last = history[history.length - 1];
   if (last && JSON.stringify(last) === JSON.stringify(toStore)) {

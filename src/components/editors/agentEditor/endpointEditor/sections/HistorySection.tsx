@@ -17,8 +17,9 @@ const MODE_OPTIONS = [
 const DEFAULT_LOCAL: ChatHistoryConfig = {
   enabled: true,
   mode: 'local',
+  historyField: 'messages',
   userMessageFields: ['role', 'content'],
-  assistantMessageFields: [],
+  assistantMessageFields: ['choices[0].delta.role', 'choices[0].delta.content'],
   maxMessages: 100,
 };
 
@@ -99,7 +100,6 @@ export const HistorySection: React.FC<HistorySectionProps> = ({ endpoint, onChan
     val: string
   ) => {
     if (!isSync(rawConfig)) {
-      // Если текущий конфиг не синк, создаём новый на основе DEFAULT_SYNC
       const newSync = { ...DEFAULT_SYNC.historySync, [field]: val };
       onChange('historyConfig', { ...DEFAULT_SYNC, historySync: newSync });
       return;
@@ -111,7 +111,7 @@ export const HistorySection: React.FC<HistorySectionProps> = ({ endpoint, onChan
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>💬 Conversation History</div>
+        <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}> Conversation History</div>
         <Switch value={enabled} onChange={(e) => handleToggle(e.currentTarget.checked)} />
       </div>
 
@@ -127,6 +127,13 @@ export const HistorySection: React.FC<HistorySectionProps> = ({ endpoint, onChan
 
           {currentMode === 'local' && isLocal(rawConfig) && (
             <>
+              <Field label="History field">
+                <Input
+                  value={rawConfig.historyField ?? 'messages'}
+                  onChange={(e) => handleLocalFieldChange('historyField', e.currentTarget.value)}
+                  placeholder="messages"
+                />
+              </Field>
               <CommaSeparatedInput
                 label="User message fields"
                 value={rawConfig.userMessageFields || []}
