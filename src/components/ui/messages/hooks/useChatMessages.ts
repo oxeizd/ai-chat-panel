@@ -78,6 +78,9 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
               addStep(userMessageId, step);
             }
           },
+          onFileAttachment: (file: any) => {
+            setAssistantFinal(assistantId, undefined, file);
+          },
         });
 
         const newThreadId = getThreadId();

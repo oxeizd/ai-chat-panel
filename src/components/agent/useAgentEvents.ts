@@ -6,6 +6,7 @@ interface AgentEventsCallbacks {
   onReasoningChunk?: (chunk: string) => void;
   onReasoningEnd?: (text: string) => void;
   onContextUpdate?: (ctx: Record<string, any>) => void;
+  onFileAttachment?: (file: any) => void;
 }
 
 interface UseAgentEventsOptions {
@@ -15,6 +16,7 @@ interface UseAgentEventsOptions {
     onReasoningChunk?: (handler: (chunk: string) => void) => () => void;
     onReasoningEnd?: (handler: (text: string) => void) => () => void;
     onContextUpdate?: (handler: (ctx: Record<string, any>) => void) => () => void;
+    onFileAttachment?: (handler: (file: any) => void) => () => void;
   } | null;
   callbacksRef: React.MutableRefObject<AgentEventsCallbacks>;
 }
@@ -63,6 +65,14 @@ export const useAgentEvents = ({ subscriptions, callbacksRef }: UseAgentEventsOp
       unsubFunctions.push(
         subscriptions.onContextUpdate((ctx) => {
           callbacksRef.current.onContextUpdate?.(ctx);
+        })
+      );
+    }
+
+    if (subscriptions.onFileAttachment) {
+      unsubFunctions.push(
+        subscriptions.onFileAttachment((file) => {
+          callbacksRef.current.onFileAttachment?.(file);
         })
       );
     }

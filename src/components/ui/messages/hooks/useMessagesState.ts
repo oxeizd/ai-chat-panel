@@ -74,11 +74,15 @@ export const useMessagesState = () => {
     );
   }, []);
 
-  const setAssistantFinal = useCallback((assistantId: string, finalText: string, fileAttachment?: any) => {
+  const setAssistantFinal = useCallback((assistantId: string, finalText?: string, fileAttachment?: any) => {
     setMessages((prev) =>
       prev.map((msg) =>
         msg.id === assistantId && msg.sender === 'ai'
-          ? { ...msg, text: finalText, fileAttachment: fileAttachment || msg.fileAttachment }
+          ? {
+              ...msg,
+              text: finalText !== undefined ? finalText : msg.text,
+              fileAttachment: fileAttachment || msg.fileAttachment,
+            }
           : msg
       )
     );

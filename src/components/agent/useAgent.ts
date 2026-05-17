@@ -73,6 +73,13 @@ export const useAgent = (config: AgentConfig | null) => {
     [agent]
   );
 
+  const onFileAttachment = useCallback(
+    (handler: (file: any) => void) => {
+      return agent?.on('fileAttachment', handler) ?? (() => {});
+    },
+    [agent]
+  );
+
   const getContextValue = useCallback((key: string) => agent?.getContextValue(key), [agent]);
   const getContext = useCallback(() => agent?.getContext(), [agent]);
 
@@ -89,5 +96,6 @@ export const useAgent = (config: AgentConfig | null) => {
     onContextUpdate,
     getContextValue,
     getContext,
+    onFileAttachment,
   };
 };

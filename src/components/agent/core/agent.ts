@@ -95,6 +95,11 @@ export class Agent {
       if (reply && !lastStep?.streaming) {
         this.bus.emit('chunk', reply);
       }
+      const fileAttachment = (lastStep as any)?.fileAttachment;
+
+      if (fileAttachment) {
+        this.bus.emit('fileAttachment', fileAttachment);
+      }
 
       this.bus.emit('contextUpdate', { ...this.session.context });
 

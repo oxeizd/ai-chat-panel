@@ -1,5 +1,4 @@
-// useMessageSender.ts
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import { useAgent } from 'components/agent/useAgent';
 import { AgentConfig, TraceStep } from 'types';
 import { GrafanaUser } from '../../../hooks/useGrafanaUser';
@@ -17,6 +16,7 @@ interface SendCallbacks {
   onThinkingStart?: () => void;
   onThinkingEnd?: () => void;
   onStep?: (step: TraceStep) => void;
+  onFileAttachment?: (file: any) => void;
 }
 
 export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderOptions) => {
@@ -29,6 +29,7 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
     onReasoningStart,
     onReasoningChunk,
     onReasoningEnd,
+    onFileAttachment,
     getContextValue,
   } = useAgent(agentConfig);
 
@@ -51,9 +52,20 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
           callbacksRef.current.onThinkingEnd?.();
         });
       },
+      onFileAttachment,
     },
     callbacksRef: callbacksRef as any,
   });
+
+  useEffect(() => {
+    if (!onFileAttachment) {
+      return;
+    }
+    const unsub = onFileAttachment((file) => {
+      callbacksRef.current.onFileAttachment?.(file);
+    });
+    return unsub;
+  }, [onFileAttachment]);
 
   const send = useCallback(
     async (text: string, callbacks?: SendCallbacks): Promise<string | null> => {

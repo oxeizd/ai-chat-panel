@@ -20,6 +20,7 @@ export interface EndpointConfig {
   streaming?: StreamingConfig;
   historyConfig?: ChatHistoryConfig;
   url?: string;
+  fileField?: string;
 }
 
 export type PollingConfig =
@@ -130,6 +131,7 @@ export interface SendResult {
   isStreaming?: boolean;
   reasoningText?: string;
   lastEvent?: any;
+  fileAttachment?: any;
 }
 
 /**
@@ -161,4 +163,5 @@ export type AgentEvent =
   | { type: 'reasoning:start'; payload?: { title?: string } }
   | { type: 'reasoning:chunk'; payload: string }
   | { type: 'reasoning:end'; payload: string }
-  | { type: 'contextUpdate'; payload: Record<string, any> };
+  | { type: 'contextUpdate'; payload: Record<string, any> }
+  | { type: 'fileAttachment'; payload: any };

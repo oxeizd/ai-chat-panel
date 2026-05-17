@@ -73,7 +73,7 @@ export async function sendOperation(
     const streamResult = await handleStreamingResponse(op, res, context, eventBus, onTrace);
 
     if (streamResult.ok) {
-      const { finalReply } = await processApiResponse(op, null, streamResult.data, context, eventBus, {
+      const { finalReply, fileAttachment } = await processApiResponse(op, null, streamResult.data, context, eventBus, {
         lastEvent: streamResult.lastEvent,
         isStreaming: streamResult.isStreaming,
         streamingReasoningText: streamResult.reasoningText,
@@ -85,6 +85,7 @@ export async function sendOperation(
         data: finalReply,
         context,
         isStreaming: true,
+        fileAttachment,
       };
     }
     return streamResult;
@@ -108,12 +109,13 @@ export async function sendOperation(
         responseBody: body,
       });
 
-      const { finalReply } = await processApiResponse(op, body, reply, context, eventBus, { onTrace });
+      const { finalReply, fileAttachment } = await processApiResponse(op, body, reply, context, eventBus, { onTrace });
 
       return {
         ok: true,
         data: finalReply,
         context,
+        fileAttachment,
       };
     } catch (err: any) {
       lastError = err;
@@ -142,7 +144,7 @@ async function processApiResponse(
     streamingReasoningText?: string;
     onTrace?: (step: TraceStep) => void;
   }
-): Promise<{ finalReply: any; reasoningText?: string; context: Record<string, any> }> {
+): Promise<{ finalReply: any; reasoningText?: string; fileAttachment?: any; context: Record<string, any> }> {
   applySaveToContext(context, op.saveToContext, parsedBody);
 
   let finalReply = rawReply;
@@ -164,9 +166,27 @@ async function processApiResponse(
     rawBody = options?.lastEvent;
   }
 
+  let fileAttachment: any = undefined;
+  if (op.fileField && rawBody) {
+    const rawFile = dotGet(rawBody, op.fileField);
+
+    if (rawFile) {
+      if (typeof rawFile === 'string') {
+        fileAttachment = { filename: 'download', data: rawFile, isUrl: rawFile.startsWith('http') };
+      } else if (typeof rawFile === 'object') {
+        fileAttachment = {
+          filename: rawFile.filename || 'download',
+          data: rawFile.data || rawFile,
+          mimeType: rawFile.mimeType,
+          isUrl: rawFile.isUrl || false,
+        };
+      }
+    }
+  }
+
   if (op.historyConfig?.enabled && op.historyConfig.mode === 'local') {
     saveAssistantMessage(context, rawBody, finalReply, reasoningText, op, options?.isStreaming, options?.onTrace);
   }
 
-  return { finalReply, reasoningText, context };
+  return { finalReply, reasoningText, fileAttachment, context };
 }
