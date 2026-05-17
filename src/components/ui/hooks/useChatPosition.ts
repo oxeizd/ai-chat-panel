@@ -145,8 +145,8 @@ export const useChatPosition = (isChatOpen: boolean, centerChat: boolean, fullSc
       setChatStyle({
         position: 'fixed',
         left: leftPosition,
-        top: fullScale ? topOffset : topPosition,
-        height: fullScale ? maxHeightValue: undefined,
+        top: topPosition,
+        height: fullScale ? maxHeightValue : undefined,
         maxHeight: fullScale ? undefined : maxHeightValue,
         width: widthPosition,
         bottom: bottomPosition,
