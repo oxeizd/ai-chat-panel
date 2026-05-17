@@ -25,6 +25,9 @@ export const ResponseHandlingSection: React.FC<ResponseHandlingSectionProps> = (
           placeholder="text, message, content"
         />
       </Field>
+      <Field label="File field">
+        <Input value={endpoint.fileField || ''} onChange={(e) => onChange('fileField', e.currentTarget.value)} />
+      </Field>
     </div>
   );
 };

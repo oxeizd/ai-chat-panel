@@ -137,6 +137,7 @@ export function normalizeEndpointConfig(input: Partial<EndpointConfig>, baseUrl?
     historyConfig: input.historyConfig ?? DEFAULT_HISTORY_FALSE,
     reasoning: input.reasoning ?? DEFAULT_REASONING_FALSE,
     url: baseUrl ?? '',
+    fileField: input.fileField ?? 'attachment',
   };
 
   return merged;
