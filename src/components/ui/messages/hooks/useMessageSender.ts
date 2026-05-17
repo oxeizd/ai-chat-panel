@@ -1,8 +1,9 @@
+// useMessageSender.ts
 import { useCallback, useRef } from 'react';
-import { useAgent } from 'components/agent/hooks/useAgent';
-import { AgentConfig, TraceStep } from 'components/agent/shared/types';
-import { GrafanaUser } from 'components/hooks/useGrafanaUser';
-import { useAgentEvents } from 'components/agent/hooks/useAgentEvents';
+import { useAgent } from 'components/agent/useAgent';
+import { AgentConfig, TraceStep } from 'types';
+import { GrafanaUser } from '../../../hooks/useGrafanaUser';
+import { useAgentEvents } from 'components/agent/useAgentEvents';
 
 interface UseMessageSenderOptions {
   agent: AgentConfig | null;
@@ -18,36 +19,45 @@ interface SendCallbacks {
   onStep?: (step: TraceStep) => void;
 }
 
-export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
+export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderOptions) => {
   const {
     isLoading,
     sendMessage: agentSendMessage,
     resetSession,
     abort: abortAgent,
-    onChunk: subscribeChunk,
-    onReasoningChunk: subscribeReasoning,
-    onReasoningComplete: subscribeReasoningComplete,
-    onThinkingStart: subscribeThinkingStart,
-    onThinkingEnd: subscribeThinkingEnd,
+    onChunk,
+    onReasoningStart,
+    onReasoningChunk,
+    onReasoningEnd,
     getContextValue,
-  } = useAgent(agent);
+  } = useAgent(agentConfig);
 
   const callbacksRef = useRef<SendCallbacks>({});
 
   useAgentEvents({
-    agent: {
-      onChunk: subscribeChunk,
-      onReasoningChunk: subscribeReasoning,
-      onReasoningComplete: subscribeReasoningComplete,
-      onThinkingStart: subscribeThinkingStart,
-      onThinkingEnd: subscribeThinkingEnd,
+    subscriptions: {
+      onChunk,
+      onReasoningStart: (handler) => {
+        return onReasoningStart((payload) => {
+          handler(payload);
+          callbacksRef.current.onThinkingStart?.();
+        });
+      },
+      onReasoningChunk,
+      onReasoningEnd: (handler) => {
+        return onReasoningEnd((text) => {
+          handler(text);
+          callbacksRef.current.onReasoningComplete?.(text);
+          callbacksRef.current.onThinkingEnd?.();
+        });
+      },
     },
-    events: callbacksRef,
+    callbacksRef: callbacksRef as any,
   });
 
   const send = useCallback(
     async (text: string, callbacks?: SendCallbacks): Promise<string | null> => {
-      if (!agent || isLoading) {
+      if (!agentConfig || isLoading) {
         return null;
       }
 
@@ -73,23 +83,18 @@ export const useMessageSender = ({ agent, user }: UseMessageSenderOptions) => {
         callbacksRef.current = {};
       }
     },
-    [agent, isLoading, user, agentSendMessage]
+    [agentConfig, isLoading, user, agentSendMessage]
   );
 
   const abort = useCallback(() => abortAgent(), [abortAgent]);
   const reset = useCallback(async () => await resetSession(), [resetSession]);
-
-  const getThreadId = useCallback(() => {
-    return getContextValue?.('thread_id');
-  }, [getContextValue]);
+  const getThreadId = useCallback(() => getContextValue?.('thread_id'), [getContextValue]);
 
   return {
     send,
     abort,
     reset,
     isSending: isLoading,
-    onChunk: subscribeChunk,
-    onReasoningChunk: subscribeReasoning,
     getThreadId,
   };
 };

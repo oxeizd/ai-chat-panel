@@ -43,17 +43,39 @@ export const DebugTraceModal: React.FC<DebugTraceModalProps> = ({ isOpen, trace,
       font-size: 11px;
       color: ${theme.colors.text.secondary};
     `,
+    keyValue: css`
+      margin: 4px 0;
+    `,
   };
 
+  // Функция для удобного отображения значения (независимо от типа)
+  const renderValue = (value: any): React.ReactNode => {
+    if (value === undefined) {
+      return '<undefined>';
+    }
+    if (value === null) {
+      return '<null>';
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    return <pre className={styles.pre}>{JSON.stringify(value, null, 2)}</pre>;
+  };
+
+  // Универсальный рендер шага: выводим все поля, кроме type и timestamp
   const renderStepDetails = (step: TraceStep) => {
+    // Специальная обработка для нескольких ключевых типов (для удобства)
     switch (step.type) {
       case 'request':
         return (
           <>
-            <div>
+            <div className={styles.keyValue}>
               <strong>URL:</strong> {step.method} {step.url}
             </div>
-            <div>
+            <div className={styles.keyValue}>
               <strong>Body:</strong>
               <pre className={styles.pre}>{JSON.stringify(step.requestBody, null, 2)}</pre>
             </div>
@@ -61,122 +83,51 @@ export const DebugTraceModal: React.FC<DebugTraceModalProps> = ({ isOpen, trace,
         );
       case 'response':
         return (
-          <div>
-            <strong>Response:</strong>
+          <div className={styles.keyValue}>
+            <strong>Response body:</strong>
             <pre className={styles.pre}>{JSON.stringify(step.responseBody, null, 2)}</pre>
-          </div>
-        );
-      case 'polling':
-        return (
-          <div>
-            <strong>Poll attempt #{step.pollingAttempt}:</strong>
-            <pre className={styles.pre}>{JSON.stringify(step.responseBody, null, 2)}</pre>
-          </div>
-        );
-      case 'context_update':
-        return (
-          <div>
-            <strong>Context updated:</strong>
-            <pre className={styles.pre}>{JSON.stringify(step.contextChanges, null, 2)}</pre>
-          </div>
-        );
-      case 'raw_sse_line':
-        return (
-          <div>
-            <strong>Raw SSE line:</strong>
-            <pre className={styles.pre}>{step.rawLine || step.line}</pre>
-          </div>
-        );
-      case 'sse_event':
-      case 'sse_separate_event':
-        return (
-          <div>
-            <strong>SSE Event ({step.eventType || 'unknown'}):</strong>
-            <pre className={styles.pre}>{JSON.stringify(step.eventData, null, 2)}</pre>
           </div>
         );
       case 'text_chunk':
         return (
-          <div>
+          <div className={styles.keyValue}>
             <strong>Text chunk:</strong>
             <div className={styles.pre}>{step.chunk}</div>
           </div>
         );
       case 'reasoning_chunk':
         return (
-          <div>
+          <div className={styles.keyValue}>
             <strong>Reasoning chunk:</strong>
             <div className={styles.pre}>{step.chunk}</div>
           </div>
         );
       case 'reasoning_complete':
         return (
-          <div>
+          <div className={styles.keyValue}>
             <strong>Reasoning complete:</strong>
             <pre className={styles.pre}>{step.fullReasoning || step.reasoningText}</pre>
           </div>
         );
-      case 'reasoning_extracted_from_tags':
-        return (
-          <div>
-            <strong>Reasoning extracted from tags:</strong>
-            <pre className={styles.pre}>{step.reasoningText}</pre>
-          </div>
-        );
-      case 'text_cleaned_from_tags':
-        return (
-          <div>
-            <strong>Text cleaned from tags:</strong>
-            <div className={styles.pre}>Original: {step.originalText}</div>
-            <div className={styles.pre}>Cleaned: {step.cleanedText}</div>
-          </div>
-        );
-      case 'thinking_start':
-        return (
-          <div>
-            <strong>Thinking started</strong>
-            {step.title && `: ${step.title}`}
-          </div>
-        );
-      case 'thinking_end':
-        return (
-          <div>
-            <strong>Thinking ended</strong>
-          </div>
-        );
-      case 'history_sync':
-        return (
-          <div>
-            <strong>History sync:</strong> {step.messagesCount} messages
-          </div>
-        );
-      case 'sse_stream_end':
-      case 'sse_separate_end':
-        return (
-          <div>
-            <strong>SSE stream ended</strong> {step.reason && `(${step.reason})`}
-          </div>
-        );
-      case 'sse_parse_error':
-        return (
-          <div>
-            <strong>SSE parse error:</strong>
-            <div className={styles.smallText}>Line: {step.rawLine || step.line}</div>
-            <div className={styles.smallText}>Error: {step.error}</div>
-          </div>
-        );
       case 'error':
         return (
-          <div>
+          <div className={styles.keyValue}>
             <strong>Error:</strong> {step.error}
           </div>
         );
+      // Для всех остальных типов – выводим все поля (кроме type и timestamp)
       default:
-        // fallback для неизвестных типов
+        const { type, timestamp, ...rest } = step;
+        if (Object.keys(rest).length === 0) {
+          return <div className={styles.smallText}>No additional data</div>;
+        }
         return (
           <div>
-            <strong>Unknown step type:</strong>
-            <pre className={styles.pre}>{JSON.stringify(step, null, 2)}</pre>
+            {Object.entries(rest).map(([key, val]) => (
+              <div key={key} className={styles.keyValue}>
+                <strong>{key}:</strong> {renderValue(val)}
+              </div>
+            ))}
           </div>
         );
     }
@@ -185,16 +136,16 @@ export const DebugTraceModal: React.FC<DebugTraceModalProps> = ({ isOpen, trace,
   return (
     <Modal title="Debug Trace" isOpen={isOpen} onDismiss={onDismiss} className={styles.modalStyle}>
       <div className={styles.container}>
-        <div>
+        <div className={styles.keyValue}>
           <strong>User input:</strong> {trace.userInput}
         </div>
         {trace.finalReply && (
-          <div>
+          <div className={styles.keyValue}>
             <strong>Final reply:</strong> {trace.finalReply}
           </div>
         )}
         {trace.error && (
-          <div style={{ color: theme.colors.error.main }}>
+          <div style={{ color: theme.colors.error.main }} className={styles.keyValue}>
             <strong>Error:</strong> {trace.error.message}
             {trace.error.raw && <pre className={styles.pre}>{trace.error.raw}</pre>}
           </div>

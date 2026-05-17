@@ -1,5 +1,5 @@
 import React from 'react';
-import { Switch, Field, Input, useTheme2 } from '@grafana/ui';
+import { Switch, Field, Input } from '@grafana/ui';
 import { EndpointConfig, PollingConfig } from 'types';
 import { CommaSeparatedInput } from 'components/editors/shared/CommaSeparatedInput';
 
@@ -8,15 +8,22 @@ interface PollingSectionProps {
   onChange: (field: keyof EndpointConfig, value: any) => void;
 }
 
-export const PollingSection: React.FC<PollingSectionProps> = ({ endpoint, onChange }) => {
-  const theme = useTheme2();
-  const polling = endpoint.polling || { enabled: false };
+function isPollingEnabled(polling: PollingConfig): polling is Extract<PollingConfig, { enabled: true }> {
+  return polling !== null && polling.enabled === true;
+}
 
-  const handlePollingChange = (enabled: boolean) => {
-    onChange('polling', { ...polling, enabled });
+export const PollingSection: React.FC<PollingSectionProps> = ({ endpoint, onChange }) => {
+  const polling: PollingConfig = endpoint.polling ?? { enabled: false };
+  const enabled = isPollingEnabled(polling);
+
+  const handlePollingChange = (checked: boolean) => {
+    onChange('polling', checked ? { enabled: true } : { enabled: false });
   };
 
-  const handlePollingFieldChange = (field: keyof PollingConfig, val: any) => {
+  const handlePollingFieldChange = (field: keyof Extract<PollingConfig, { enabled: true }>, val: any) => {
+    if (!enabled) {
+      return;
+    }
     onChange('polling', { ...polling, [field]: val });
   };
 
@@ -26,12 +33,12 @@ export const PollingSection: React.FC<PollingSectionProps> = ({ endpoint, onChan
   };
 
   return (
-    <div>
+    <div style={{ marginTop: '16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-        <div style={{ fontSize: '13px', fontWeight: 500, color: theme.colors.text.secondary }}>⏱ Result polling</div>
-        <Switch value={polling.enabled || false} onChange={(e) => handlePollingChange(e.currentTarget.checked)} />
+        <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>⏱ Result polling</div>
+        <Switch value={enabled} onChange={(e) => handlePollingChange(e.currentTarget.checked)} />
       </div>
-      {polling.enabled && (
+      {enabled && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
           <Field label="Interval (ms)">
             <Input

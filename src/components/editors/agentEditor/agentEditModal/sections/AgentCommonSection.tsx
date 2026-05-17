@@ -19,8 +19,8 @@ export const AgentCommonSection: React.FC<AgentCommonSectionProps> = ({ agent, o
       </Field>
       <Field label="Base URL">
         <Input
-          value={agent.api}
-          onChange={(e) => onChange('api', e.currentTarget.value)}
+          value={agent.url}
+          onChange={(e) => onChange('url', e.currentTarget.value)}
           placeholder="https://api.example.com"
         />
       </Field>

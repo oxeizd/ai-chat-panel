@@ -1,57 +1,58 @@
 import React, { useCallback } from 'react';
 import { Switch, Field, Input, Combobox, useStyles2 } from '@grafana/ui';
 import { css } from '@emotion/css';
-import { EndpointConfig, EmbeddedReasoning, SeparateReasoning, ReasoningConfig } from 'types';
+import { EndpointConfig, ReasoningConfig } from 'types';
 
 interface ReasoningSectionProps {
   endpoint: EndpointConfig;
   onChange: (field: keyof EndpointConfig, value: any) => void;
 }
 
+const TYPE_OPTIONS = [
+  { label: 'Embedded (in API fields or thinking tags)', value: 'embedded' },
+  { label: 'Separate (thinking events)', value: 'separate' },
+];
+
 const MODE_OPTIONS = [
   { label: 'API field only', value: 'api_field' },
   { label: 'Thinking tags only', value: 'thinking_tags' },
 ];
 
-const FORMAT_OPTIONS = [
-  { label: 'Embedded (in API fields or tags)', value: 'embedded' },
-  { label: 'Separate (thinking events)', value: 'separate' },
-];
-
-// Дефолтные конфигурации
-const DEFAULT_EMBEDDED_API: EmbeddedReasoning = {
+const DEFAULT_EMBEDDED_API: ReasoningConfig = {
   enabled: true,
-  format: 'embedded',
+  type: 'embedded',
   mode: 'api_field',
-  apiField: 'choices[0].delta.reasoning_content',
+  apiField: 'choices[0].delta.reasoning',
 };
 
-const DEFAULT_EMBEDDED_TAGS: EmbeddedReasoning = {
+const DEFAULT_EMBEDDED_TAGS: ReasoningConfig = {
   enabled: true,
-  format: 'embedded',
+  type: 'embedded',
   mode: 'thinking_tags',
-  textPath: 'choices[0].delta.content',
+  textPath: 'choices[0].message.content',
   startMarker: '<thinking>',
   endMarker: '</thinking>',
 };
 
-const DEFAULT_SEPARATE: SeparateReasoning = {
+const DEFAULT_SEPARATE: ReasoningConfig = {
   enabled: true,
-  format: 'separate',
-  eventMapping: {
-    thinkingStart: 'THINKING_START',
-    thinkingContent: 'THINKING_TEXT_MESSAGE_CONTENT',
-    thinkingEnd: 'THINKING_END',
-  },
+  type: 'separate',
+  eventType: 'THINKING_START',
+  contentField: 'THINKING_TEXT_MESSAGE_CONTENT',
+  resultField: 'THINKING_END',
 };
 
 // Type guards
-function isEmbedded(config: ReasoningConfig): config is EmbeddedReasoning {
-  return config !== false && config.format === 'embedded';
+function isReasoningEnabled(config: ReasoningConfig): config is Extract<ReasoningConfig, { enabled: true }> {
+  return config !== null && config.enabled === true;
 }
 
-function isSeparate(config: ReasoningConfig): config is SeparateReasoning {
-  return config !== false && config.format === 'separate';
+function isEmbedded(config: ReasoningConfig): config is Extract<ReasoningConfig, { enabled: true; type: 'embedded' }> {
+  return isReasoningEnabled(config) && config.type === 'embedded';
+}
+
+function isSeparate(config: ReasoningConfig): config is Extract<ReasoningConfig, { enabled: true; type: 'separate' }> {
+  return isReasoningEnabled(config) && config.type === 'separate';
 }
 
 const getStyles = () => ({
@@ -73,20 +74,20 @@ const getStyles = () => ({
 
 export const ReasoningSection: React.FC<ReasoningSectionProps> = ({ endpoint, onChange }) => {
   const styles = useStyles2(getStyles);
-  const reasoning: ReasoningConfig = endpoint.reasoning ?? false;
-  const enabled = reasoning !== false;
-  const currentFormat = enabled && 'format' in reasoning ? reasoning.format : 'embedded';
+  const reasoning: ReasoningConfig = endpoint.reasoning ?? { enabled: false };
+  const enabled = isReasoningEnabled(reasoning);
+  const currentType = enabled ? reasoning.type : 'embedded';
 
   const handleToggle = useCallback(
     (checked: boolean) => {
-      onChange('reasoning', checked ? DEFAULT_EMBEDDED_API : false);
+      onChange('reasoning', checked ? DEFAULT_EMBEDDED_API : { enabled: false });
     },
     [onChange]
   );
 
-  const handleFormatChange = useCallback(
-    (format: 'embedded' | 'separate') => {
-      onChange('reasoning', format === 'embedded' ? DEFAULT_EMBEDDED_API : DEFAULT_SEPARATE);
+  const handleTypeChange = useCallback(
+    (type: 'embedded' | 'separate') => {
+      onChange('reasoning', type === 'embedded' ? DEFAULT_EMBEDDED_API : DEFAULT_SEPARATE);
     },
     [onChange]
   );
@@ -96,41 +97,30 @@ export const ReasoningSection: React.FC<ReasoningSectionProps> = ({ endpoint, on
       if (!enabled) {
         return;
       }
-      const newConfig: EmbeddedReasoning =
-        mode === 'api_field'
-          ? { ...DEFAULT_EMBEDDED_API, mode: 'api_field' }
-          : { ...DEFAULT_EMBEDDED_TAGS, mode: 'thinking_tags' };
+      const newConfig: ReasoningConfig = mode === 'api_field' ? DEFAULT_EMBEDDED_API : DEFAULT_EMBEDDED_TAGS;
       onChange('reasoning', newConfig);
     },
     [enabled, onChange]
   );
 
-  const handleEmbeddedFieldChange = useCallback(
-    <K extends keyof EmbeddedReasoning>(field: K, value: EmbeddedReasoning[K]) => {
-      if (!isEmbedded(reasoning)) {
-        return;
-      }
-      onChange('reasoning', { ...reasoning, [field]: value });
-    },
-    [reasoning, onChange]
-  );
+  const handleEmbeddedFieldChange = <K extends keyof Extract<ReasoningConfig, { type: 'embedded' }>>(
+    field: K,
+    value: any
+  ) => {
+    if (!isEmbedded(reasoning)) {
+      return;
+    }
+    onChange('reasoning', { ...reasoning, [field]: value });
+  };
 
-  const handleSeparateChange = useCallback(
-    <K extends keyof SeparateReasoning>(field: K, value: SeparateReasoning[K]) => {
-      if (!isSeparate(reasoning)) {
-        return;
-      }
-      onChange('reasoning', { ...reasoning, [field]: value });
-    },
-    [reasoning, onChange]
-  );
-
-  const handleMappingChange = (key: keyof NonNullable<SeparateReasoning['eventMapping']>, val: string) => {
+  const handleSeparateFieldChange = <K extends keyof Extract<ReasoningConfig, { type: 'separate' }>>(
+    field: K,
+    value: any
+  ) => {
     if (!isSeparate(reasoning)) {
       return;
     }
-    const current = reasoning.eventMapping ?? {};
-    handleSeparateChange('eventMapping', { ...current, [key]: val });
+    onChange('reasoning', { ...reasoning, [field]: value });
   };
 
   return (
@@ -142,11 +132,11 @@ export const ReasoningSection: React.FC<ReasoningSectionProps> = ({ endpoint, on
 
       {enabled && (
         <div className={styles.fields}>
-          <Field label="Format">
+          <Field label="Type">
             <Combobox
-              options={FORMAT_OPTIONS}
-              value={currentFormat}
-              onChange={(opt) => handleFormatChange(opt?.value as 'embedded' | 'separate')}
+              options={TYPE_OPTIONS}
+              value={currentType}
+              onChange={(opt) => handleTypeChange(opt?.value as 'embedded' | 'separate')}
             />
           </Field>
 
@@ -196,22 +186,25 @@ export const ReasoningSection: React.FC<ReasoningSectionProps> = ({ endpoint, on
 
           {isSeparate(reasoning) && (
             <>
-              <Field label="Thinking start event" description="Default: THINKING_START">
+              <Field label="Event type">
                 <Input
-                  value={reasoning.eventMapping?.thinkingStart ?? 'THINKING_START'}
-                  onChange={(e) => handleMappingChange('thinkingStart', e.currentTarget.value)}
+                  value={reasoning.eventType ?? DEFAULT_SEPARATE.eventType}
+                  onChange={(e) => handleSeparateFieldChange('eventType', e.currentTarget.value)}
+                  placeholder="THINKING"
                 />
               </Field>
-              <Field label="Thinking content event" description="Default: THINKING_TEXT_MESSAGE_CONTENT">
+              <Field label="Content field">
                 <Input
-                  value={reasoning.eventMapping?.thinkingContent ?? 'THINKING_TEXT_MESSAGE_CONTENT'}
-                  onChange={(e) => handleMappingChange('thinkingContent', e.currentTarget.value)}
+                  value={reasoning.contentField ?? DEFAULT_SEPARATE.contentField}
+                  onChange={(e) => handleSeparateFieldChange('contentField', e.currentTarget.value)}
+                  placeholder="delta"
                 />
               </Field>
-              <Field label="Thinking end event" description="Default: THINKING_END">
+              <Field label="Result field (optional, for end marker)">
                 <Input
-                  value={reasoning.eventMapping?.thinkingEnd ?? 'THINKING_END'}
-                  onChange={(e) => handleMappingChange('thinkingEnd', e.currentTarget.value)}
+                  value={reasoning.resultField ?? ''}
+                  onChange={(e) => handleSeparateFieldChange('resultField', e.currentTarget.value)}
+                  placeholder="status"
                 />
               </Field>
             </>

@@ -16,7 +16,7 @@ interface AgentEditModalProps {
 
 const emptyAgent = (): AgentConfig => ({
   name: '',
-  api: '',
+  url: '',
   default: false,
   endpoints: [],
   workflow: [],
@@ -40,7 +40,7 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
       setValidationError('Agent name is required');
       return;
     }
-    if (!editedAgent.api.trim()) {
+    if (!editedAgent.url.trim()) {
       setValidationError('Base URL is required');
       return;
     }

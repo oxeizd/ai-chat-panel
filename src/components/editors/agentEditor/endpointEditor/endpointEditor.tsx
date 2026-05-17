@@ -49,8 +49,19 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
   const styles = getEndpointEditorStyles(theme);
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleChange = (field: keyof EndpointConfig, val: any) => {
-    onChange(index, { ...endpoint, [field]: val });
+  const handleEndpointChange = (field: keyof EndpointConfig, val: any) => {
+    let updated = { ...endpoint, [field]: val };
+
+    // Включение polling выключает streaming
+    if (field === 'polling' && val?.enabled === true) {
+      updated.streaming = { enabled: false };
+    }
+    // Включение streaming выключает polling
+    if (field === 'streaming' && val?.enabled === true) {
+      updated.polling = { enabled: false };
+    }
+
+    onChange(index, updated);
   };
 
   const label = (
@@ -76,28 +87,28 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
       <Collapse label={label} isOpen={isOpen} onToggle={() => setIsOpen(!isOpen)}>
         <div className={styles.content}>
           {/* Basic */}
-          <BasicEndpointFields endpoint={endpoint} onChange={handleChange} />
+          <BasicEndpointFields endpoint={endpoint} onChange={handleEndpointChange} />
 
           {/* Headers */}
-          <HeadersSection endpoint={endpoint} onChange={handleChange} />
+          <HeadersSection endpoint={endpoint} onChange={handleEndpointChange} />
 
           {/* Request body */}
-          <BodySection endpoint={endpoint} onChange={handleChange} />
+          <BodySection endpoint={endpoint} onChange={handleEndpointChange} />
 
           {/* Response handling */}
-          <ResponseHandlingSection endpoint={endpoint} onChange={handleChange} />
+          <ResponseHandlingSection endpoint={endpoint} onChange={handleEndpointChange} />
 
           {/* Polling */}
-          <PollingSection endpoint={endpoint} onChange={handleChange} />
+          <PollingSection endpoint={endpoint} onChange={handleEndpointChange} />
 
           {/* Streaming */}
-          <StreamingSection endpoint={endpoint} onChange={handleChange} />
+          <StreamingSection endpoint={endpoint} onChange={handleEndpointChange} />
 
           {/* Reasoning / Thinking */}
-          <ReasoningSection endpoint={endpoint} onChange={handleChange} />
+          <ReasoningSection endpoint={endpoint} onChange={handleEndpointChange} />
 
           {/* Conversation History */}
-          <HistorySection endpoint={endpoint} onChange={handleChange} />
+          <HistorySection endpoint={endpoint} onChange={handleEndpointChange} />
         </div>
       </Collapse>
     </div>
