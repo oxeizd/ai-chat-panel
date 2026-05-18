@@ -73,7 +73,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ children, className, inlin
         style={{
           margin: 0,
           padding: '0.5rem',
-          background: 'rgb(17 18 23 / 15%)',
+          background: 'rgb(69 72 85 / 20%)',
           overflowX: 'auto',
           whiteSpace: 'pre',
           wordBreak: 'normal',

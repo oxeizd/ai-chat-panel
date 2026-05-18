@@ -1,6 +1,5 @@
 import { EndpointConfig, TraceStep } from 'types';
 import { EventBus } from 'components/agent/core/eventBus';
-import { DEFAULT_STREAMING } from 'components/agent/config/defaults';
 import { dotGet, applySaveToContext } from 'components/agent/utils/utils';
 import { createInitialReasoningState, processReasoningChunk, finalizeReasoning } from '../reasoning/processor';
 import { ReasoningState } from '../reasoning/types';
@@ -46,7 +45,7 @@ export function processStreamChunk(
     }
   }
 
-  // 2. Reasoning — передаём eventType!
+  // 2. Reasoning
   if (op.reasoning?.enabled) {
     newState.reasoningState = processReasoningChunk(
       parsedChunk,
@@ -58,33 +57,17 @@ export function processStreamChunk(
     );
   }
 
-  const streaming = op.streaming;
-  if (streaming?.enabled && streaming.parseStrategy !== 'langgraph') {
-    const textPath = streaming.textPath ?? DEFAULT_STREAMING.textPath;
-    const textChunk = dotGet(parsedChunk, textPath);
-    if (typeof textChunk === 'string' && textChunk) {
-      if (newState.reasoningState.active) {
-        newState.reasoningState = finalizeReasoning(newState.reasoningState, eventBus);
-      }
-      newState.fullReply += textChunk;
-      eventBus.emit('chunk', textChunk);
-    }
-  }
-
-  // 4. Save fields to context
+  // 3. Сохранение полей в контекст
   applySaveToContext(context, op.saveToContext, parsedChunk);
 
   return newState;
 }
 
 export function finalizeStream(state: StreamProcessingState, eventBus: EventBus): StreamProcessingState {
-  if (state.reasoningState.active) {
-    const finalReasoningState = finalizeReasoning(state.reasoningState, eventBus);
+  const finalReasoningState = finalizeReasoning(state.reasoningState, eventBus);
 
-    return {
-      fullReply: state.fullReply,
-      reasoningState: finalReasoningState,
-    };
-  }
-  return state;
+  return {
+    fullReply: state.fullReply,
+    reasoningState: finalReasoningState,
+  };
 }

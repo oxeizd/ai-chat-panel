@@ -35,8 +35,7 @@ export async function handleStreamingResponse(
     };
   }
 
-  // jsonl и langgraph обрабатываются через NDJSON парсер
-  if (streaming.parseStrategy === 'jsonl' || streaming.parseStrategy === 'langgraph') {
+  if (streaming.parseStrategy === 'jsonl') {
     const result = await handleNdjsonStream(op, response, context, eventBus, onTrace);
     return {
       ok: true,
@@ -51,7 +50,9 @@ export async function handleStreamingResponse(
   return { ok: false, error: `Unsupported parse strategy: ${streaming.parseStrategy}` };
 }
 
-// Обработка SSE (без изменений)
+/**
+ * Обработка SSE с возможностью фильтрации событий по типу
+ */
 async function handleSSEStream(
   op: EndpointConfig,
   res: HttpResponse,
@@ -63,16 +64,23 @@ async function handleSSEStream(
     throw new Error('SSE response has no body');
   }
 
-  let rawMessages: string[] | undefined;
-  if (onTrace) {
-    rawMessages = [];
+  let lastEvent: any;
+  let state = createInitialStreamState();
+
+  const streaming = op.streaming;
+  const parser = new SSEParser();
+  const decoder = new TextDecoder();
+  const reader = res.body.getReader();
+
+  if (!isStreamingEnabled(streaming)) {
+    throw new Error('Streaming config missing');
   }
 
-  let lastEvent: any;
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  const parser = new SSEParser();
-  let state = createInitialStreamState();
+  const textPath = streaming.textPath;
+  const textEventType = streaming.textEventType;
+  const textDeltaField = streaming.textDeltaField;
+
+  let rawMessages: string[] | undefined = onTrace ? [] : undefined;
 
   try {
     while (true) {
@@ -89,31 +97,56 @@ async function handleSSEStream(
         if (msg.data === '[DONE]') {
           continue;
         }
-        let event: any;
+
+        let parsedEvent: any;
         try {
-          event = JSON.parse(msg.data);
-          lastEvent = event;
+          parsedEvent = JSON.parse(msg.data);
+          lastEvent = parsedEvent;
         } catch {
           onTrace?.({ type: 'sse_parse_error', timestamp: Date.now(), rawLine: msg.data });
           continue;
         }
-        state = processStreamChunk(event, op, context, state, eventBus, {
+
+        let textDelta: string | null = null;
+        if (textEventType) {
+          if (parsedEvent.type === textEventType) {
+            if (textDeltaField) {
+              textDelta = parsedEvent[textDeltaField];
+            } else if (textPath) {
+              textDelta = dotGet(parsedEvent, textPath);
+            }
+          }
+        } else {
+          if (textPath) {
+            textDelta = dotGet(parsedEvent, textPath);
+          }
+        }
+
+        if (typeof textDelta === 'string' && textDelta) {
+          if (state.reasoningState.active) {
+            state.reasoningState = finalizeReasoning(state.reasoningState, eventBus);
+          }
+          state.fullReply += textDelta;
+          eventBus.emit('chunk', textDelta);
+        }
+
+        state = processStreamChunk(parsedEvent, op, context, state, eventBus, {
           onTrace,
-          eventType: msg.event,
+          eventType: parsedEvent.type,
         });
       }
     }
-    const finalMessages = parser.flush();
 
+    const finalMessages = parser.flush();
     for (const msg of finalMessages) {
       if (msg.data === '[DONE]') {
         continue;
       }
       try {
-        const event = JSON.parse(msg.data);
-        state = processStreamChunk(event, op, context, state, eventBus, {
+        const parsedEvent = JSON.parse(msg.data);
+        state = processStreamChunk(parsedEvent, op, context, state, eventBus, {
           onTrace,
-          eventType: msg.event,
+          eventType: parsedEvent.type,
         });
       } catch {}
     }
@@ -121,10 +154,11 @@ async function handleSSEStream(
     state = finalizeStream(state, eventBus);
 
     if (onTrace && rawMessages) {
-      onTrace?.({
-        type: 'response',
+      onTrace({
+        type: 'fullStream',
         timestamp: Date.now(),
         responseBody: rawMessages.join('\n'),
+        isStreaming: true,
       });
     }
 
@@ -139,7 +173,9 @@ async function handleSSEStream(
   }
 }
 
-// Единый обработчик NDJSON (jsonl и langgraph)
+/**
+ * Обработка NDJSON (jsonl)
+ */
 async function handleNdjsonStream(
   op: EndpointConfig,
   res: HttpResponse,
@@ -157,27 +193,12 @@ async function handleNdjsonStream(
   let state = createInitialStreamState();
   let lastEvent: any;
   const streaming = op.streaming;
-
   if (!isStreamingEnabled(streaming)) {
     throw new Error('Streaming config missing');
   }
 
-  let rawMessages: string[] | undefined;
-  if (onTrace) {
-    rawMessages = [];
-  }
-
-  let textEventType: string | undefined;
-  let textDeltaField: string | undefined;
-  let textPath = streaming.textPath;
-
-  if (streaming.parseStrategy === 'langgraph') {
-    textEventType = streaming.textEventType ?? 'TEXT_MESSAGE_CONTENT';
-    textDeltaField = streaming.textDeltaField ?? 'delta';
-  } else if (streaming.parseStrategy === 'jsonl') {
-    textEventType = streaming.textEventType;
-    textDeltaField = streaming.textDeltaField;
-  }
+  const textPath = streaming.textPath;
+  let rawMessages: string[] | undefined = onTrace ? [] : undefined;
 
   try {
     while (true) {
@@ -185,7 +206,6 @@ async function handleNdjsonStream(
       if (done) {
         break;
       }
-
       const chunk = decoder.decode(value, { stream: true });
       const objects = parser.feed(chunk);
       for (const obj of objects) {
@@ -193,18 +213,9 @@ async function handleNdjsonStream(
           rawMessages.push(JSON.stringify(obj));
         }
         lastEvent = obj;
-        let textDelta: string | null = null;
 
-        // Извлечение текста в приоритетном порядке:
-        // 1) Если задан eventType и тип объекта совпадает + есть deltaField
-        // 2) Если нет eventType, но есть textPath
-        if (textEventType && obj.type === textEventType) {
-          if (textDeltaField) {
-            textDelta = obj[textDeltaField];
-          } else if (textPath) {
-            textDelta = dotGet(obj, textPath);
-          }
-        } else if (!textEventType && textPath) {
+        let textDelta: string | null = null;
+        if (textPath) {
           textDelta = dotGet(obj, textPath);
         }
 
@@ -216,10 +227,9 @@ async function handleNdjsonStream(
           eventBus.emit('chunk', textDelta);
         }
 
-        // Всегда передаём объект в общий обработчик (для истории, reasoning, saveToContext)
         state = processStreamChunk(obj, op, context, state, eventBus, {
           onTrace,
-          eventType: obj.type,
+          eventType: obj.type, // может быть undefined, но для jsonl обычно не нужен
         });
       }
     }
@@ -242,8 +252,8 @@ async function handleNdjsonStream(
 
     return {
       reply: state.fullReply,
-      lastEvent,
       reasoningText: state.reasoningState.fullText,
+      lastEvent,
       context,
     };
   } finally {

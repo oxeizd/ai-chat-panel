@@ -1,5 +1,6 @@
 import React from 'react';
-import { Switch, Field, Input, Combobox } from '@grafana/ui';
+import { Switch, Field, Input, Combobox, useStyles2 } from '@grafana/ui';
+import { css } from '@emotion/css';
 import { EndpointConfig, StreamingConfig } from 'types';
 
 interface StreamingSectionProps {
@@ -10,68 +11,156 @@ interface StreamingSectionProps {
 const PARSE_STRATEGY_OPTIONS = [
   { label: 'SSE (Server-Sent Events)', value: 'sse' },
   { label: 'JSON Lines (jsonl)', value: 'jsonl' },
-  { label: 'LangGraph (NDJSON events)', value: 'langgraph' },
 ];
 
-function isStreamingEnabled(
-  streaming: EndpointConfig['streaming']
-): streaming is Extract<StreamingConfig, { enabled: true }> {
-  return streaming !== null && typeof streaming === 'object' && streaming.enabled === true;
-}
+const EXTRACTION_MODE_OPTIONS = [
+  { label: 'JSON path (dot notation)', value: 'jsonpath' },
+  { label: 'Event type + field', value: 'eventfield' },
+];
 
-function getDefaultConfigForStrategy(strategy: 'sse' | 'jsonl' | 'langgraph'): StreamingConfig & { enabled: true } {
+function getDefaultConfig(strategy: 'sse' | 'jsonl'): StreamingConfig & { enabled: true } {
   if (strategy === 'sse') {
     return {
       enabled: true,
       parseStrategy: 'sse',
       textPath: 'choices[0].delta.content',
-      delimiter: '\n\n',
+      delimiter: '\\n\\n',
       dataPrefix: 'data: ',
-    };
-  }
-  if (strategy === 'jsonl') {
-    return {
-      enabled: true,
-      parseStrategy: 'jsonl',
-      textPath: 'choices[0].delta.content',
     };
   }
   return {
     enabled: true,
-    parseStrategy: 'langgraph',
-    textEventType: 'TEXT_MESSAGE_CONTENT',
-    textDeltaField: 'delta',
+    parseStrategy: 'jsonl',
+    textPath: 'choices[0].delta.content',
   };
 }
 
+const getStyles = () => ({
+  container: css`
+    margin-top: 16px;
+  `,
+  header: css`
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  `,
+  fields: css`
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+  `,
+});
+
 export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, onChange }) => {
+  const styles = useStyles2(getStyles);
   const streaming = endpoint.streaming;
-  const enabled = isStreamingEnabled(streaming);
+  const enabled = streaming?.enabled === true;
   const config = enabled ? streaming : null;
 
-  const handleStreamingChange = (checked: boolean) => {
+  const handleEnable = (checked: boolean) => {
     if (checked) {
-      onChange('streaming', getDefaultConfigForStrategy('sse'));
+      onChange('streaming', getDefaultConfig('sse'));
     } else {
       onChange('streaming', { enabled: false });
     }
   };
 
-  const handleStreamingFieldChange = <K extends keyof Extract<StreamingConfig, { enabled: true }>>(
-    field: K,
-    val: any
-  ) => {
-    if (!enabled || !config) {
-      const base = getDefaultConfigForStrategy('sse');
-      onChange('streaming', { ...base, [field]: val });
-      return;
-    }
-    onChange('streaming', { ...config, [field]: val });
+  const handleStrategyChange = (strategyValue: string) => {
+    onChange('streaming', getDefaultConfig(strategyValue as any));
   };
 
-  const handleParseStrategyChange = (strategyValue: string) => {
-    const strategy = strategyValue as 'sse' | 'jsonl' | 'langgraph';
-    onChange('streaming', getDefaultConfigForStrategy(strategy));
+  const handleFieldChange = <K extends keyof Extract<StreamingConfig, { enabled: true }>>(field: K, value: any) => {
+    if (!config) {
+      return;
+    }
+    onChange('streaming', { ...config, [field]: value });
+  };
+
+  const extractionMode = config?.textEventType ? 'eventfield' : 'jsonpath';
+
+  const handleExtractionModeChange = (mode: string) => {
+    if (!config || config.parseStrategy !== 'sse') {
+      return;
+    }
+    if (mode === 'jsonpath') {
+      const { textEventType, textDeltaField, ...rest } = config;
+      onChange('streaming', { ...rest, textPath: config.textPath ?? 'choices[0].delta.content' });
+    } else {
+      const { textPath, ...rest } = config;
+      onChange('streaming', {
+        ...rest,
+        textEventType: config.textEventType ?? 'TEXT_MESSAGE_CONTENT',
+        textDeltaField: config.textDeltaField ?? 'delta',
+      });
+    }
+  };
+
+  const renderSseFields = () => {
+    if (!config) {
+      return null;
+    }
+    return (
+      <>
+        <Field label="Extraction mode">
+          <Combobox
+            options={EXTRACTION_MODE_OPTIONS}
+            value={extractionMode}
+            onChange={(opt) => handleExtractionModeChange(opt?.value)}
+          />
+        </Field>
+        {extractionMode === 'jsonpath' ? (
+          <Field label="JSON path (dot notation)" description="e.g., choices[0].delta.content">
+            <Input
+              value={config.textPath ?? 'choices[0].delta.content'}
+              onChange={(e) => handleFieldChange('textPath', e.currentTarget.value)}
+            />
+          </Field>
+        ) : (
+          <>
+            <Field label="Event type" description="Type field value to filter (e.g., TEXT_MESSAGE_CONTENT)">
+              <Input
+                value={config.textEventType ?? 'TEXT_MESSAGE_CONTENT'}
+                onChange={(e) => handleFieldChange('textEventType', e.currentTarget.value)}
+              />
+            </Field>
+            <Field label="Delta field" description="Field containing the text chunk (e.g., delta)">
+              <Input
+                value={config.textDeltaField ?? 'delta'}
+                onChange={(e) => handleFieldChange('textDeltaField', e.currentTarget.value)}
+              />
+            </Field>
+          </>
+        )}
+        <Field label="Delimiter">
+          <Input
+            value={config.delimiter ?? '\\n\\n'}
+            onChange={(e) => handleFieldChange('delimiter', e.currentTarget.value)}
+          />
+        </Field>
+        <Field label="Data prefix">
+          <Input
+            value={config.dataPrefix ?? 'data: '}
+            onChange={(e) => handleFieldChange('dataPrefix', e.currentTarget.value)}
+          />
+        </Field>
+      </>
+    );
+  };
+
+  const renderJsonlFields = () => {
+    if (!config) {
+      return null;
+    }
+    return (
+      <Field label="JSON path (dot notation)" description="e.g., choices[0].delta.content">
+        <Input
+          value={config.textPath ?? 'choices[0].delta.content'}
+          onChange={(e) => handleFieldChange('textPath', e.currentTarget.value)}
+        />
+      </Field>
+    );
   };
 
   const renderStrategyFields = () => {
@@ -80,72 +169,27 @@ export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, on
     }
     switch (config.parseStrategy) {
       case 'sse':
-        return (
-          <>
-            <Field label="Text path (JSON path)">
-              <Input
-                value={config.textPath ?? 'choices[0].delta.content'}
-                onChange={(e) => handleStreamingFieldChange('textPath', e.currentTarget.value)}
-              />
-            </Field>
-            <Field label="Delimiter">
-              <Input
-                value={config.delimiter ?? '\n\n'}
-                onChange={(e) => handleStreamingFieldChange('delimiter', e.currentTarget.value)}
-              />
-            </Field>
-            <Field label="Data prefix">
-              <Input
-                value={config.dataPrefix ?? 'data: '}
-                onChange={(e) => handleStreamingFieldChange('dataPrefix', e.currentTarget.value)}
-              />
-            </Field>
-          </>
-        );
+        return renderSseFields();
       case 'jsonl':
-        return (
-          <Field label="Text path (JSON path)">
-            <Input
-              value={config.textPath ?? 'choices[0].delta.content'}
-              onChange={(e) => handleStreamingFieldChange('textPath', e.currentTarget.value)}
-            />
-          </Field>
-        );
-      case 'langgraph':
-        return (
-          <>
-            <Field label="Text event type">
-              <Input
-                value={config.textEventType ?? 'TEXT_MESSAGE_CONTENT'}
-                onChange={(e) => handleStreamingFieldChange('textEventType', e.currentTarget.value)}
-              />
-            </Field>
-            <Field label="Text delta field">
-              <Input
-                value={config.textDeltaField ?? 'delta'}
-                onChange={(e) => handleStreamingFieldChange('textDeltaField', e.currentTarget.value)}
-              />
-            </Field>
-          </>
-        );
+        return renderJsonlFields();
       default:
         return null;
     }
   };
 
   return (
-    <div style={{ marginTop: '16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+    <div className={styles.container}>
+      <div className={styles.header}>
         <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>📡 Streaming</div>
-        <Switch value={enabled} onChange={(e) => handleStreamingChange(e.currentTarget.checked)} />
+        <Switch value={enabled} onChange={(e) => handleEnable(e.currentTarget.checked)} />
       </div>
       {enabled && config && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+        <div className={styles.fields}>
           <Field label="Parse strategy">
             <Combobox
               options={PARSE_STRATEGY_OPTIONS}
               value={config.parseStrategy}
-              onChange={(opt) => handleParseStrategyChange(opt?.value)}
+              onChange={(opt) => handleStrategyChange(opt?.value)}
             />
           </Field>
           {renderStrategyFields()}

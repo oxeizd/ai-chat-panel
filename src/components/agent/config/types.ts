@@ -39,12 +39,12 @@ export type StreamingConfig =
   | { enabled: false }
   | {
       enabled: true;
-      parseStrategy: 'sse' | 'jsonl' | 'langgraph';
-      textPath?: string;
+      parseStrategy: 'sse' | 'jsonl';
+      textPath?: string; // путь к тексту, например "choices[0].delta.content"
       delimiter?: string;
       dataPrefix?: string;
-      textEventType?: string;
-      textDeltaField?: string;
+      textEventType?: string; // например "TEXT_MESSAGE_CONTENT"
+      textDeltaField?: string; // поле, содержащее текст, например "delta"
     };
 
 export type ChatHistoryConfig =

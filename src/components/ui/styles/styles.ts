@@ -363,7 +363,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
         pre: {
           margin: '0.3rem 0'; // уменьшенный отступ
           padding: '0.5rem'; // уменьшенный паддинг
-          background: theme.colors.background.secondary;
           overflowx: 'auto';
           whitespace: 'pre';
           wordbreak: 'normal';
@@ -389,7 +388,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
 
         /* Инлайн код */
         code:not(pre code) {
-          background: ${theme.colors.background.secondary};
           padding: 0.1em 0.3em;
           color: ${theme.colors.primary.text};
           font-family: monospace;
