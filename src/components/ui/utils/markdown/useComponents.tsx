@@ -11,6 +11,15 @@ export const useMarkdownComponents = (chartContainerClass: string) => {
         const language = match ? match[1] : '';
         const codeText = String(children).replace(/\n$/, '');
 
+        if (inline) {
+          return <code className={className} {...props}>{children}</code>;
+        }
+
+        const isLikelyInline = !language && codeText.length < 80 && !codeText.includes('\n');
+        if (isLikelyInline) {
+          return <code className={className} {...props}>{children}</code>;
+        }
+
         // Графики
         if (language === 'chart' && !inline) {
           try {
@@ -37,15 +46,6 @@ export const useMarkdownComponents = (chartContainerClass: string) => {
 
         // Формулы
         if (language === 'math') {
-          return (
-            <code className={className} {...props}>
-              {children}
-            </code>
-          );
-        }
-
-        // Блок кода без переносов и короткий → покажем как инлайн
-        if (!inline && !codeText.includes('\n') && codeText.length < 100) {
           return (
             <code className={className} {...props}>
               {children}
