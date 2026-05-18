@@ -23,7 +23,8 @@ export function processReasoningChunk(
   config: ReasoningConfig,
   state: ReasoningState,
   eventBus: EventBus,
-  onTrace?: (step: TraceStep) => void
+  onTrace?: (step: TraceStep) => void,
+  eventType?: string
 ): ReasoningState {
   if (!config.enabled) {
     return state;
@@ -32,7 +33,7 @@ export function processReasoningChunk(
   if (config.type === 'embedded') {
     return processEmbeddedChunk({ parsedChunk, config, state, eventBus, onTrace });
   } else if (config.type === 'separate') {
-    return processSeparateChunk({ parsedChunk, config, state, eventBus, onTrace });
+    return processSeparateChunk({ parsedChunk, config, state, eventBus, onTrace, eventType });
   }
 
   return state;

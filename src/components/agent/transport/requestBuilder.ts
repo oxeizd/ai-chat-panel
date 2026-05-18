@@ -22,7 +22,7 @@ export function buildRequestConfig(
 
   let body: string | undefined = undefined;
 
-  if (ep.body != null) {
+  if (ep.body != null && method !== 'GET' && method !== 'HEAD') {
     if (typeof ep.body === 'string') {
       body = resolveString(ep.body, context);
     } else {

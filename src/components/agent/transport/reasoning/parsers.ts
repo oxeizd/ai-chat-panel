@@ -21,12 +21,9 @@ export function processEmbeddedChunk(ctx: ReasoningChunkContext): ReasoningState
     }
   }
 
-  // thinking_tags в стриминге обычно не используется (только финальный ответ),
-
   return newState;
 }
 
-/** Обработка финального ответа для embedded-режима (возвращает cleanedReply) */
 export function extractEmbeddedFinal(ctx: ReasoningExtractContext): { cleanedReply: any; extracted: boolean } {
   const { parsedBody, reply, config, eventBus } = ctx;
   const r = config as Extract<ReasoningConfig, { enabled: true; type: 'embedded' }>;
@@ -73,62 +70,63 @@ export function extractEmbeddedFinal(ctx: ReasoningExtractContext): { cleanedRep
   return { cleanedReply, extracted };
 }
 
-/** Обработка чанка для separate-режима (по event'ам) */
-export function processSeparateChunk(ctx: ReasoningChunkContext): ReasoningState {
-  const { parsedChunk, config, state, eventBus } = ctx;
+export function processSeparateChunk(ctx: ReasoningChunkContext & { eventType?: string }): ReasoningState {
+  const { parsedChunk, config, state, eventBus, eventType } = ctx;
   const r = config as Extract<ReasoningConfig, { enabled: true; type: 'separate' }>;
 
-  let newState = { ...state };
+  if (!r.eventType) {
+    return state;
+  }
 
-  const eventType = r.eventType;
-  if (eventType && (parsedChunk.type === eventType || parsedChunk.event === eventType)) {
-    let chunkText = r.contentField ? dotGet(parsedChunk, r.contentField) : parsedChunk;
-    if (typeof chunkText === 'string' && chunkText) {
-      if (!newState.active) {
-        newState.active = true;
-        eventBus.emit('reasoning:start', undefined);
-      }
-      newState.fullText += chunkText;
-      eventBus.emit('reasoning:chunk', chunkText);
+  if (eventType !== r.eventType) {
+    return state;
+  }
+
+  let chunkText: string | undefined;
+  if (r.contentField) {
+    chunkText = dotGet(parsedChunk, r.contentField);
+  } else {
+    chunkText = typeof parsedChunk === 'string' ? parsedChunk : undefined;
+  }
+
+  if (typeof chunkText === 'string' && chunkText) {
+    let newState = { ...state };
+    if (!newState.active) {
+      newState.active = true;
+      eventBus.emit('reasoning:start', undefined);
     }
+    newState.fullText += chunkText;
+    eventBus.emit('reasoning:chunk', chunkText);
 
-    const resultField = r.resultField;
-    if (resultField && dotGet(parsedChunk, resultField) === 'end') {
-      if (newState.active) {
+    if (r.resultField) {
+      const resultValue = dotGet(parsedChunk, r.resultField);
+      if (typeof resultValue === 'string' && resultValue.toLowerCase().includes('end')) {
         eventBus.emit('reasoning:end', newState.fullText);
         newState.active = false;
       }
     }
+
+    return newState;
   }
 
-  return newState;
+  return state;
 }
 
-/** Обработка финального ответа для separate-режима (один ответ, не стриминг) */
 export function extractSeparateFinal(ctx: ReasoningExtractContext): { cleanedReply: any; extracted: boolean } {
   const { parsedBody, reply, config, eventBus } = ctx;
   const r = config as Extract<ReasoningConfig, { enabled: true; type: 'separate' }>;
 
-  const contentField = r.contentField;
-  const resultField = r.resultField;
-  let extracted = false;
   let cleanedReply = reply;
+  let extracted = false;
 
-  if (contentField) {
-    const reasoningText = dotGet(parsedBody, contentField);
+  if (r.contentField) {
+    const reasoningText = dotGet(parsedBody, r.contentField);
     if (typeof reasoningText === 'string' && reasoningText) {
       eventBus.emit('reasoning:start', undefined);
       eventBus.emit('reasoning:chunk', reasoningText);
-      const isEnd = resultField ? dotGet(parsedBody, resultField) === 'end' : true;
-      if (isEnd) {
-        eventBus.emit('reasoning:end', reasoningText);
-      } else {
-        // для простоты считаем, что в не-стриминге reasoning заканчивается с ответом
-        eventBus.emit('reasoning:end', reasoningText);
-      }
+      eventBus.emit('reasoning:end', reasoningText);
       extracted = true;
     }
   }
-
   return { cleanedReply, extracted };
 }

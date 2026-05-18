@@ -80,7 +80,7 @@ export class SSEParser {
 }
 
 /**
- *  ndjsonParser
+ * NDJSON / JSON Lines парсер (работает для jsonl и langgraph)
  */
 export class NdjsonParser {
   private buffer = '';

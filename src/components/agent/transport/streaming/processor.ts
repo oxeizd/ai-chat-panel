@@ -46,20 +46,20 @@ export function processStreamChunk(
     }
   }
 
-  // 2. Reasoning
+  // 2. Reasoning — передаём eventType!
   if (op.reasoning?.enabled) {
     newState.reasoningState = processReasoningChunk(
       parsedChunk,
       op.reasoning,
       newState.reasoningState,
       eventBus,
-      onTrace
+      onTrace,
+      eventType
     );
   }
 
-  // 3. Text chunk
   const streaming = op.streaming;
-  if (streaming?.enabled) {
+  if (streaming?.enabled && streaming.parseStrategy !== 'langgraph') {
     const textPath = streaming.textPath ?? DEFAULT_STREAMING.textPath;
     const textChunk = dotGet(parsedChunk, textPath);
     if (typeof textChunk === 'string' && textChunk) {
@@ -78,9 +78,13 @@ export function processStreamChunk(
 }
 
 export function finalizeStream(state: StreamProcessingState, eventBus: EventBus): StreamProcessingState {
-  const finalReasoningState = finalizeReasoning(state.reasoningState, eventBus);
-  return {
-    fullReply: state.fullReply,
-    reasoningState: finalReasoningState,
-  };
+  if (state.reasoningState.active) {
+    const finalReasoningState = finalizeReasoning(state.reasoningState, eventBus);
+
+    return {
+      fullReply: state.fullReply,
+      reasoningState: finalReasoningState,
+    };
+  }
+  return state;
 }

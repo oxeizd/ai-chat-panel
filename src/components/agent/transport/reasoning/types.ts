@@ -12,6 +12,7 @@ export interface ReasoningChunkContext {
   state: ReasoningState;
   eventBus: EventBus;
   onTrace?: (step: TraceStep) => void;
+  eventType?: string;
 }
 
 export interface ReasoningExtractContext {

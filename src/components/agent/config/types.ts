@@ -39,10 +39,12 @@ export type StreamingConfig =
   | { enabled: false }
   | {
       enabled: true;
-      parseStrategy: 'sse' | 'jsonl';
+      parseStrategy: 'sse' | 'jsonl' | 'langgraph';
       textPath?: string;
       delimiter?: string;
       dataPrefix?: string;
+      textEventType?: string;
+      textDeltaField?: string;
     };
 
 export type ChatHistoryConfig =
