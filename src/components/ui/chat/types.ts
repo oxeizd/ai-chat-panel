@@ -47,6 +47,9 @@ export interface ChatActions {
   handleSuggestionClick: (suggestion: string) => void;
   debug: boolean;
   getTrace?: (messageId: string) => DebugTrace | undefined;
+  testMessageButton?: boolean;
+  fetchThreads: () => Promise<any[]>;
+  loadThread: (threadId: string) => Promise<void>;
 }
 
 export interface ChatConfig extends ChatState, ChatActions {}
@@ -68,4 +71,5 @@ export interface ChatProviderProps {
   centerFloatingChat?: boolean;
   inputAreaBackground?: boolean;
   fullScale?: boolean;
+  testMessageButton?: boolean;
 }

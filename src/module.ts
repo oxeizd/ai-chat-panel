@@ -133,5 +133,13 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
       description: 'Enable debug traces (click on user message to see full request flow)',
       defaultValue: false,
       category: ['Debug'],
+    })
+    .addBooleanSwitch({
+      path: 'testMessageButton',
+      name: 'AI message button',
+      description: 'Add button to send arbitrary messages and preview markdown rendering',
+      defaultValue: false,
+      category: ['Debug'],
+      showIf: (config) => config.debug === true,
     });
 });

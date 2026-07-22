@@ -21,6 +21,9 @@ const emptyAgent = (): AgentConfig => ({
   endpoints: [],
   workflow: [],
   startupOperation: '',
+  history: false,
+  historyListOperation: '',
+  historyLoadOperation: '',
 });
 
 export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, onDismiss, onSave, existingAgents }) => {
@@ -96,8 +99,14 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
         operationOptions={operationOptions}
         startupOperation={editedAgent.startupOperation || ''}
         workflow={editedAgent.workflow || []}
+        history={editedAgent.history || false}
+        historyListOperation={editedAgent.historyListOperation}
+        historyLoadOperation={editedAgent.historyLoadOperation}
         onChangeStartup={(value) => updateField('startupOperation', value)}
         onChangeWorkflow={(value) => updateField('workflow', value)}
+        onChangeHistory={(checked) => updateField('history', checked)}
+        onChangeHistoryList={(value) => updateField('historyListOperation', value)}
+        onChangeHistoryLoad={(value) => updateField('historyLoadOperation', value)}
       />
 
       {validationError && <div style={{ color: theme.colors.error.main, marginBottom: '12px' }}>{validationError}</div>}

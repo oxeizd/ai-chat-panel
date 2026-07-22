@@ -27,6 +27,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   centerFloatingChat = false,
   inputAreaBackground = false,
   fullScale = false,
+  testMessageButton = false,
 }) => {
   const { user } = useGrafanaUser();
 
@@ -51,6 +52,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     retryMessage,
     getTrace,
     threadId,
+    fetchThreads,
+    loadThread,
   } = useChatMessages(selectedAgent, user, debug);
 
   useEffect(() => {
@@ -191,6 +194,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       handleSuggestionClick,
       debug,
       getTrace,
+      testMessageButton,
+      fetchThreads,
+      loadThread,
     }),
     [
       setMessages,
@@ -227,6 +233,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       handleSuggestionClick,
       debug,
       getTrace,
+      testMessageButton,
+      fetchThreads,
+      loadThread,
     ]
   );
 

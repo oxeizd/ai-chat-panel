@@ -37,6 +37,7 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
       centerFloatingChat: options.chatMode === 'button' ? true : options.chatStyles.centerFloatingChat,
       inputAreaBackground: options.chatStyles.inputAreaBackground,
       fullScale: options.chatStyles.fullScale,
+      testMessageButton: options.testMessageButton,
     }),
     [options]
   );

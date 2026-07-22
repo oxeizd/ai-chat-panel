@@ -12,12 +12,20 @@ export const useMarkdownComponents = (chartContainerClass: string) => {
         const codeText = String(children).replace(/\n$/, '');
 
         if (inline) {
-          return <code className={className} {...props}>{children}</code>;
+          return (
+            <code className={className} {...props}>
+              {children}
+            </code>
+          );
         }
 
         const isLikelyInline = !language && codeText.length < 80 && !codeText.includes('\n');
         if (isLikelyInline) {
-          return <code className={className} {...props}>{children}</code>;
+          return (
+            <code className={className} {...props}>
+              {children}
+            </code>
+          );
         }
 
         // Графики

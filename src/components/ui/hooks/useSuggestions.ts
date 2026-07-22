@@ -8,15 +8,16 @@ interface UseSuggestionsOptions {
 
 export const useSuggestions = ({ suggestions, placement, hideWhen = false }: UseSuggestionsOptions) => {
   const [showPopup, setShowPopup] = useState(false);
+  const [blockOpen, setBlockOpen] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const blurTimeoutRef = useRef<number | null>(null);
 
   const onFocus = useCallback(() => {
-    if (placement === 'onFocus' && !hideWhen && suggestions.length > 0) {
+    if (placement === 'onFocus' && !hideWhen && suggestions.length > 0 && !blockOpen) {
       setShowPopup(true);
     }
-  }, [placement, hideWhen, suggestions.length]);
+  }, [placement, hideWhen, suggestions.length, blockOpen]);
 
   const onBlur = useCallback(() => {
     if (blurTimeoutRef.current) {
@@ -49,6 +50,12 @@ export const useSuggestions = ({ suggestions, placement, hideWhen = false }: Use
     };
   }, []);
 
+  const closeAndBlock = useCallback(() => {
+    setShowPopup(false);
+    setBlockOpen(true);
+    setTimeout(() => setBlockOpen(false), 500);
+  }, []);
+
   return {
     showPopup,
     popupRef,
@@ -56,5 +63,6 @@ export const useSuggestions = ({ suggestions, placement, hideWhen = false }: Use
     onFocus,
     onBlur,
     setShowPopup,
+    closeAndBlock,
   };
 };

@@ -21,6 +21,7 @@ export interface PanelOptions {
   };
   agents: AgentConfig[];
   debug?: boolean;
+  testMessageButton?: boolean;
 }
 
 export * from 'components/agent/config/types';

@@ -2,6 +2,7 @@ import { EventBus } from './eventBus';
 import { AgentConfig, TraceStep, AgentEvent } from 'types';
 import { executeWorkflow } from './workflowManager';
 import { createAgentConfig } from '../config/agentConfig';
+import { sendOperation } from '../transport/sender';
 
 export class Agent {
   private config: AgentConfig;
@@ -107,6 +108,26 @@ export class Agent {
       this.processing = false;
       this.abortController = undefined;
     }
+  }
+
+  /**
+   * Выполнить произвольную операцию (эндпоинт) с заданным контекстом.
+   * Не влияет на основной поток диалога, но обновляет сессионный контекст.
+   */
+  async runOperation(operation: string, additionalContext: Record<string, any> = {}): Promise<any> {
+    if (this.processing) {
+      throw new Error('Agent is busy');
+    }
+    const context = { ...this.session.context, ...additionalContext };
+    const result = await sendOperation(this.config, operation, context, this.bus, {
+      signal: this.abortController?.signal,
+    });
+    if (!result.ok) {
+      throw new Error(result.error || 'Operation failed');
+    }
+    // Обновляем контекст сессии (если операция что-то сохранила)
+    this.session.context = { ...this.session.context, ...result.context };
+    return result.data;
   }
 
   async resetSession(): Promise<void> {

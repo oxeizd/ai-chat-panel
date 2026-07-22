@@ -56,7 +56,7 @@ export const InputArea = memo(
       inputAreaBackground,
     } = useChatActions();
 
-    const { showPopup, popupRef, inputRef, onFocus, onBlur, setShowPopup } = useSuggestions({
+    const { showPopup, popupRef, inputRef, onFocus, onBlur, closeAndBlock } = useSuggestions({
       suggestions: suggestions || [],
       placement: suggestionsPlacement || 'always',
       hideWhen: !showSuggestions,
@@ -85,6 +85,8 @@ export const InputArea = memo(
 
     const handleSuggestionClick = useCallback(
       (suggestion: string) => {
+        closeAndBlock();
+
         if (onSendText) {
           onSendText(suggestion);
         } else {
@@ -96,9 +98,8 @@ export const InputArea = memo(
           }
         }
         inputRef.current?.blur();
-        setShowPopup(false);
       },
-      [onSendText, onSend, setInputValue, sendMessage, inputRef, setShowPopup]
+      [onSendText, onSend, setInputValue, sendMessage, inputRef, closeAndBlock]
     );
 
     const handleAction = useCallback(() => {

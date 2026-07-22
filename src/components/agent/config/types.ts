@@ -5,6 +5,9 @@ export interface AgentConfig {
   endpoints: EndpointConfig[];
   startupOperation: string;
   workflow: string[];
+  history: boolean;
+  historyListOperation?: string;
+  historyLoadOperation?: string;
 }
 
 export interface EndpointConfig {

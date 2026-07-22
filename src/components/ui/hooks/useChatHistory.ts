@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useChatActions } from '../chat/ChatContext';
 
 export interface ChatHistoryItem {
   id: string;
@@ -8,51 +9,54 @@ export interface ChatHistoryItem {
 }
 
 export const useChatHistory = () => {
-  // Список диалогов
+  const { fetchThreads, loadThread } = useChatActions();
   const [historyChats, setHistoryChats] = useState<ChatHistoryItem[]>([]);
-  // Состояние модального окна
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Загрузка истории (заглушка)
   const loadHistory = useCallback(async () => {
-    // TODO: реальный запрос
-    setHistoryChats([
-      { id: '1', title: 'Разговор о погоде', date: '2025-01-20', preview: 'Сегодня солнечно...' },
-      { id: '2', title: 'Помощь с кодом', date: '2025-01-19', preview: 'Как правильно использовать хуки?' },
-    ]);
-  }, []);
+    setIsLoading(true);
+    try {
+      const threads = await fetchThreads();
+      setHistoryChats(threads);
+    } catch (err) {
+      console.error('Failed to load threads', err);
+      setHistoryChats([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchThreads]);
 
-  // Выбор диалога
-  const selectChat = useCallback((chatId: string) => {
-    console.log('Выбран чат', chatId);
-    // TODO: загрузить сообщения выбранного чата
-  }, []);
-
-  // Удаление диалога
-  const deleteChat = useCallback(async (chatId: string) => {
-    console.log('Удалён чат', chatId);
-    setHistoryChats((prev) => prev.filter((c) => c.id !== chatId));
-    // TODO: вызов API удаления
-  }, []);
-
-  // Открыть модалку (и загрузить историю)
   const openHistoryModal = useCallback(() => {
     setIsHistoryModalOpen(true);
     loadHistory();
   }, [loadHistory]);
 
-  // Закрыть модалку
   const closeHistoryModal = useCallback(() => {
     setIsHistoryModalOpen(false);
+  }, []);
+
+  const selectChat = useCallback(
+    async (chatId: string) => {
+      await loadThread(chatId);
+      closeHistoryModal();
+    },
+    [loadThread, closeHistoryModal]
+  );
+
+  const deleteChat = useCallback(async (chatId: string) => {
+    // Локальное удаление из списка (без API)
+    setHistoryChats((prev) => prev.filter((c) => c.id !== chatId));
+    // При необходимости можно добавить реальную операцию удаления
   }, []);
 
   return {
     historyChats,
     isHistoryModalOpen,
-    loadHistory, // может понадобиться для ручной перезагрузки
-    selectChat,
-    deleteChat,
+    isLoading,
     openHistoryModal,
     closeHistoryModal,
+    selectChat,
+    deleteChat,
   };
 };

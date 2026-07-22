@@ -34,6 +34,16 @@ export const useAgent = (config: AgentConfig | null) => {
     [agent]
   );
 
+  const runOperation = useCallback(
+    async (operation: string, additionalContext?: Record<string, any>) => {
+      if (!agent) {
+        throw new Error('Agent not initialized');
+      }
+      return agent.runOperation(operation, additionalContext);
+    },
+    [agent]
+  );
+
   const resetSession = useCallback(() => agent?.resetSession(), [agent]);
   const abort = useCallback(() => agent?.abort(), [agent]);
 
@@ -97,5 +107,6 @@ export const useAgent = (config: AgentConfig | null) => {
     getContextValue,
     getContext,
     onFileAttachment,
+    runOperation,
   };
 };

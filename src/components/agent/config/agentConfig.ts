@@ -151,8 +151,10 @@ export function normalizeAgentConfig(input: Partial<AgentConfig>): AgentConfig {
     endpoints: (input.endpoints ?? []).map((ep) => normalizeEndpointConfig(ep, input.url)),
     workflow: input.workflow ?? [],
     startupOperation: input.startupOperation ?? '',
+    history: input.history ?? false,
+    historyListOperation: input.historyListOperation,
+    historyLoadOperation: input.historyLoadOperation,
   };
-  console.log(agent);
   return agent;
 }
 

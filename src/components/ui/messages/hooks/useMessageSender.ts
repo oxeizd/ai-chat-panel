@@ -31,6 +31,7 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
     onReasoningEnd,
     onFileAttachment,
     getContextValue,
+    runOperation,
   } = useAgent(agentConfig);
 
   const callbacksRef = useRef<SendCallbacks>({});
@@ -108,5 +109,6 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
     reset,
     isSending: isLoading,
     getThreadId,
+    runOperation,
   };
 };

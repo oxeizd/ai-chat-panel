@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { AgentConfig } from 'types';
+import { AgentConfig, Message } from 'types';
 import { GrafanaUser } from 'components/hooks/useGrafanaUser';
 import { useMessageSender } from './useMessageSender';
 import { useMessagesState } from './useMessagesState';
@@ -27,7 +27,14 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
   } = useMessagesState();
 
   const { traces, create, addStep, setReply, setError, remove: removeTrace } = useDebugTraces(debug);
-  const { send, abort, reset: resetSession, isSending, getThreadId } = useMessageSender({ agent: currentAgent, user });
+  const {
+    send,
+    abort,
+    reset: resetSession,
+    isSending,
+    getThreadId,
+    runOperation,
+  } = useMessageSender({ agent: currentAgent, user });
   const [threadId, setThreadId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -189,6 +196,45 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
 
   const getTrace = useCallback((messageId: string) => traces.get(messageId), [traces]);
 
+  const fetchThreads = useCallback(async (): Promise<any[]> => {
+    if (!currentAgent?.history || !currentAgent.historyListOperation) {
+      return [];
+    }
+    try {
+      const result = await runOperation(currentAgent.historyListOperation);
+      return Array.isArray(result) ? result : [];
+    } catch (err) {
+      console.error('Failed to fetch threads:', err);
+      return [];
+    }
+  }, [currentAgent, runOperation]);
+
+  const loadThread = useCallback(
+    async (threadId: string) => {
+      if (!currentAgent?.history || !currentAgent.historyLoadOperation) {
+        return;
+      }
+      try {
+        const result = await runOperation(currentAgent.historyLoadOperation, { chatId: threadId });
+        if (!Array.isArray(result)) {
+          console.warn('loadThread: expected array, got', result);
+          return;
+        }
+        const messages: Message[] = result.map((item: any) => ({
+          id: item.id || `hist_${Date.now()}_${Math.random()}`,
+          text: item.text || item.content || '',
+          sender: item.role === 'user' ? 'user' : 'ai',
+          timestamp: item.timestamp || Date.now(),
+        }));
+        setMessages(messages);
+        setThreadId(threadId);
+      } catch (err) {
+        console.error('Failed to load thread:', err);
+      }
+    },
+    [currentAgent, runOperation, setMessages, setThreadId]
+  );
+
   return {
     messages,
     isLoading: isSending,
@@ -202,5 +248,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     traces,
     getTrace,
     threadId,
+    fetchThreads,
+    loadThread,
   };
 };

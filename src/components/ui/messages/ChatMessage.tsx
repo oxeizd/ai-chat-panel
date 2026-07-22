@@ -8,6 +8,7 @@ import 'katex/dist/katex.min.css';
 import { MessageListStyles } from './MessageList';
 import { REMARK_PLUGINS, REHYPE_PLUGINS } from '../utils/markdown/plugins';
 import { downloadFile } from 'components/agent/utils/download';
+import { preprocessMarkdown } from './hooks/utils/preprocess';
 
 interface ChatMessageProps {
   message: {
@@ -50,6 +51,8 @@ export const ChatMessage = React.memo(
         onUserMessageClick?.(message);
       }
     }, [message, onUserMessageClick]);
+
+    const content = preprocessMarkdown(message.text);
 
     const handleInfoClick = useCallback(
       (e: React.MouseEvent) => {
@@ -128,7 +131,7 @@ export const ChatMessage = React.memo(
                   rehypePlugins={REHYPE_PLUGINS as any}
                   components={markdownComponents}
                 >
-                  {message.text}
+                  {content}
                 </ReactMarkdown>
               </div>
 
