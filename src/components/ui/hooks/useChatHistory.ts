@@ -1,15 +1,9 @@
 import { useState, useCallback } from 'react';
+import { ChatHistoryItem } from 'types';
 import { useChatActions } from '../chat/ChatContext';
 
-export interface ChatHistoryItem {
-  id: string;
-  title: string;
-  date: string;
-  preview?: string;
-}
-
 export const useChatHistory = () => {
-  const { fetchThreads, loadThread } = useChatActions();
+  const { fetchThreads, loadThread, deleteThread } = useChatActions();
   const [historyChats, setHistoryChats] = useState<ChatHistoryItem[]>([]);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,11 +38,20 @@ export const useChatHistory = () => {
     [loadThread, closeHistoryModal]
   );
 
-  const deleteChat = useCallback(async (chatId: string) => {
-    // Локальное удаление из списка (без API)
-    setHistoryChats((prev) => prev.filter((c) => c.id !== chatId));
-    // При необходимости можно добавить реальную операцию удаления
-  }, []);
+  const deleteChat = useCallback(
+    async (chatId: string) => {
+      // Если у агента настроена historyDeleteOperation — пытаемся удалить и там.
+      // Если операция не настроена (deleteThread возвращает null) или упала
+      // (false) — всё равно убираем элемент из локального списка, как и раньше,
+      // просто теперь при неудачном сетевом удалении явно логируем причину.
+      const result = await deleteThread(chatId);
+      if (result === false) {
+        console.warn(`Не удалось удалить тред "${chatId}" на backend — убираю только из локального списка`);
+      }
+      setHistoryChats((prev) => prev.filter((c) => c.id !== chatId));
+    },
+    [deleteThread]
+  );
 
   return {
     historyChats,

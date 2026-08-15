@@ -8,6 +8,83 @@ export interface AgentConfig {
   history: boolean;
   historyListOperation?: string;
   historyLoadOperation?: string;
+  /** Опциональная операция удаления треда истории. Если не задана — удаление только локальное (из списка в UI). */
+  historyDeleteOperation?: string;
+  /**
+   * Имя ключа в context агента, где хранится id текущего треда/чата
+   * (обычно заполняется через saveToContext на эндпоинте отправки сообщения).
+   * По умолчанию 'thread_id' — но у вашего backend поле может называться иначе.
+   */
+  threadIdContextKey?: string;
+  /**
+   * Имя параметра, с которым id треда передаётся в historyLoadOperation /
+   * historyDeleteOperation (через additionalContext -> шаблон {param} в url/body).
+   * Если не задан явно — наследует threadIdContextKey.
+   */
+  threadIdParam?: string;
+  /** Dot-пути полей элемента списка тредов (ответ historyListOperation). */
+  historyListItemFields?: HistoryListItemFields;
+  /** Dot-пути полей одного сообщения треда (ответ historyLoadOperation). */
+  historyMessageFields?: HistoryMessageFields;
+  /**
+   * Подсказки, специфичные для этого агента (формат — строка с разделителем
+   * ";"). Используются, только если suggestionsSource === 'static' (или не
+   * задан). Если пусто — используются общие подсказки панели как фолбэк.
+   */
+  suggestions?: string;
+  /**
+   * Источник подсказок для этого агента:
+   * - 'static' (по умолчанию) — берутся из поля suggestions выше, руками.
+   * - 'dynamic_once' — тянутся от агента ОДИН РАЗ при старте новой сессии
+   *   (открытие панели, смена агента, "Новый чат"), дальше держатся как
+   *   есть до следующего старта сессии.
+   * - 'dynamic_per_reply' — обновляются от агента после КАЖДОГО ответа
+   *   ассистента.
+   * Оба dynamic-режима читают значение из dynamicSuggestionsContextKey,
+   * различается только момент вызова suggestionsOperation.
+   */
+  suggestionsSource?: 'static' | 'dynamic_once' | 'dynamic_per_reply';
+  /**
+   * Имя ключа в context, куда попадают подсказки — либо напрямую из ответа
+   * send-эндпоинта (если он сам возвращает подсказки вместе с репликой, через
+   * его собственный saveToContext), либо из ответа suggestionsOperation ниже
+   * (через её saveToContext). Значение может быть массивом строк или строкой
+   * с разделителем ";".
+   */
+  dynamicSuggestionsContextKey?: string;
+  /**
+   * Опциональная отдельная операция для получения подсказок. Вызывается
+   * автоматически (не блокируя основной чат):
+   * - один раз при старте сессии, если suggestionsSource === 'dynamic_once';
+   * - после каждого ответа ассистента, если suggestionsSource === 'dynamic_per_reply'.
+   * Результат попадает в dynamicSuggestionsContextKey через saveToContext,
+   * настроенный на этой операции. Если не задана (актуально только для
+   * dynamic_per_reply) — ожидается, что send-эндпоинт возвращает подсказки
+   * сам, в том же ответе.
+   */
+  suggestionsOperation?: string;
+}
+
+export interface HistoryListItemFields {
+  id?: string;
+  title?: string;
+  date?: string;
+  preview?: string;
+}
+
+export interface HistoryMessageFields {
+  role?: string;
+  text?: string;
+  id?: string;
+  timestamp?: string;
+}
+
+/** Нормализованный элемент списка тредов истории для отображения в UI. */
+export interface ChatHistoryItem {
+  id: string;
+  title: string;
+  date: string;
+  preview?: string;
 }
 
 export interface EndpointConfig {
@@ -43,11 +120,11 @@ export type StreamingConfig =
   | {
       enabled: true;
       parseStrategy: 'sse' | 'jsonl';
-      textPath?: string; // путь к тексту, например "choices[0].delta.content"
+      textPath?: string;
       delimiter?: string;
       dataPrefix?: string;
-      textEventType?: string; // например "TEXT_MESSAGE_CONTENT"
-      textDeltaField?: string; // поле, содержащее текст, например "delta"
+      textEventType?: string;
+      textDeltaField?: string;
     };
 
 export type ChatHistoryConfig =
@@ -139,9 +216,6 @@ export interface SendResult {
   fileAttachment?: any;
 }
 
-/**
- * Конфигурация одного HTTP-запроса.
- */
 export interface RequestConfig {
   url: string;
   method: string;
@@ -150,9 +224,6 @@ export interface RequestConfig {
   onTrace?: (step: TraceStep) => void;
 }
 
-/**
- * Унифицированный HTTP-ответ (обёртка над стандартным Response).
- */
 export interface HttpResponse {
   ok: boolean;
   status: number;

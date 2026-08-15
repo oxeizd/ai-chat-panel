@@ -1,10 +1,36 @@
-import { AgentConfig, ChatHistoryConfig, EndpointConfig, PollingConfig, ReasoningConfig, StreamingConfig } from 'types';
+import {
+  AgentConfig,
+  ChatHistoryConfig,
+  EndpointConfig,
+  HistoryListItemFields,
+  HistoryMessageFields,
+  PollingConfig,
+  ReasoningConfig,
+  StreamingConfig,
+} from 'types';
 
 // ---------------- Defaults ----------------
 const DEFAULT_POLLING_FALSE: PollingConfig = { enabled: false };
 const DEFAULT_REASONING_FALSE: ReasoningConfig = { enabled: false };
 const DEFAULT_STREAMING_FALSE: StreamingConfig = { enabled: false };
 const DEFAULT_HISTORY_FALSE: ChatHistoryConfig = { enabled: false };
+
+export const DEFAULT_THREAD_ID_CONTEXT_KEY = 'thread_id';
+export const DEFAULT_THREAD_ID_PARAM = 'chatId';
+
+export const DEFAULT_HISTORY_LIST_ITEM_FIELDS: Required<HistoryListItemFields> = {
+  id: 'id',
+  title: 'title',
+  date: 'date',
+  preview: 'preview',
+};
+
+export const DEFAULT_HISTORY_MESSAGE_FIELDS: Required<HistoryMessageFields> = {
+  role: 'role',
+  text: 'content',
+  id: 'id',
+  timestamp: 'timestamp',
+};
 
 export const DEFAULT_ENDPOINT_CONFIG: Partial<EndpointConfig> = {
   headers: null,
@@ -159,6 +185,15 @@ export function normalizeAgentConfig(input: Partial<AgentConfig>): AgentConfig {
     history: input.history ?? false,
     historyListOperation: input.historyListOperation,
     historyLoadOperation: input.historyLoadOperation,
+    historyDeleteOperation: input.historyDeleteOperation,
+    threadIdContextKey: input.threadIdContextKey ?? DEFAULT_THREAD_ID_CONTEXT_KEY,
+    threadIdParam: input.threadIdParam || input.threadIdContextKey || DEFAULT_THREAD_ID_PARAM,
+    historyListItemFields: { ...DEFAULT_HISTORY_LIST_ITEM_FIELDS, ...input.historyListItemFields },
+    historyMessageFields: { ...DEFAULT_HISTORY_MESSAGE_FIELDS, ...input.historyMessageFields },
+    suggestions: input.suggestions ?? '',
+    suggestionsSource: input.suggestionsSource ?? 'static',
+    dynamicSuggestionsContextKey: input.dynamicSuggestionsContextKey ?? '',
+    suggestionsOperation: input.suggestionsOperation ?? '',
   };
   return agent;
 }

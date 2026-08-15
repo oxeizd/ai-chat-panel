@@ -5,14 +5,23 @@ import { Agent } from './core/agent';
 export const useAgent = (config: AgentConfig | null) => {
   const [agent, setAgent] = useState<Agent | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [agentError, setAgentError] = useState<string | null>(null);
 
   useEffect(() => {
     if (config) {
-      const newAgent = new Agent(config);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setAgent(newAgent);
+      try {
+        const newAgent = new Agent(config);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setAgent(newAgent);
+        setAgentError(null);
+      } catch (err) {
+        console.error('Failed to initialize agent from config:', err, config);
+        setAgent(null);
+        setAgentError(err instanceof Error ? err.message : String(err));
+      }
     } else {
       setAgent(null);
+      setAgentError(null);
     }
     return () => {
       setAgent(null);
@@ -22,7 +31,7 @@ export const useAgent = (config: AgentConfig | null) => {
   const sendMessage = useCallback(
     async (userInput: string, additionalContext?: Record<string, any>, onTrace?: (step: TraceStep) => void) => {
       if (!agent) {
-        throw new Error('Agent not initialized');
+        throw new Error(agentError || 'Agent not initialized');
       }
       setIsLoading(true);
       try {
@@ -31,17 +40,17 @@ export const useAgent = (config: AgentConfig | null) => {
         setIsLoading(false);
       }
     },
-    [agent]
+    [agent, agentError]
   );
 
   const runOperation = useCallback(
     async (operation: string, additionalContext?: Record<string, any>) => {
       if (!agent) {
-        throw new Error('Agent not initialized');
+        throw new Error(agentError || 'Agent not initialized');
       }
       return agent.runOperation(operation, additionalContext);
     },
-    [agent]
+    [agent, agentError]
   );
 
   const resetSession = useCallback(() => agent?.resetSession(), [agent]);
@@ -93,9 +102,17 @@ export const useAgent = (config: AgentConfig | null) => {
   const getContextValue = useCallback((key: string) => agent?.getContextValue(key), [agent]);
   const getContext = useCallback(() => agent?.getContext(), [agent]);
 
+  const setContext = useCallback(
+    (partial: Record<string, any>) => {
+      agent?.setContext(partial);
+    },
+    [agent]
+  );
+
   return {
     agent,
     isLoading,
+    agentError,
     sendMessage,
     resetSession,
     abort,
@@ -106,6 +123,7 @@ export const useAgent = (config: AgentConfig | null) => {
     onContextUpdate,
     getContextValue,
     getContext,
+    setContext,
     onFileAttachment,
     runOperation,
   };

@@ -105,6 +105,15 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
       },
       showIf: (config) => config.settings?.showSuggestions === true,
     })
+    .addBooleanSwitch({
+      path: 'settings.suggestionsAppendToAll',
+      name: 'Also add to agent-specific suggestions',
+      description:
+        'If an agent has its own custom suggestions, these shared ones are appended at the end instead of being ignored.',
+      defaultValue: false,
+      category: ['Chat options'],
+      showIf: (config) => config.settings?.showSuggestions === true,
+    })
     .addRadio({
       path: 'settings.suggestionsPlacement',
       name: 'Suggestions placement',

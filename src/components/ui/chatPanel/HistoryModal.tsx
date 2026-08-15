@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, Button, useTheme2, IconButton } from '@grafana/ui';
-import { ChatHistoryItem } from '../hooks/useChatHistory';
+import { ChatHistoryItem } from 'types';
 
 interface HistoryModalProps {
   isOpen: boolean;

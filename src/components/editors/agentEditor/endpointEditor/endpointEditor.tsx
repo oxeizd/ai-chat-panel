@@ -2,6 +2,13 @@ import { css } from '@emotion/css';
 import React, { useState, forwardRef } from 'react';
 import { Button, useTheme2, Collapse } from '@grafana/ui';
 import { EndpointConfig } from 'types';
+import {
+  DEFAULT_POLLING,
+  DEFAULT_STREAMING,
+  DEFAULT_REASONING,
+  DEFAULT_HISTORY,
+} from 'components/agent/config/defaults';
+import { CollapsibleSection } from 'components/editors/shared/CollapsibleSection';
 import { PollingSection } from './sections/PollingSection';
 import { HistorySection } from './sections/HistorySection';
 import { ReasoningSection } from './sections/ReasoningSection';
@@ -50,15 +57,52 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
   const [isOpen, setIsOpen] = useState(false);
 
   const handleEndpointChange = (field: keyof EndpointConfig, val: any) => {
-    let updated = { ...endpoint, [field]: val };
+    let updated: EndpointConfig = { ...endpoint, [field]: val };
 
-    // Включение polling выключает streaming
-    if (field === 'polling' && val?.enabled === true) {
-      updated.streaming = { enabled: false };
+    if (field === 'polling') {
+      const wasEnabled = endpoint.polling?.enabled === true;
+      if (val?.enabled === true) {
+        updated.streaming = { enabled: false };
+        if (!wasEnabled) {
+          updated.polling = { ...DEFAULT_POLLING, ...val };
+        }
+      }
     }
-    // Включение streaming выключает polling
-    if (field === 'streaming' && val?.enabled === true) {
-      updated.polling = { enabled: false };
+
+    if (field === 'streaming') {
+      const wasEnabled = endpoint.streaming?.enabled === true;
+      if (val?.enabled === true) {
+        updated.polling = { enabled: false };
+        if (!wasEnabled) {
+          updated.streaming = { parseStrategy: 'sse', ...DEFAULT_STREAMING, ...val };
+        }
+      }
+    }
+
+    if (field === 'reasoning') {
+      const wasEnabled = endpoint.reasoning?.enabled === true;
+      if (val?.enabled === true && !wasEnabled) {
+        updated.reasoning = {
+          type: 'embedded',
+          mode: 'api_field',
+          apiField: DEFAULT_REASONING.apiField,
+          textPath: DEFAULT_REASONING.textPath,
+          startMarker: DEFAULT_REASONING.startMarker,
+          endMarker: DEFAULT_REASONING.endMarker,
+          ...val,
+        };
+      }
+    }
+
+    if (field === 'historyConfig') {
+      const wasEnabled = endpoint.historyConfig?.enabled === true;
+      if (val?.enabled === true && !wasEnabled) {
+        updated.historyConfig = {
+          mode: 'local',
+          historyField: DEFAULT_HISTORY.historyField,
+          ...val,
+        };
+      }
     }
 
     onChange(index, updated);
@@ -98,17 +142,26 @@ export const EndpointEditor = forwardRef<EndpointEditorHandle, EndpointEditorPro
           {/* Response handling */}
           <ResponseHandlingSection endpoint={endpoint} onChange={handleEndpointChange} />
 
-          {/* Polling */}
-          <PollingSection endpoint={endpoint} onChange={handleEndpointChange} />
+          {/* Polling: свёрнуто по умолчанию, если было уже включено при
+              открытии; сразу развёрнуто, если включили только сейчас. */}
+          <CollapsibleSection title="Polling" enabled={endpoint.polling?.enabled === true}>
+            <PollingSection endpoint={endpoint} onChange={handleEndpointChange} />
+          </CollapsibleSection>
 
           {/* Streaming */}
-          <StreamingSection endpoint={endpoint} onChange={handleEndpointChange} />
+          <CollapsibleSection title="Streaming" enabled={endpoint.streaming?.enabled === true}>
+            <StreamingSection endpoint={endpoint} onChange={handleEndpointChange} />
+          </CollapsibleSection>
 
           {/* Reasoning / Thinking */}
-          <ReasoningSection endpoint={endpoint} onChange={handleEndpointChange} />
+          <CollapsibleSection title="Reasoning" enabled={endpoint.reasoning?.enabled === true}>
+            <ReasoningSection endpoint={endpoint} onChange={handleEndpointChange} />
+          </CollapsibleSection>
 
-          {/* Conversation History */}
-          <HistorySection endpoint={endpoint} onChange={handleEndpointChange} />
+          {/* Conversation History (per-endpoint) */}
+          <CollapsibleSection title="Conversation History" enabled={endpoint.historyConfig?.enabled === true}>
+            <HistorySection endpoint={endpoint} onChange={handleEndpointChange} />
+          </CollapsibleSection>
         </div>
       </Collapse>
     </div>

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTheme2 } from '@grafana/ui';
-import { useChatState } from '../chat/ChatContext';
+import { useChatState, useChatActions } from '../chat/ChatContext';
 import { ChatHeader } from '../toolbar/ChatHeader';
 import { ChatTextarea } from './ChatTextarea';
 import { MessageList } from '../messages/MessageList';
@@ -19,6 +19,7 @@ export const ChatLayout: React.FC<ChatLayoutProps> = ({ onBack, isFullscreen, on
   const styles = useStyles(theme);
   const messageListStyles = useMemo(() => getMessageListStyles(styles), [styles]);
   const { isFullscreen: isFs, messages } = useChatState();
+  const { suggestions, suggestionsPlacement, showSuggestions, handleSuggestionClick } = useChatActions();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -40,6 +41,13 @@ export const ChatLayout: React.FC<ChatLayoutProps> = ({ onBack, isFullscreen, on
     }
   }, [messages, autoScroll]);
 
+  const showSuggestionsBlock =
+    showSuggestions &&
+    suggestionsPlacement === 'always' &&
+    suggestions &&
+    suggestions.length > 0 &&
+    messages.length === 0;
+
   return (
     <>
       <ChatHeader onBack={onBack} isFullscreen={isFullscreen ?? isFs} onFullscreen={onToggleFullscreen} />
@@ -48,6 +56,17 @@ export const ChatLayout: React.FC<ChatLayoutProps> = ({ onBack, isFullscreen, on
           <MessageList styles={messageListStyles} />
         </div>
       </div>
+
+      {showSuggestionsBlock && (
+        <div className={styles.suggestions.container}>
+          {suggestions!.map((suggestion, idx) => (
+            <div key={idx} className={styles.suggestions.item} onClick={() => handleSuggestionClick(suggestion)}>
+              {suggestion}
+            </div>
+          ))}
+        </div>
+      )}
+
       <ChatTextarea />
       <BottomButtons />
     </>

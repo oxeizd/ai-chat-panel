@@ -27,6 +27,7 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
       suggestions: options.settings.suggestions,
       suggestionsPlacement: options.settings.suggestionsPlacement,
       showSuggestions: options.settings.showSuggestions,
+      suggestionsAppendToAll: options.settings.suggestionsAppendToAll,
       maxWidth: options.chatStyles.maxWidth,
       centerInput: options.chatStyles.centerInput,
       welcomeMessage: options.settings.welcomeMessage,

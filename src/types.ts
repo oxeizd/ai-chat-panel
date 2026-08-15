@@ -18,6 +18,7 @@ export interface PanelOptions {
     showSuggestions?: boolean;
     suggestions?: string;
     suggestionsPlacement?: 'always' | 'onFocus';
+    suggestionsAppendToAll?: boolean;
   };
   agents: AgentConfig[];
   debug?: boolean;

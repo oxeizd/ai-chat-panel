@@ -15,7 +15,6 @@ export class Agent {
     this.config = createAgentConfig(rawConfig);
   }
 
-  // Подписка на события
   on<K extends AgentEvent['type']>(
     event: K,
     handler: (payload: Extract<AgentEvent, { type: K }>['payload']) => void
@@ -23,7 +22,6 @@ export class Agent {
     return this.bus.on(event, handler as any);
   }
 
-  // обёртки (опционально)
   onChunk(handler: (chunk: string) => void): () => void {
     return this.on('chunk', handler);
   }
@@ -50,6 +48,11 @@ export class Agent {
 
   getContext(): Record<string, any> {
     return { ...this.session.context };
+  }
+
+  setContext(partial: Record<string, any>): void {
+    this.session.context = { ...this.session.context, ...partial };
+    this.bus.emit('contextUpdate', { ...this.session.context });
   }
 
   abort(): void {
@@ -125,8 +128,8 @@ export class Agent {
     if (!result.ok) {
       throw new Error(result.error || 'Operation failed');
     }
-    // Обновляем контекст сессии (если операция что-то сохранила)
     this.session.context = { ...this.session.context, ...result.context };
+    this.bus.emit('contextUpdate', { ...this.session.context });
     return result.data;
   }
 

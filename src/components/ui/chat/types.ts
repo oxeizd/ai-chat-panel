@@ -1,5 +1,5 @@
 import React from 'react';
-import { Message, AgentConfig, DebugTrace } from 'types';
+import { Message, AgentConfig, DebugTrace, ChatHistoryItem } from 'types';
 
 // Часто меняющиеся данные
 export interface ChatState {
@@ -48,8 +48,9 @@ export interface ChatActions {
   debug: boolean;
   getTrace?: (messageId: string) => DebugTrace | undefined;
   testMessageButton?: boolean;
-  fetchThreads: () => Promise<any[]>;
+  fetchThreads: () => Promise<ChatHistoryItem[]>;
   loadThread: (threadId: string) => Promise<void>;
+  deleteThread: (threadId: string) => Promise<boolean | null>;
 }
 
 export interface ChatConfig extends ChatState, ChatActions {}
@@ -61,6 +62,7 @@ export interface ChatProviderProps {
   suggestions?: string;
   suggestionsPlacement?: 'always' | 'onFocus';
   showSuggestions?: boolean;
+  suggestionsAppendToAll?: boolean;
   maxWidth?: number;
   centerInput?: boolean;
   welcomeMessage?: string;

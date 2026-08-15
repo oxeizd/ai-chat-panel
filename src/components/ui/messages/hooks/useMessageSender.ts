@@ -29,8 +29,10 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
     onReasoningStart,
     onReasoningChunk,
     onReasoningEnd,
+    onContextUpdate,
     onFileAttachment,
     getContextValue,
+    setContext,
     runOperation,
   } = useAgent(agentConfig);
 
@@ -101,7 +103,11 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
 
   const abort = useCallback(() => abortAgent(), [abortAgent]);
   const reset = useCallback(async () => await resetSession(), [resetSession]);
-  const getThreadId = useCallback(() => getContextValue?.('thread_id'), [getContextValue]);
+
+  const getThreadId = useCallback(
+    () => getContextValue?.(agentConfig?.threadIdContextKey || 'thread_id'),
+    [getContextValue, agentConfig?.threadIdContextKey]
+  );
 
   return {
     send,
@@ -109,6 +115,8 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
     reset,
     isSending: isLoading,
     getThreadId,
+    setContext,
+    onContextUpdate,
     runOperation,
   };
 };

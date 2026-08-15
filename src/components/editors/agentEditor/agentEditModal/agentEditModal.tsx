@@ -24,6 +24,15 @@ const emptyAgent = (): AgentConfig => ({
   history: false,
   historyListOperation: '',
   historyLoadOperation: '',
+  historyDeleteOperation: '',
+  threadIdContextKey: 'thread_id',
+  threadIdParam: '',
+  historyListItemFields: { id: 'id', title: 'title', date: 'date', preview: 'preview' },
+  historyMessageFields: { role: 'role', text: 'content', id: 'id', timestamp: 'timestamp' },
+  suggestions: '',
+  suggestionsSource: 'static',
+  dynamicSuggestionsContextKey: '',
+  suggestionsOperation: '',
 });
 
 export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, onDismiss, onSave, existingAgents }) => {
@@ -78,7 +87,6 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
     onDismiss();
   };
 
-  // Опции для операций (на основе существующих endpoint.operation) - используем ComboboxOption
   const operationOptions: Array<ComboboxOption<string>> = (editedAgent.endpoints || [])
     .map((ep) => ep.operation || '')
     .filter(Boolean)
@@ -86,7 +94,6 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
 
   return (
     <Modal title={agent ? 'Edit Agent' : 'New Agent'} isOpen={isOpen} onDismiss={onDismiss}>
-      {/* name, url, use by deafult */}
       <AgentCommonSection agent={editedAgent} onChange={updateField} />
 
       <EndpointsSection
@@ -102,11 +109,29 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ isOpen, agent, o
         history={editedAgent.history || false}
         historyListOperation={editedAgent.historyListOperation}
         historyLoadOperation={editedAgent.historyLoadOperation}
+        historyDeleteOperation={editedAgent.historyDeleteOperation}
+        threadIdContextKey={editedAgent.threadIdContextKey}
+        threadIdParam={editedAgent.threadIdParam}
+        historyListItemFields={editedAgent.historyListItemFields}
+        historyMessageFields={editedAgent.historyMessageFields}
+        suggestions={editedAgent.suggestions}
+        suggestionsSource={editedAgent.suggestionsSource}
+        dynamicSuggestionsContextKey={editedAgent.dynamicSuggestionsContextKey}
+        suggestionsOperation={editedAgent.suggestionsOperation}
         onChangeStartup={(value) => updateField('startupOperation', value)}
         onChangeWorkflow={(value) => updateField('workflow', value)}
         onChangeHistory={(checked) => updateField('history', checked)}
         onChangeHistoryList={(value) => updateField('historyListOperation', value)}
         onChangeHistoryLoad={(value) => updateField('historyLoadOperation', value)}
+        onChangeHistoryDelete={(value) => updateField('historyDeleteOperation', value)}
+        onChangeThreadIdContextKey={(value) => updateField('threadIdContextKey', value)}
+        onChangeThreadIdParam={(value) => updateField('threadIdParam', value)}
+        onChangeHistoryListItemFields={(value) => updateField('historyListItemFields', value)}
+        onChangeHistoryMessageFields={(value) => updateField('historyMessageFields', value)}
+        onChangeSuggestions={(value) => updateField('suggestions', value)}
+        onChangeSuggestionsSource={(value) => updateField('suggestionsSource', value)}
+        onChangeDynamicSuggestionsContextKey={(value) => updateField('dynamicSuggestionsContextKey', value)}
+        onChangeSuggestionsOperation={(value) => updateField('suggestionsOperation', value)}
       />
 
       {validationError && <div style={{ color: theme.colors.error.main, marginBottom: '12px' }}>{validationError}</div>}

@@ -10,24 +10,8 @@ export const InlineChat: React.FC = () => {
   const theme = useTheme2();
   const styles = useStyles(theme);
 
-  const { isFullscreen, messages } = useChatState();
-  const {
-    toggleFullscreen,
-    maxWidth,
-    centerInput,
-    suggestions,
-    suggestionsPlacement,
-    showSuggestions,
-    handleSuggestionClick,
-    chatMessagesRef,
-  } = useChatActions();
-
-  const showSuggestionsBlock =
-    showSuggestions &&
-    suggestionsPlacement === 'always' &&
-    suggestions &&
-    suggestions.length > 0 &&
-    messages.length === 0;
+  const { isFullscreen } = useChatState();
+  const { toggleFullscreen, maxWidth, centerInput, chatMessagesRef } = useChatActions();
 
   const wrapperStyle = cx(
     styles.base.normalWrapper,
@@ -39,16 +23,6 @@ export const InlineChat: React.FC = () => {
     <>
       <div className={wrapperStyle} style={{ height: '100%' }}>
         <ChatLayout onToggleFullscreen={toggleFullscreen} isFullscreen={false} messagesContainerRef={chatMessagesRef} />
-
-        {showSuggestionsBlock && (
-          <div className={styles.suggestions.container}>
-            {suggestions!.map((suggestion, idx) => (
-              <div key={idx} className={styles.suggestions.item} onClick={() => handleSuggestionClick(suggestion)}>
-                {suggestion}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {isFullscreen && (

@@ -10,6 +10,16 @@ import { DEFAULT_PLACEHOLDER } from './config';
 import { ChatActions, ChatProviderProps, ChatState } from './types';
 import { ChatActionsContext, ChatStateContext } from './ChatContext';
 
+const parseSuggestionsString = (raw: string): string[] => {
+  return raw
+    .split(';')
+    .map((s) => s.trim())
+    .filter(Boolean);
+};
+
+const isDynamicSource = (source?: 'static' | 'dynamic_once' | 'dynamic_per_reply'): boolean =>
+  source === 'dynamic_once' || source === 'dynamic_per_reply';
+
 export const ChatProvider: React.FC<ChatProviderProps> = ({
   children,
   agents,
@@ -17,6 +27,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   suggestions = '',
   suggestionsPlacement = 'always',
   showSuggestions = false,
+  suggestionsAppendToAll = false,
   maxWidth,
   centerInput = false,
   welcomeMessage,
@@ -52,6 +63,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     threadId,
     fetchThreads,
     loadThread,
+    deleteThread,
+    dynamicSuggestions,
   } = useChatMessages(selectedAgent, user, debug);
 
   useEffect(() => {
@@ -117,13 +130,29 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     [inputValue, sendMessageRaw, setInputValue, isChatOpen, openChat]
   );
 
-  // Suggestions
+  // Приоритет подсказок:
+  // 1. Если у агента suggestionsSource — dynamic_once или dynamic_per_reply
+  //    и уже есть свежие подсказки от самого агента — показываем их.
+  // 2. Иначе — статические подсказки агента (suggestions), если заданы
+  //    (и источник статический), с опциональным добавлением общих
+  //    панельных подсказок в конец (suggestionsAppendToAll).
+  // 3. Иначе — общие панельные подсказки.
   const suggestionsArray = useMemo(() => {
-    return suggestions
-      .split(';')
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }, [suggestions]);
+    if (isDynamicSource(selectedAgent?.suggestionsSource) && dynamicSuggestions.length > 0) {
+      return dynamicSuggestions;
+    }
+
+    const agentList = !isDynamicSource(selectedAgent?.suggestionsSource)
+      ? parseSuggestionsString(selectedAgent?.suggestions?.trim() || '')
+      : [];
+    const globalList = parseSuggestionsString(suggestions);
+
+    if (agentList.length === 0) {
+      return globalList;
+    }
+
+    return suggestionsAppendToAll ? [...agentList, ...globalList] : agentList;
+  }, [selectedAgent, suggestions, suggestionsAppendToAll, dynamicSuggestions]);
 
   const handleSuggestionClick = useCallback(
     (suggestion: string) => {
@@ -195,6 +224,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       testMessageButton,
       fetchThreads,
       loadThread,
+      deleteThread,
     }),
     [
       setMessages,
@@ -234,6 +264,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       testMessageButton,
       fetchThreads,
       loadThread,
+      deleteThread,
     ]
   );
 

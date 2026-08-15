@@ -1,14 +1,49 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { AgentConfig, Message } from 'types';
+import { AgentConfig, ChatHistoryItem, Message } from 'types';
 import { GrafanaUser } from 'components/hooks/useGrafanaUser';
+import { dotGet } from 'components/agent/utils/utils';
+import {
+  DEFAULT_HISTORY_LIST_ITEM_FIELDS,
+  DEFAULT_HISTORY_MESSAGE_FIELDS,
+  DEFAULT_THREAD_ID_PARAM,
+} from 'components/agent/config/agentConfig';
 import { useMessageSender } from './useMessageSender';
 import { useMessagesState } from './useMessagesState';
 import { useDebugTraces } from 'components/ui/debug/hooks/useDebugTraces';
 import { parseApiError } from '../../debug/hooks/utils/errorParser';
 
+function formatHistoryDate(value: any): string {
+  if (value == null) {
+    return '';
+  }
+  if (typeof value === 'number') {
+    return new Date(value).toLocaleString();
+  }
+  const asDate = new Date(value);
+  return isNaN(asDate.getTime()) ? String(value) : asDate.toLocaleString();
+}
+
+function resolveThreadIdParam(agent: AgentConfig): string {
+  return agent.threadIdParam || agent.threadIdContextKey || DEFAULT_THREAD_ID_PARAM;
+}
+
+function normalizeDynamicSuggestions(raw: any): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((s): s is string => typeof s === 'string' && s.trim().length > 0);
+  }
+  if (typeof raw === 'string') {
+    return raw
+      .split(';')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
 export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaUser | null, debug: boolean) => {
   const resettingRef = useRef(false);
   const [inputValue, setInputValue] = useState('');
+  const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([]);
 
   const {
     messages,
@@ -33,6 +68,8 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     reset: resetSession,
     isSending,
     getThreadId,
+    setContext,
+    onContextUpdate,
     runOperation,
   } = useMessageSender({ agent: currentAgent, user });
   const [threadId, setThreadId] = useState<string | null>(null);
@@ -42,6 +79,23 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       abort();
     };
   }, [abort]);
+
+  useEffect(() => {
+    const key = currentAgent?.dynamicSuggestionsContextKey;
+    if (!onContextUpdate || !key) {
+      // Синхронный сброс здесь легитимен: это не "синхронизация с внешней
+      // системой" в теле эффекта, а просто очистка локального состояния при
+      // смене агента на тот, где динамические подсказки не настроены —
+      // без этого остались бы висеть подсказки от предыдущего агента.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDynamicSuggestions([]);
+      return;
+    }
+    const unsub = onContextUpdate((ctx) => {
+      setDynamicSuggestions(normalizeDynamicSuggestions(ctx?.[key]));
+    });
+    return unsub;
+  }, [onContextUpdate, currentAgent?.dynamicSuggestionsContextKey]);
 
   const sendText = useCallback(
     async (text: string, options?: { replaceUserMessageId?: string }): Promise<boolean> => {
@@ -104,6 +158,13 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
         if (trace) {
           setReply(userMessageId, reply);
         }
+
+        if (currentAgent.suggestionsSource === 'dynamic_per_reply' && currentAgent.suggestionsOperation) {
+          runOperation(currentAgent.suggestionsOperation).catch((err) => {
+            console.error('Failed to fetch dynamic suggestions:', err);
+          });
+        }
+
         return true;
       } catch (err) {
         removeAssistant(assistantId);
@@ -137,6 +198,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       addErrorAsAi,
       setError,
       getThreadId,
+      runOperation,
     ]
   );
 
@@ -179,15 +241,22 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       resetMessages();
       setInputValue('');
       setThreadId(null);
+      setDynamicSuggestions([]);
       try {
         await resetSession();
       } catch (err) {
         console.warn('Failed to reset session on backend', err);
       }
+
+      if (currentAgent?.suggestionsSource === 'dynamic_once' && currentAgent.suggestionsOperation) {
+        runOperation(currentAgent.suggestionsOperation).catch((err) => {
+          console.error('Failed to fetch initial suggestions:', err);
+        });
+      }
     } finally {
       resettingRef.current = false;
     }
-  }, [abort, resetMessages, resetSession]);
+  }, [abort, resetMessages, resetSession, currentAgent, runOperation]);
 
   const clearChat = useCallback(() => {
     abort();
@@ -196,13 +265,24 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
 
   const getTrace = useCallback((messageId: string) => traces.get(messageId), [traces]);
 
-  const fetchThreads = useCallback(async (): Promise<any[]> => {
+  const fetchThreads = useCallback(async (): Promise<ChatHistoryItem[]> => {
     if (!currentAgent?.history || !currentAgent.historyListOperation) {
       return [];
     }
     try {
       const result = await runOperation(currentAgent.historyListOperation);
-      return Array.isArray(result) ? result : [];
+      if (!Array.isArray(result)) {
+        return [];
+      }
+
+      const fields = { ...DEFAULT_HISTORY_LIST_ITEM_FIELDS, ...currentAgent.historyListItemFields };
+
+      return result.map((item: any, idx: number) => ({
+        id: String(dotGet(item, fields.id) ?? item?.id ?? idx),
+        title: String(dotGet(item, fields.title) ?? item?.title ?? 'Без названия'),
+        date: formatHistoryDate(dotGet(item, fields.date) ?? item?.date),
+        preview: fields.preview ? dotGet(item, fields.preview) : undefined,
+      }));
     } catch (err) {
       console.error('Failed to fetch threads:', err);
       return [];
@@ -210,29 +290,74 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
   }, [currentAgent, runOperation]);
 
   const loadThread = useCallback(
-    async (threadId: string) => {
+    async (threadIdToLoad: string) => {
       if (!currentAgent?.history || !currentAgent.historyLoadOperation) {
         return;
       }
       try {
-        const result = await runOperation(currentAgent.historyLoadOperation, { chatId: threadId });
+        const param = resolveThreadIdParam(currentAgent);
+        const result = await runOperation(currentAgent.historyLoadOperation, { [param]: threadIdToLoad });
+
         if (!Array.isArray(result)) {
           console.warn('loadThread: expected array, got', result);
           return;
         }
-        const messages: Message[] = result.map((item: any) => ({
-          id: item.id || `hist_${Date.now()}_${Math.random()}`,
-          text: item.text || item.content || '',
-          sender: item.role === 'user' ? 'user' : 'ai',
-          timestamp: item.timestamp || Date.now(),
-        }));
-        setMessages(messages);
-        setThreadId(threadId);
+
+        const fields = { ...DEFAULT_HISTORY_MESSAGE_FIELDS, ...currentAgent.historyMessageFields };
+
+        const uiMessages: Message[] = [];
+        const historyForContext: Array<{ role: string; content: any }> = [];
+
+        for (const item of result) {
+          const rawRole = dotGet(item, fields.role) ?? item?.role;
+          const isUser = rawRole === 'user';
+          const text = dotGet(item, fields.text) ?? item?.[fields.text] ?? item?.text ?? item?.content ?? '';
+          const timestamp = dotGet(item, fields.timestamp) ?? item?.timestamp ?? Date.now();
+          const id = dotGet(item, fields.id) ?? item?.id ?? `hist_${Date.now()}_${Math.random()}`;
+
+          uiMessages.push({
+            id: String(id),
+            text: typeof text === 'string' ? text : JSON.stringify(text),
+            sender: isUser ? 'user' : 'ai',
+            timestamp: typeof timestamp === 'number' ? timestamp : Date.parse(timestamp) || Date.now(),
+          });
+
+          historyForContext.push({
+            role: isUser ? 'user' : 'assistant',
+            content: text,
+          });
+        }
+
+        setMessages(uiMessages);
+        setThreadId(threadIdToLoad);
+
+        const threadIdContextKey = currentAgent.threadIdContextKey || 'thread_id';
+        setContext({
+          __history: historyForContext,
+          [threadIdContextKey]: threadIdToLoad,
+        });
       } catch (err) {
         console.error('Failed to load thread:', err);
       }
     },
-    [currentAgent, runOperation, setMessages, setThreadId]
+    [currentAgent, runOperation, setMessages, setContext]
+  );
+
+  const deleteThread = useCallback(
+    async (threadIdToDelete: string): Promise<boolean | null> => {
+      if (!currentAgent?.history || !currentAgent.historyDeleteOperation) {
+        return null;
+      }
+      try {
+        const param = resolveThreadIdParam(currentAgent);
+        await runOperation(currentAgent.historyDeleteOperation, { [param]: threadIdToDelete });
+        return true;
+      } catch (err) {
+        console.error('Failed to delete thread:', err);
+        return false;
+      }
+    },
+    [currentAgent, runOperation]
   );
 
   return {
@@ -250,5 +375,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     threadId,
     fetchThreads,
     loadThread,
+    deleteThread,
+    dynamicSuggestions,
   };
 };
