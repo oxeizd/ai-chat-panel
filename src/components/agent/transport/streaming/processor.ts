@@ -1,6 +1,7 @@
 import { EndpointConfig, TraceStep } from 'types';
 import { EventBus } from 'components/agent/core/eventBus';
-import { dotGet, applySaveToContext } from 'components/agent/utils/utils';
+import { applySaveToContext } from 'components/agent/utils/utils';
+import { syncIncomingHistory } from 'components/agent/core/historyManager';
 import { createInitialReasoningState, processReasoningChunk, finalizeReasoning } from '../reasoning/processor';
 import { ReasoningState } from '../reasoning/types';
 
@@ -32,16 +33,13 @@ export function processStreamChunk(
   let newState = { ...state };
   const { onTrace, eventType } = options || {};
 
-  // 1. History sync (incoming_sync)
+  // 1. History sync (incoming_sync) — сервер присылает полный список
+  // сообщений (включая свою реплику) в событии с типом historySync.eventType.
   const history = op.historyConfig;
   if (history?.enabled && history.mode === 'incoming_sync') {
     const sync = history.historySync;
     if (sync && eventType === sync.eventType) {
-      const msgs = dotGet(parsedChunk, sync.messagesPath);
-      if (Array.isArray(msgs)) {
-        context.__history = msgs;
-        eventBus.emit('contextUpdate', { messages: msgs });
-      }
+      syncIncomingHistory(context, history, parsedChunk, eventBus, onTrace);
     }
   }
 

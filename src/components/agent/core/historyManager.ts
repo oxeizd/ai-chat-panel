@@ -1,5 +1,7 @@
 import { DEFAULT_HISTORY } from '../config/defaults';
 import { dotGet, dotSet } from '../utils/utils';
+import { EventBus } from './eventBus';
+import { TraceStep } from 'types';
 
 export const CONTEXT_KEYS = {
   HISTORY: '__history',
@@ -48,7 +50,16 @@ export function injectHistory(body: string | object, context: any, cfg: any): st
   let resultObj: any;
 
   if (typeof body === 'string') {
-    resultObj = JSON.parse(body);
+    // Тело может быть невалидным JSON (например, если сборка запроса выше
+    // уже упала на резолве шаблона). Раньше JSON.parse здесь ничем не был
+    // защищён и бросал необработанное исключение прямо во время построения
+    // запроса — это приводило к тому, что retry-цикл в sender.ts бесполезно
+    // повторял попытку с той же самой ошибкой сборки запроса.
+    try {
+      resultObj = JSON.parse(body);
+    } catch {
+      resultObj = {};
+    }
   } else {
     resultObj = { ...(body ?? {}) };
   }
@@ -140,4 +151,37 @@ export function saveAssistantMessage(
     timestamp: Date.now(),
     message: toStore,
   });
+}
+
+/**
+ * @returns true, если синхронизация произошла (найден валидный массив сообщений)
+ */
+export function syncIncomingHistory(
+  context: Record<string, any>,
+  cfg: { historySync?: { eventType?: string; messagesPath: string } } | undefined,
+  source: any,
+  eventBus?: EventBus,
+  onTrace?: (step: TraceStep) => void
+): boolean {
+  const sync = cfg?.historySync;
+  if (!sync?.messagesPath || source == null) {
+    return false;
+  }
+
+  const messages = dotGet(source, sync.messagesPath);
+  if (!Array.isArray(messages)) {
+    return false;
+  }
+
+  context[CONTEXT_KEYS.HISTORY] = messages;
+  eventBus?.emit('contextUpdate', { messages });
+
+  onTrace?.({
+    type: 'history_synced',
+    timestamp: Date.now(),
+    mode: 'incoming_sync',
+    count: messages.length,
+  });
+
+  return true;
 }

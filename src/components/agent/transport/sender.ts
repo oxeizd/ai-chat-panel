@@ -6,7 +6,7 @@ import { DEFAULT_CHAT_REPLY_FIELD, DEFAULT_RETRY, DEFAULT_TIMEOUT } from '../con
 import { extractReasoningFromFullResponse } from './reasoning/processor';
 import { applySaveToContext, dotGet, parseHttpResponse } from '../utils/utils';
 import { AgentConfig, EndpointConfig, SendResult, TraceStep } from '../config/types';
-import { saveAssistantMessage } from '../core/historyManager';
+import { saveAssistantMessage, syncIncomingHistory } from '../core/historyManager';
 import { buildRequestConfig } from './requestBuilder';
 
 export async function sendOperation(
@@ -119,6 +119,14 @@ export async function sendOperation(
       };
     } catch (err: any) {
       lastError = err;
+
+      // Отменённый запрос (agent.abort() / внешний AbortSignal) не должен
+      // повторяться — иначе retry-цикл продолжит слать HTTP-запросы после
+      // явной отмены пользователем.
+      if (err?.name === 'AbortError' || signal?.aborted) {
+        break;
+      }
+
       if (attempt < retries) {
         await new Promise((r) => setTimeout(r, 200 * Math.pow(2, attempt)));
         continue;
@@ -186,6 +194,12 @@ async function processApiResponse(
 
   if (op.historyConfig?.enabled && op.historyConfig.mode === 'local') {
     saveAssistantMessage(context, rawBody, finalReply, reasoningText, op, options?.isStreaming, options?.onTrace);
+  } else if (op.historyConfig?.enabled && op.historyConfig.mode === 'incoming_sync' && !options?.isStreaming) {
+    // Обычный (не потоковый) JSON-ответ при incoming_sync: сервер присылает
+    // полный список сообщений (включая свою реплику) прямо в теле ответа.
+    // Раньше это тело никак не сохранялось в context.__history — ответ
+    // ассистента при incoming_sync на не-стриминговых операциях терялся.
+    syncIncomingHistory(context, op.historyConfig, parsedBody, eventBus, options?.onTrace);
   }
 
   return { finalReply, reasoningText, fileAttachment, context };

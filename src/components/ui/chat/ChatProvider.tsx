@@ -13,7 +13,7 @@ import { ChatActionsContext, ChatStateContext } from './ChatContext';
 export const ChatProvider: React.FC<ChatProviderProps> = ({
   children,
   agents,
-  placeholderText = DEFAULT_PLACEHOLDER,
+  placeholderText: placeholderTextProp = DEFAULT_PLACEHOLDER,
   suggestions = '',
   suggestionsPlacement = 'always',
   showSuggestions = false,
@@ -31,9 +31,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
 }) => {
   const { user } = useGrafanaUser();
 
-  if (placeholderText.length === 0) {
-    placeholderText = DEFAULT_PLACEHOLDER;
-  }
+  const placeholderText = placeholderTextProp.length === 0 ? DEFAULT_PLACEHOLDER : placeholderTextProp;
 
   // Agent selection
   const defaultAgent = useMemo(() => agents.find((a) => a.default) || null, [agents]);

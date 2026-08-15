@@ -56,18 +56,23 @@ export function validateEndpointConfig(input: unknown): ValidationResult<Endpoin
     }
   }
 
-  if ('conversationHistory' in cfg && cfg.conversationHistory !== undefined) {
-    const h = cfg.conversationHistory;
+  if ('historyConfig' in cfg && cfg.historyConfig !== undefined) {
+    const h = cfg.historyConfig;
     if (!isObject(h) || typeof h.enabled !== 'boolean') {
-      return { ok: false, error: 'conversationHistory.enabled must be boolean' };
+      return { ok: false, error: 'historyConfig.enabled must be boolean' };
     }
-    if (h.enabled && h.mode === 'incoming_sync') {
-      if (
-        !isObject(h.historySync) ||
-        typeof h.historySync.eventType !== 'string' ||
-        typeof h.historySync.messagesPath !== 'string'
-      ) {
-        return { ok: false, error: 'conversationHistory.historySync requires eventType and messagesPath strings' };
+    if (h.enabled) {
+      if (h.mode !== 'local' && h.mode !== 'incoming_sync') {
+        return { ok: false, error: 'historyConfig.mode must be "local" or "incoming_sync" when enabled' };
+      }
+      if (h.mode === 'incoming_sync') {
+        if (
+          !isObject(h.historySync) ||
+          typeof h.historySync.eventType !== 'string' ||
+          typeof h.historySync.messagesPath !== 'string'
+        ) {
+          return { ok: false, error: 'historyConfig.historySync requires eventType and messagesPath strings' };
+        }
       }
     }
   }

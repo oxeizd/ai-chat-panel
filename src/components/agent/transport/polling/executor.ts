@@ -2,6 +2,7 @@ import { DEFAULT_POLLING } from 'components/agent/config/defaults';
 import { dotGet, parseHttpResponse, applySaveToContext } from '../../utils/utils';
 import { HttpResponse, EndpointConfig, SendResult, TraceStep } from 'types';
 import { extractReasoningFromFullResponse } from '../reasoning/processor';
+import { syncIncomingHistory } from '../../core/historyManager';
 import { EventBus } from '../../core/eventBus';
 
 export async function handlePolling(
@@ -54,6 +55,10 @@ export async function handlePolling(
       }
 
       if (status === successValue) {
+        if (op.historyConfig?.enabled && op.historyConfig.mode === 'incoming_sync') {
+          syncIncomingHistory(context, op.historyConfig, body, eventBus, onTrace);
+        }
+
         const result = resultField ? dotGet(body, resultField) : finalReply;
 
         onTrace?.({

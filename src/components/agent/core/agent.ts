@@ -135,6 +135,5 @@ export class Agent {
       throw new Error('Cannot reset while processing');
     }
     this.session = { started: false, context: {} };
-    this.bus.clear();
   }
 }

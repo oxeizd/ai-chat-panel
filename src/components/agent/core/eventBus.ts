@@ -35,9 +35,18 @@ export class EventBus {
 
   /**
    * Вызвать событие с произвольными аргументами.
+   * Каждый обработчик выполняется в изоляции: если один из подписчиков
+   * бросает исключение, остальные всё равно будут вызваны, а ошибка
+   * попадёт в консоль вместо тихого прерывания всей цепочки emit.
    */
   emit(event: string, ...args: any[]): void {
-    this.listeners.get(event)?.forEach((h) => h(...args));
+    this.listeners.get(event)?.forEach((h) => {
+      try {
+        h(...args);
+      } catch (err) {
+        console.error(`[EventBus] Handler for "${event}" threw an error:`, err);
+      }
+    });
   }
 
   /**

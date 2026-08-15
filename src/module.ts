@@ -84,7 +84,7 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
         rows: 2,
         useTextarea: true,
       },
-      showIf: (config) => config.settings.showWelcomeMessage === true,
+      showIf: (config) => config.settings?.showWelcomeMessage === true,
     })
     .addBooleanSwitch({
       path: 'settings.showSuggestions',
@@ -103,7 +103,7 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
         rows: 3,
         useTextarea: true,
       },
-      showIf: (config) => config.settings.showSuggestions === true,
+      showIf: (config) => config.settings?.showSuggestions === true,
     })
     .addRadio({
       path: 'settings.suggestionsPlacement',
@@ -117,7 +117,7 @@ export const plugin = new PanelPlugin<PanelOptions>(ChatPanel).setPanelOptions((
       },
       defaultValue: 'always',
       category: ['Chat options'],
-      showIf: (config) => config.settings.showSuggestions === true,
+      showIf: (config) => config.settings?.showSuggestions === true,
     })
     .addCustomEditor({
       id: 'agents',
