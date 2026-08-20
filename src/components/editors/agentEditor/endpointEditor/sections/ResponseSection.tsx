@@ -28,6 +28,16 @@ export const ResponseHandlingSection: React.FC<ResponseHandlingSectionProps> = (
       <Field label="File field">
         <Input value={endpoint.fileField || ''} onChange={(e) => onChange('fileField', e.currentTarget.value)} />
       </Field>
+      <Field
+        label="Interactive field"
+        description="Dot-path to an object in the response shaped as { options?, fields?, submitLabel? } — renders choice buttons and/or a small form under this reply."
+      >
+        <Input
+          value={endpoint.interactiveField || ''}
+          onChange={(e) => onChange('interactiveField', e.currentTarget.value)}
+          placeholder="interactive"
+        />
+      </Field>
     </div>
   );
 };

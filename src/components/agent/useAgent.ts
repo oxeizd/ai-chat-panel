@@ -56,7 +56,6 @@ export const useAgent = (config: AgentConfig | null) => {
   const resetSession = useCallback(() => agent?.resetSession(), [agent]);
   const abort = useCallback(() => agent?.abort(), [agent]);
 
-  // Удобные методы подписки (они зависят от agent, поэтому при смене агента создаются новые)
   const onChunk = useCallback(
     (handler: (chunk: string) => void) => {
       return agent?.onChunk(handler) ?? (() => {});
@@ -99,6 +98,13 @@ export const useAgent = (config: AgentConfig | null) => {
     [agent]
   );
 
+  const onInteractive = useCallback(
+    (handler: (payload: any) => void) => {
+      return agent?.on('interactive', handler) ?? (() => {});
+    },
+    [agent]
+  );
+
   const getContextValue = useCallback((key: string) => agent?.getContextValue(key), [agent]);
   const getContext = useCallback(() => agent?.getContext(), [agent]);
 
@@ -125,6 +131,7 @@ export const useAgent = (config: AgentConfig | null) => {
     getContext,
     setContext,
     onFileAttachment,
+    onInteractive,
     runOperation,
   };
 };

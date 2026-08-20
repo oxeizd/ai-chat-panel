@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Message } from 'types';
+import { InteractivePayload, Message } from 'types';
 import { generateMessageId } from './utils/idGenerators';
 
 export const useMessagesState = () => {
@@ -88,6 +88,13 @@ export const useMessagesState = () => {
     );
   }, []);
 
+  /** Прикрепляет interactive-карточку (варианты/поля) к сообщению ассистента. */
+  const setAssistantInteractive = useCallback((assistantId: string, interactive: InteractivePayload) => {
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === assistantId && msg.sender === 'ai' ? { ...msg, interactive } : msg))
+    );
+  }, []);
+
   const removeAssistant = useCallback((assistantId: string) => {
     setMessages((prev) => prev.filter((msg) => msg.id !== assistantId));
   }, []);
@@ -127,6 +134,7 @@ export const useMessagesState = () => {
     updateAssistantThinking,
     setAssistantThinkingDone,
     setAssistantFinal,
+    setAssistantInteractive,
     removeAssistant,
     addErrorAsAi,
     markUserError,

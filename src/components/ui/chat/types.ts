@@ -1,5 +1,11 @@
 import React from 'react';
-import { Message, AgentConfig, DebugTrace, ChatHistoryItem } from 'types';
+import { InteractivePayload, Message, AgentConfig, DebugTrace, ChatHistoryItem } from 'types';
+
+export interface PendingInteractive {
+  /** id сообщения ассистента, к которому относится подсказка. */
+  messageId: string;
+  payload: InteractivePayload;
+}
 
 // Часто меняющиеся данные
 export interface ChatState {
@@ -9,6 +15,7 @@ export interface ChatState {
   isChatOpen: boolean;
   isFullscreen: boolean;
   threadId?: string | null;
+  pendingInteractive: PendingInteractive | null;
 }
 
 // Стабильные колбэки + конфигурация
@@ -16,6 +23,7 @@ export interface ChatActions {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   setInputValue: (value: string) => void;
   sendMessage: (customText?: string) => void;
+  sendInteractive: (assistantMessageId: string, text: string, extraContext?: Record<string, any>) => Promise<void>;
   clearChat: () => void;
   newChat: () => void;
   retryMessage?: (messageId: string) => void;

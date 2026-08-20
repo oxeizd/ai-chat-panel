@@ -54,6 +54,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     updateAssistantThinking,
     setAssistantThinkingDone,
     setAssistantFinal,
+    setAssistantInteractive,
     removeAssistant,
     addErrorAsAi,
     markUserError,
@@ -83,10 +84,6 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
   useEffect(() => {
     const key = currentAgent?.dynamicSuggestionsContextKey;
     if (!onContextUpdate || !key) {
-      // Синхронный сброс здесь легитимен: это не "синхронизация с внешней
-      // системой" в теле эффекта, а просто очистка локального состояния при
-      // смене агента на тот, где динамические подсказки не настроены —
-      // без этого остались бы висеть подсказки от предыдущего агента.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setDynamicSuggestions([]);
       return;
@@ -98,7 +95,10 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
   }, [onContextUpdate, currentAgent?.dynamicSuggestionsContextKey]);
 
   const sendText = useCallback(
-    async (text: string, options?: { replaceUserMessageId?: string }): Promise<boolean> => {
+    async (
+      text: string,
+      options?: { replaceUserMessageId?: string; extraContext?: Record<string, any> }
+    ): Promise<boolean> => {
       const trimmed = text.trim();
       if (!trimmed || !currentAgent || isSending) {
         return false;
@@ -124,25 +124,32 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       const trace = create(userMessageId, trimmed);
 
       try {
-        const reply = await send(trimmed, {
-          onChunk: (chunk: string) => {
-            updateAssistantText(assistantId, (prev) => prev + chunk);
+        const reply = await send(
+          trimmed,
+          {
+            onChunk: (chunk: string) => {
+              updateAssistantText(assistantId, (prev) => prev + chunk);
+            },
+            onReasoningChunk: (chunk: string) => {
+              updateAssistantThinking(assistantId, chunk);
+            },
+            onReasoningComplete: (full: string) => {
+              setAssistantThinkingDone(assistantId, full);
+            },
+            onStep: (step: any) => {
+              if (trace) {
+                addStep(userMessageId, step);
+              }
+            },
+            onFileAttachment: (file: any) => {
+              setAssistantFinal(assistantId, undefined, file);
+            },
+            onInteractive: (payload: any) => {
+              setAssistantInteractive(assistantId, payload);
+            },
           },
-          onReasoningChunk: (chunk: string) => {
-            updateAssistantThinking(assistantId, chunk);
-          },
-          onReasoningComplete: (full: string) => {
-            setAssistantThinkingDone(assistantId, full);
-          },
-          onStep: (step: any) => {
-            if (trace) {
-              addStep(userMessageId, step);
-            }
-          },
-          onFileAttachment: (file: any) => {
-            setAssistantFinal(assistantId, undefined, file);
-          },
-        });
+          options?.extraContext
+        );
 
         const newThreadId = getThreadId();
         if (newThreadId) {
@@ -193,6 +200,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       send,
       removeAssistant,
       setAssistantFinal,
+      setAssistantInteractive,
       setReply,
       markUserError,
       addErrorAsAi,
@@ -213,6 +221,20 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       }
     },
     [inputValue, sendText]
+  );
+
+  /**
+   * Ответ на pending interactive-подсказку (клик по варианту или сабмит
+   * формы полей в зоне ввода). Отправляется как обычное сообщение
+   * пользователя — как только оно появится в messages, pendingInteractive
+   * в ChatProvider автоматически перестанет указывать на старое сообщение
+   * ассистента (см. вычисление там: "последнее сообщение — от ассистента").
+   */
+  const sendInteractive = useCallback(
+    async (_assistantMessageId: string, text: string, extraContext?: Record<string, any>) => {
+      await sendText(text, { extraContext });
+    },
+    [sendText]
   );
 
   const retryMessage = useCallback(
@@ -367,6 +389,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     setMessages,
     setInputValue,
     sendMessage,
+    sendInteractive,
     clearChat,
     newChat,
     retryMessage,

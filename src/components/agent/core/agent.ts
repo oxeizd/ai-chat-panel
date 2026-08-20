@@ -104,6 +104,12 @@ export class Agent {
         this.bus.emit('fileAttachment', fileAttachment);
       }
 
+      const interactive = (lastStep as any)?.interactive;
+
+      if (interactive) {
+        this.bus.emit('interactive', interactive);
+      }
+
       this.bus.emit('contextUpdate', { ...this.session.context });
 
       return reply;

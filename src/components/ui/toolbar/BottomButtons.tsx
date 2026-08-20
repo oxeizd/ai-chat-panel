@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button, Dropdown, useTheme2 } from '@grafana/ui';
+import { Message } from 'types';
 import { AgentMenu } from './AgentMenu';
 import { useChatActions, useChatState } from '../chat/ChatContext';
 import { useStyles } from '../styles/styles';
@@ -18,16 +19,45 @@ export const BottomButtons: React.FC = () => {
     useChatHistory();
 
   const sendTestAiMessage = () => {
-    const text = window.prompt('Введите текст сообщения от AI');
-    if (text && text.trim()) {
-      const newMessage = {
-        id: `test-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
-        text: text.trim(),
-        sender: 'ai' as const,
-        timestamp: Date.now(),
-      };
-      setMessages([...messages, newMessage]);
+    // Обычный текст — как раньше, просто добавляет реплику ассистента.
+    // Если вставить JSON вида
+    // {"text":"Какой у вас статус?","interactive":{"options":[{"label":"Активный","value":"active"},{"label":"Другое","value":"other","allowCustom":true}],"fields":[{"name":"email","label":"Email","type":"text"}]}}
+    // — можно проверить рендер interactive-карточки (варианты/поля) и
+    // fileAttachment без реального backend.
+    const raw = window.prompt(
+      'Текст сообщения от AI, либо JSON вида {"text":"...","interactive":{"options":[...],"fields":[...]}}'
+    );
+
+    if (!raw || !raw.trim()) {
+      return;
     }
+
+    const trimmed = raw.trim();
+    let text = trimmed;
+    let interactive: Message['interactive'] | undefined;
+    let fileAttachment: Message['fileAttachment'] | undefined;
+
+    if (trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        text = typeof parsed.text === 'string' ? parsed.text : '';
+        interactive = parsed.interactive;
+        fileAttachment = parsed.fileAttachment;
+      } catch (err) {
+        window.alert('Некорректный JSON: ' + (err instanceof Error ? err.message : String(err)));
+        return;
+      }
+    }
+
+    const newMessage: Message = {
+      id: `test-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+      text,
+      sender: 'ai',
+      timestamp: Date.now(),
+      interactive,
+      fileAttachment,
+    };
+    setMessages([...messages, newMessage]);
   };
 
   return (
@@ -78,7 +108,7 @@ export const BottomButtons: React.FC = () => {
             size="sm"
             icon="edit"
             onClick={sendTestAiMessage}
-            title="Отправить тестовое сообщение от AI (Markdown, графики, формулы)"
+            title="тестовое сообщение от AI"
             disabled={isLoading}
             className={styles.bottomButtons.newChatButton}
           >

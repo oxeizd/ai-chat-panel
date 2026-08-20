@@ -17,6 +17,7 @@ interface SendCallbacks {
   onThinkingEnd?: () => void;
   onStep?: (step: TraceStep) => void;
   onFileAttachment?: (file: any) => void;
+  onInteractive?: (payload: any) => void;
 }
 
 export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderOptions) => {
@@ -31,6 +32,7 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
     onReasoningEnd,
     onContextUpdate,
     onFileAttachment,
+    onInteractive,
     getContextValue,
     setContext,
     runOperation,
@@ -56,6 +58,7 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
         });
       },
       onFileAttachment,
+      onInteractive,
     },
     callbacksRef: callbacksRef as any,
   });
@@ -70,15 +73,20 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
     return unsub;
   }, [onFileAttachment]);
 
+  /**
+   * @param extraContext - дополнительные данные, которые нужно передать
+   * агенту вместе с сообщением (например, структурированные значения формы
+   * из interactive-карточки), помимо стандартных полей пользователя.
+   */
   const send = useCallback(
-    async (text: string, callbacks?: SendCallbacks): Promise<string | null> => {
+    async (text: string, callbacks?: SendCallbacks, extraContext?: Record<string, any>): Promise<string | null> => {
       if (!agentConfig || isLoading) {
         return null;
       }
 
       callbacksRef.current = callbacks || {};
 
-      const additionalContext: Record<string, any> = {};
+      const additionalContext: Record<string, any> = { ...extraContext };
       if (user) {
         additionalContext.userId = user.id;
         additionalContext.userLogin = user.login;

@@ -1,33 +1,65 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 import { ChatHistoryItem } from 'types';
 import { useChatActions } from '../chat/ChatContext';
 
+// Мини "внешний стор" — состояние живёт вне React-дерева, в замыкании модуля.
+// Все компоненты, которые зовут useChatHistory(), подписываются на один и тот
+// же объект и получают одинаковый historyChats / isHistoryModalOpen /
+// isLoading без Context.Provider и без прокидывания пропсов.
+
+interface ChatHistoryStoreState {
+  historyChats: ChatHistoryItem[];
+  isHistoryModalOpen: boolean;
+  isLoading: boolean;
+}
+
+let state: ChatHistoryStoreState = {
+  historyChats: [],
+  isHistoryModalOpen: false,
+  isLoading: false,
+};
+
+const listeners = new Set<() => void>();
+
+const setState = (partial: Partial<ChatHistoryStoreState>) => {
+  state = { ...state, ...partial };
+  listeners.forEach((listener) => listener());
+};
+
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+};
+
+const getSnapshot = () => state;
+
 export const useChatHistory = () => {
   const { fetchThreads, loadThread, deleteThread } = useChatActions();
-  const [historyChats, setHistoryChats] = useState<ChatHistoryItem[]>([]);
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Подписка на общий стор — при любом setState все компоненты, вызвавшие
+  // этот хук, перерендерятся с актуальным снапшотом.
+  const { historyChats, isHistoryModalOpen, isLoading } = useSyncExternalStore(subscribe, getSnapshot);
 
   const loadHistory = useCallback(async () => {
-    setIsLoading(true);
+    setState({ isLoading: true });
     try {
       const threads = await fetchThreads();
-      setHistoryChats(threads);
+      setState({ historyChats: threads });
     } catch (err) {
       console.error('Failed to load threads', err);
-      setHistoryChats([]);
+      setState({ historyChats: [] });
     } finally {
-      setIsLoading(false);
+      setState({ isLoading: false });
     }
   }, [fetchThreads]);
 
   const openHistoryModal = useCallback(() => {
-    setIsHistoryModalOpen(true);
+    setState({ isHistoryModalOpen: true });
     loadHistory();
   }, [loadHistory]);
 
   const closeHistoryModal = useCallback(() => {
-    setIsHistoryModalOpen(false);
+    setState({ isHistoryModalOpen: false });
   }, []);
 
   const selectChat = useCallback(
@@ -48,7 +80,7 @@ export const useChatHistory = () => {
       if (result === false) {
         console.warn(`Не удалось удалить тред "${chatId}" на backend — убираю только из локального списка`);
       }
-      setHistoryChats((prev) => prev.filter((c) => c.id !== chatId));
+      setState({ historyChats: state.historyChats.filter((c) => c.id !== chatId) });
     },
     [deleteThread]
   );

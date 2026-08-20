@@ -7,7 +7,7 @@ import { useChatPosition } from '../hooks/useChatPosition';
 import { useChatWheelHandler } from '../hooks/useChatWheelHandler';
 import { useAutoScroll } from '../hooks/useAutoScroll';
 import { DEFAULT_PLACEHOLDER } from './config';
-import { ChatActions, ChatProviderProps, ChatState } from './types';
+import { ChatActions, ChatProviderProps, ChatState, PendingInteractive } from './types';
 import { ChatActionsContext, ChatStateContext } from './ChatContext';
 
 const parseSuggestionsString = (raw: string): string[] => {
@@ -56,6 +56,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     inputValue,
     setInputValue,
     sendMessage: sendMessageRaw,
+    sendInteractive,
     clearChat,
     newChat,
     retryMessage,
@@ -130,13 +131,22 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     [inputValue, sendMessageRaw, setInputValue, isChatOpen, openChat]
   );
 
-  // Приоритет подсказок:
-  // 1. Если у агента suggestionsSource — dynamic_once или dynamic_per_reply
-  //    и уже есть свежие подсказки от самого агента — показываем их.
-  // 2. Иначе — статические подсказки агента (suggestions), если заданы
-  //    (и источник статический), с опциональным добавлением общих
-  //    панельных подсказок в конец (suggestionsAppendToAll).
-  // 3. Иначе — общие панельные подсказки.
+  // Pending interactive-подсказка: только если последнее сообщение в чате —
+  // от ассистента и несёт interactive. Как только пользователь отвечает,
+  // добавляется новое сообщение пользователя — оно становится последним, и
+  // pendingInteractive автоматически перестаёт указывать сюда, без всякого
+  // отдельного флага "обработано".
+  const pendingInteractive = useMemo<PendingInteractive | null>(() => {
+    if (isLoading || messages.length === 0) {
+      return null;
+    }
+    const last = messages[messages.length - 1];
+    if (last.sender === 'ai' && last.interactive) {
+      return { messageId: last.id, payload: last.interactive };
+    }
+    return null;
+  }, [messages, isLoading]);
+
   const suggestionsArray = useMemo(() => {
     if (isDynamicSource(selectedAgent?.suggestionsSource) && dynamicSuggestions.length > 0) {
       return dynamicSuggestions;
@@ -181,8 +191,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       isChatOpen,
       isFullscreen,
       threadId,
+      pendingInteractive,
     }),
-    [messages, isLoading, inputValue, isChatOpen, isFullscreen, threadId]
+    [messages, isLoading, inputValue, isChatOpen, isFullscreen, threadId, pendingInteractive]
   );
 
   const actionsValue = useMemo<ChatActions>(
@@ -190,6 +201,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       setMessages,
       setInputValue,
       sendMessage,
+      sendInteractive,
       clearChat,
       newChat,
       retryMessage,
@@ -230,6 +242,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       setMessages,
       setInputValue,
       sendMessage,
+      sendInteractive,
       clearChat,
       newChat,
       retryMessage,

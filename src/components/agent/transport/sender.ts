@@ -5,7 +5,7 @@ import { handleStreamingResponse } from './streaming/executor';
 import { DEFAULT_CHAT_REPLY_FIELD, DEFAULT_RETRY, DEFAULT_TIMEOUT } from '../config/defaults';
 import { extractReasoningFromFullResponse } from './reasoning/processor';
 import { applySaveToContext, dotGet, parseHttpResponse } from '../utils/utils';
-import { AgentConfig, EndpointConfig, SendResult, TraceStep } from '../config/types';
+import { AgentConfig, EndpointConfig, InteractivePayload, SendResult, TraceStep } from '../config/types';
 import { saveAssistantMessage, syncIncomingHistory } from '../core/historyManager';
 import { buildRequestConfig } from './requestBuilder';
 
@@ -61,22 +61,7 @@ export async function sendOperation(
 
     if (!res.body) {
       const { body, reply } = await parseHttpResponse(res, op.replyField || DEFAULT_CHAT_REPLY_FIELD.streaming);
-      const { finalReply } = await processApiResponse(op, body, reply, context, eventBus, { onTrace });
-
-      return {
-        ok: true,
-        data: finalReply,
-        context,
-      };
-    }
-
-    const streamResult = await handleStreamingResponse(op, res, context, eventBus, onTrace);
-
-    if (streamResult.ok) {
-      const { finalReply, fileAttachment } = await processApiResponse(op, null, streamResult.data, context, eventBus, {
-        lastEvent: streamResult.lastEvent,
-        isStreaming: streamResult.isStreaming,
-        streamingReasoningText: streamResult.reasoningText,
+      const { finalReply, fileAttachment, interactive } = await processApiResponse(op, body, reply, context, eventBus, {
         onTrace,
       });
 
@@ -84,8 +69,35 @@ export async function sendOperation(
         ok: true,
         data: finalReply,
         context,
+        fileAttachment,
+        interactive,
+      };
+    }
+
+    const streamResult = await handleStreamingResponse(op, res, context, eventBus, onTrace);
+
+    if (streamResult.ok) {
+      const { finalReply, fileAttachment, interactive } = await processApiResponse(
+        op,
+        null,
+        streamResult.data,
+        context,
+        eventBus,
+        {
+          lastEvent: streamResult.lastEvent,
+          isStreaming: streamResult.isStreaming,
+          streamingReasoningText: streamResult.reasoningText,
+          onTrace,
+        }
+      );
+
+      return {
+        ok: true,
+        data: finalReply,
+        context,
         isStreaming: true,
         fileAttachment,
+        interactive,
       };
     }
     return streamResult;
@@ -109,20 +121,20 @@ export async function sendOperation(
         responseBody: body,
       });
 
-      const { finalReply, fileAttachment } = await processApiResponse(op, body, reply, context, eventBus, { onTrace });
+      const { finalReply, fileAttachment, interactive } = await processApiResponse(op, body, reply, context, eventBus, {
+        onTrace,
+      });
 
       return {
         ok: true,
         data: finalReply,
         context,
         fileAttachment,
+        interactive,
       };
     } catch (err: any) {
       lastError = err;
 
-      // Отменённый запрос (agent.abort() / внешний AbortSignal) не должен
-      // повторяться — иначе retry-цикл продолжит слать HTTP-запросы после
-      // явной отмены пользователем.
       if (err?.name === 'AbortError' || signal?.aborted) {
         break;
       }
@@ -152,7 +164,13 @@ async function processApiResponse(
     streamingReasoningText?: string;
     onTrace?: (step: TraceStep) => void;
   }
-): Promise<{ finalReply: any; reasoningText?: string; fileAttachment?: any; context: Record<string, any> }> {
+): Promise<{
+  finalReply: any;
+  reasoningText?: string;
+  fileAttachment?: any;
+  interactive?: InteractivePayload;
+  context: Record<string, any>;
+}> {
   applySaveToContext(context, op.saveToContext, parsedBody);
 
   let finalReply = rawReply;
@@ -192,15 +210,23 @@ async function processApiResponse(
     }
   }
 
+  let interactive: InteractivePayload | undefined = undefined;
+  if (op.interactiveField && rawBody) {
+    const rawInteractive = dotGet(rawBody, op.interactiveField);
+    if (rawInteractive && typeof rawInteractive === 'object') {
+      const hasOptions = Array.isArray(rawInteractive.options) && rawInteractive.options.length > 0;
+      const hasFields = Array.isArray(rawInteractive.fields) && rawInteractive.fields.length > 0;
+      if (hasOptions || hasFields) {
+        interactive = rawInteractive as InteractivePayload;
+      }
+    }
+  }
+
   if (op.historyConfig?.enabled && op.historyConfig.mode === 'local') {
     saveAssistantMessage(context, rawBody, finalReply, reasoningText, op, options?.isStreaming, options?.onTrace);
   } else if (op.historyConfig?.enabled && op.historyConfig.mode === 'incoming_sync' && !options?.isStreaming) {
-    // Обычный (не потоковый) JSON-ответ при incoming_sync: сервер присылает
-    // полный список сообщений (включая свою реплику) прямо в теле ответа.
-    // Раньше это тело никак не сохранялось в context.__history — ответ
-    // ассистента при incoming_sync на не-стриминговых операциях терялся.
     syncIncomingHistory(context, op.historyConfig, parsedBody, eventBus, options?.onTrace);
   }
 
-  return { finalReply, reasoningText, fileAttachment, context };
+  return { finalReply, reasoningText, fileAttachment, interactive, context };
 }

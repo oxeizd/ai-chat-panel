@@ -23,13 +23,17 @@ export const useSubmitBehavior = (onSubmit: () => void) => {
 
 /**
  * Готовая кнопка отправки сообщения (иконка стрелки).
+ * `style` нужен для редких режимов (interactive forms), где сохраняется
+ * общий className стандартной кнопки, но её absolute-позиция привязывается
+ * к другому контейнеру.
  */
 export const SubmitButton: React.FC<{
   onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
   ariaLabel?: string;
   className?: string;
-}> = ({ onClick, disabled = false, ariaLabel = 'Отправить сообщение', className }) => (
+  style?: React.CSSProperties;
+}> = ({ onClick, disabled = false, ariaLabel = 'Отправить сообщение', className, style }) => (
   <Button
     variant="secondary"
     size="sm"
@@ -41,5 +45,6 @@ export const SubmitButton: React.FC<{
     disabled={disabled}
     aria-label={ariaLabel}
     className={className}
+    style={style}
   />
 );

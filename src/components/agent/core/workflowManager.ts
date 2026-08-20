@@ -1,4 +1,4 @@
-import { AgentConfig, Session, TraceStep } from '../config/types';
+import { AgentConfig, InteractivePayload, Session, TraceStep } from '../config/types';
 import { EventBus } from './eventBus';
 import { sendOperation } from '../transport/sender';
 
@@ -11,7 +11,15 @@ export async function executeWorkflow(
   const signal = opts?.signal;
   const onTrace = opts?.onTrace;
   const abortOnError = opts?.abortOnError ?? true;
-  const stepResults: Array<{ operation: string; ok: boolean; data?: any; error?: string; streaming?: boolean }> = [];
+  const stepResults: Array<{
+    operation: string;
+    ok: boolean;
+    data?: any;
+    error?: string;
+    streaming?: boolean;
+    fileAttachment?: any;
+    interactive?: InteractivePayload;
+  }> = [];
 
   const ops: string[] = [];
   if (!session.started && agent.startupOperation) {
@@ -47,6 +55,8 @@ export async function executeWorkflow(
         ok: true,
         data: res.data,
         streaming: res.isStreaming ?? false,
+        fileAttachment: res.fileAttachment,
+        interactive: res.interactive,
       });
     }
 

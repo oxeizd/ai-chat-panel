@@ -9,6 +9,7 @@ import { useSuggestions } from 'components/ui/hooks/useSuggestions';
 import { useChatActions, useChatState } from '../chat/ChatContext';
 import { blurButton } from '../utils/dom';
 import { SubmitButton, useSubmitBehavior } from '../hooks/useSubmitBehavior';
+import { InteractiveOptionsColumn, InteractiveFieldsForm } from 'components/ui/messages/InteractivePrompt';
 
 interface InputAreaProps {
   className?: string;
@@ -41,10 +42,11 @@ export const InputArea = memo(
     const styles = useStyles(theme);
 
     const { className, onSend, onContinue, continueMode, onSendText } = props;
-    const { inputValue, isLoading } = useChatState();
+    const { inputValue, isLoading, pendingInteractive } = useChatState();
     const {
       setInputValue,
       sendMessage,
+      sendInteractive,
       selectedAgent,
       placeholderText,
       centerInput,
@@ -116,6 +118,15 @@ export const InputArea = memo(
 
     const { handleKeyDown } = useSubmitBehavior(handleAction);
 
+    const handleInteractiveSubmit = useCallback(
+      (text: string, extraContext?: Record<string, any>) => {
+        if (pendingInteractive) {
+          sendInteractive(pendingInteractive.messageId, text, extraContext);
+        }
+      },
+      [pendingInteractive, sendInteractive]
+    );
+
     const formattedWelcomeMessage = useMemo(() => formatWelcomeMessage(welcomeMessage || ''), [welcomeMessage]);
 
     const containerStyle = useMemo(
@@ -186,37 +197,64 @@ export const InputArea = memo(
       );
     }, [showPopup, suggestions, styles, floatingStyles, refs, popupRef, handleSuggestionClick, selectedAgent]);
 
+    const hasFieldsForm = !!pendingInteractive?.payload.fields?.length;
+    const hasOptions = !!pendingInteractive?.payload.options?.length;
+
+    let inputSlot: React.ReactNode;
+    if (hasFieldsForm) {
+      inputSlot = (
+        <InteractiveFieldsForm
+          fields={pendingInteractive!.payload.fields!}
+          onSubmit={handleInteractiveSubmit}
+          sendButtonClassName={styles.input.sendButton}
+        />
+      );
+    } else if (hasOptions) {
+      inputSlot = (
+        <InteractiveOptionsColumn
+          options={pendingInteractive!.payload.options!}
+          onSubmit={handleInteractiveSubmit}
+          sendButtonClassName={styles.input.sendButton}
+        />
+      );
+    } else {
+      inputSlot = (
+        <div style={{ position: 'relative', width: '100%' }}>
+          <div className={inlineWrapperStyle}>
+            <Input
+              ref={inputRef}
+              className={styles.input.box}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.currentTarget.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={onFocus}
+              onBlur={onBlur}
+              placeholder={placeholderText}
+              suffix={actionButton}
+            />
+            <Dropdown overlay={menu} placement="bottom-end">
+              <Button
+                variant="secondary"
+                size="sm"
+                icon="bars"
+                className={styles.header.iconButton}
+                onClick={blurButton}
+                aria-label="Меню"
+              />
+            </Dropdown>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <>
         <div ref={ref} className={containerStyle}>
           {showWelcomeMessage && welcomeMessage && (
             <div className={styles.welcome.message}>{formattedWelcomeMessage}</div>
           )}
-          <div style={{ position: 'relative', width: '100%' }}>
-            <div className={inlineWrapperStyle}>
-              <Input
-                ref={inputRef}
-                className={styles.input.box}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.currentTarget.value)}
-                onKeyDown={handleKeyDown}
-                onFocus={onFocus}
-                onBlur={onBlur}
-                placeholder={placeholderText}
-                suffix={actionButton}
-              />
-              <Dropdown overlay={menu} placement="bottom-end">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon="bars"
-                  className={styles.header.iconButton}
-                  onClick={blurButton}
-                  aria-label="Меню"
-                />
-              </Dropdown>
-            </div>
-          </div>
+
+          {inputSlot}
 
           {showSuggestionsAlways && (
             <div className={styles.suggestions.container}>

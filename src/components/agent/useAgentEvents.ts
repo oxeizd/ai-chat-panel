@@ -7,6 +7,7 @@ interface AgentEventsCallbacks {
   onReasoningEnd?: (text: string) => void;
   onContextUpdate?: (ctx: Record<string, any>) => void;
   onFileAttachment?: (file: any) => void;
+  onInteractive?: (payload: any) => void;
 }
 
 interface UseAgentEventsOptions {
@@ -17,6 +18,7 @@ interface UseAgentEventsOptions {
     onReasoningEnd?: (handler: (text: string) => void) => () => void;
     onContextUpdate?: (handler: (ctx: Record<string, any>) => void) => () => void;
     onFileAttachment?: (handler: (file: any) => void) => () => void;
+    onInteractive?: (handler: (payload: any) => void) => () => void;
   } | null;
   callbacksRef: React.MutableRefObject<AgentEventsCallbacks>;
 }
@@ -73,6 +75,14 @@ export const useAgentEvents = ({ subscriptions, callbacksRef }: UseAgentEventsOp
       unsubFunctions.push(
         subscriptions.onFileAttachment((file) => {
           callbacksRef.current.onFileAttachment?.(file);
+        })
+      );
+    }
+
+    if (subscriptions.onInteractive) {
+      unsubFunctions.push(
+        subscriptions.onInteractive((payload) => {
+          callbacksRef.current.onInteractive?.(payload);
         })
       );
     }
