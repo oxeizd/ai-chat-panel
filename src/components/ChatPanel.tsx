@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react';
 import { PanelProps } from '@grafana/data';
+
 import { PanelOptions } from 'types';
-import { InlineChat } from './ui/chatPanel/InlineChat';
-import { FloatingChatPanel } from './ui/chatPanel/FloatingChatPanel';
-import { ButtonChatPanel } from './ui/chatPanel/ButtonChatPanel';
 import { ChatProvider } from './ui/chat/ChatProvider';
+import { ButtonChatPanel } from './ui/chatPanel/ButtonChatPanel';
+import { FloatingChatPanel } from './ui/chatPanel/FloatingChatPanel';
+import { InlineChat } from './ui/chatPanel/InlineChat';
+import { ChatHistoryModalHost } from './ui/chatPanel/ChatHistoryModal';
 
 interface Props extends PanelProps<PanelOptions> {}
 
@@ -43,5 +45,11 @@ export const ChatPanel: React.FC<Props> = ({ options }) => {
     [options]
   );
 
-  return <ChatProvider {...providerProps}>{renderChat}</ChatProvider>;
+  return (
+    <ChatProvider {...providerProps}>
+      {renderChat}
+
+      <ChatHistoryModalHost />
+    </ChatProvider>
+  );
 };

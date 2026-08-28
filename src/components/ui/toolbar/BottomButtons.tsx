@@ -1,29 +1,24 @@
 import React from 'react';
 import { Button, Dropdown, useTheme2 } from '@grafana/ui';
+
 import { Message } from 'types';
 import { AgentMenu } from './AgentMenu';
 import { useChatActions, useChatState } from '../chat/ChatContext';
 import { useStyles } from '../styles/styles';
 import { blurButton } from '../utils/dom';
 import { useChatHistory } from '../hooks/useChatHistory';
-import { HistoryModal } from '../chatPanel/HistoryModal';
 
 export const BottomButtons: React.FC = () => {
   const { isLoading, messages } = useChatState();
   const { debug, testMessageButton } = useChatActions();
   const { selectedAgent, agents, setSelectedAgent, newChat, setMessages } = useChatActions();
+
   const theme = useTheme2();
   const styles = useStyles(theme);
 
-  const { historyChats, isHistoryModalOpen, selectChat, deleteChat, openHistoryModal, closeHistoryModal } =
-    useChatHistory();
+  const { openHistoryModal } = useChatHistory();
 
   const sendTestAiMessage = () => {
-    // Обычный текст — как раньше, просто добавляет реплику ассистента.
-    // Если вставить JSON вида
-    // {"text":"Какой у вас статус?","interactive":{"options":[{"label":"Активный","value":"active"},{"label":"Другое","value":"other","allowCustom":true}],"fields":[{"name":"email","label":"Email","type":"text"}]}}
-    // — можно проверить рендер interactive-карточки (варианты/поля) и
-    // fileAttachment без реального backend.
     const raw = window.prompt(
       'Текст сообщения от AI, либо JSON вида {"text":"...","interactive":{"options":[...],"fields":[...]}}'
     );
@@ -44,7 +39,7 @@ export const BottomButtons: React.FC = () => {
         interactive = parsed.interactive;
         fileAttachment = parsed.fileAttachment;
       } catch (err) {
-        window.alert('Некорректный JSON: ' + (err instanceof Error ? err.message : String(err)));
+        window.alert(`Некорректный JSON: ${err instanceof Error ? err.message : String(err)}`);
         return;
       }
     }
@@ -61,83 +56,73 @@ export const BottomButtons: React.FC = () => {
   };
 
   return (
-    <>
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <Dropdown
-          overlay={
-            <AgentMenu
-              agents={agents}
-              selectedAgent={selectedAgent}
-              onSelectAgent={setSelectedAgent}
-              className={styles.menu.customMenu}
-            />
-          }
-          placement="top-start"
-        >
-          <Button
-            variant="secondary"
-            size="sm"
-            className={styles.bottomButtons.agentButton}
-            icon="user"
-            onClick={blurButton}
-            disabled={isLoading}
-          >
-            {selectedAgent ? selectedAgent.name : 'Агент не выбран'}
-          </Button>
-        </Dropdown>
-
-        {selectedAgent?.history && (
-          <Button
-            variant="secondary"
-            size="sm"
-            icon="history"
-            onClick={(e) => {
-              blurButton(e);
-              openHistoryModal();
-            }}
-            disabled={isLoading}
-            className={styles.bottomButtons.newChatButton}
-          >
-            История
-          </Button>
-        )}
-
-        {debug && testMessageButton && (
-          <Button
-            variant="secondary"
-            size="sm"
-            icon="edit"
-            onClick={sendTestAiMessage}
-            title="тестовое сообщение от AI"
-            disabled={isLoading}
-            className={styles.bottomButtons.newChatButton}
-          >
-            AI message
-          </Button>
-        )}
-
+    <div style={{ display: 'flex', gap: '8px' }}>
+      <Dropdown
+        overlay={
+          <AgentMenu
+            agents={agents}
+            selectedAgent={selectedAgent}
+            onSelectAgent={setSelectedAgent}
+            className={styles.menu.customMenu}
+          />
+        }
+        placement="top-start"
+      >
         <Button
           variant="secondary"
           size="sm"
-          icon="plus"
-          onClick={(e) => {
-            blurButton(e);
-            newChat();
+          className={styles.bottomButtons.agentButton}
+          icon="user"
+          onClick={blurButton}
+          disabled={isLoading}
+        >
+          {selectedAgent ? selectedAgent.name : 'Агент не выбран'}
+        </Button>
+      </Dropdown>
+
+      {selectedAgent?.history && (
+        <Button
+          variant="secondary"
+          size="sm"
+          icon="history"
+          onClick={(event) => {
+            blurButton(event);
+            openHistoryModal();
           }}
           disabled={isLoading}
           className={styles.bottomButtons.newChatButton}
         >
-          Новый чат
+          История
         </Button>
-      </div>
+      )}
 
-      <HistoryModal
-        isOpen={isHistoryModalOpen}
-        onClose={closeHistoryModal}
-        historyChats={historyChats}
-        onSelectChat={selectChat}
-        onDeleteChat={deleteChat}
-      />
-    </>
+      {debug && testMessageButton && (
+        <Button
+          variant="secondary"
+          size="sm"
+          icon="edit"
+          onClick={sendTestAiMessage}
+          title="Тестовое сообщение от AI"
+          disabled={isLoading}
+          className={styles.bottomButtons.newChatButton}
+        >
+          AI message
+        </Button>
+      )}
+
+      <Button
+        variant="secondary"
+        size="sm"
+        icon="plus"
+        onClick={(event) => {
+          blurButton(event);
+          newChat();
+        }}
+        disabled={isLoading}
+        className={styles.bottomButtons.newChatButton}
+      >
+        Новый чат
+      </Button>
+    </div>
   );
 };
