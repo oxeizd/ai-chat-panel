@@ -36,6 +36,7 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
     getContextValue,
     setContext,
     runOperation,
+    markSessionStarted,
   } = useAgent(agentConfig);
 
   const callbacksRef = useRef<SendCallbacks>({});
@@ -67,17 +68,14 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
     if (!onFileAttachment) {
       return;
     }
-    const unsub = onFileAttachment((file) => {
+
+    const unsubscribe = onFileAttachment((file) => {
       callbacksRef.current.onFileAttachment?.(file);
     });
-    return unsub;
+
+    return unsubscribe;
   }, [onFileAttachment]);
 
-  /**
-   * @param extraContext - дополнительные данные, которые нужно передать
-   * агенту вместе с сообщением (например, структурированные значения формы
-   * из interactive-карточки), помимо стандартных полей пользователя.
-   */
   const send = useCallback(
     async (text: string, callbacks?: SendCallbacks, extraContext?: Record<string, any>): Promise<string | null> => {
       if (!agentConfig || isLoading) {
@@ -86,7 +84,10 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
 
       callbacksRef.current = callbacks || {};
 
-      const additionalContext: Record<string, any> = { ...extraContext };
+      const additionalContext: Record<string, any> = {
+        ...extraContext,
+      };
+
       if (user) {
         additionalContext.userId = user.id;
         additionalContext.userLogin = user.login;
@@ -95,13 +96,13 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
       }
 
       try {
-        const reply = await agentSendMessage(text, additionalContext, callbacks?.onStep);
-        return reply;
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
+        return await agentSendMessage(text, additionalContext, callbacks?.onStep);
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
           return null;
         }
-        throw err;
+
+        throw error;
       } finally {
         callbacksRef.current = {};
       }
@@ -109,13 +110,22 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
     [agentConfig, isLoading, user, agentSendMessage]
   );
 
-  const abort = useCallback(() => abortAgent(), [abortAgent]);
-  const reset = useCallback(async () => await resetSession(), [resetSession]);
+  const abort = useCallback(() => {
+    abortAgent();
+  }, [abortAgent]);
+
+  const reset = useCallback(async () => {
+    await resetSession();
+  }, [resetSession]);
 
   const getThreadId = useCallback(
     () => getContextValue?.(agentConfig?.threadIdContextKey || 'thread_id'),
     [getContextValue, agentConfig?.threadIdContextKey]
   );
+
+  const markStarted = useCallback(() => {
+    markSessionStarted();
+  }, [markSessionStarted]);
 
   return {
     send,
@@ -126,5 +136,6 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
     setContext,
     onContextUpdate,
     runOperation,
+    markStarted,
   };
 };

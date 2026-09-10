@@ -6,11 +6,16 @@ export async function executeWorkflow(
   agent: AgentConfig,
   session: Session,
   eventBus: EventBus,
-  opts?: { abortOnError?: boolean; onTrace?: (step: TraceStep) => void; signal?: AbortSignal }
+  opts?: {
+    abortOnError?: boolean;
+    onTrace?: (step: TraceStep) => void;
+    signal?: AbortSignal;
+  }
 ) {
   const signal = opts?.signal;
   const onTrace = opts?.onTrace;
   const abortOnError = opts?.abortOnError ?? true;
+
   const stepResults: Array<{
     operation: string;
     ok: boolean;
@@ -22,7 +27,25 @@ export async function executeWorkflow(
   }> = [];
 
   const ops: string[] = [];
-  if (!session.started && agent.startupOperation) {
+
+  const threadIdContextKey = agent.threadIdContextKey || 'thread_id';
+
+  const hasRestoredHistory = Array.isArray(session.context.__history) && session.context.__history.length > 0;
+
+  const hasRestoredThreadId = Boolean(session.context[threadIdContextKey]);
+
+  const isRestoredChat = hasRestoredHistory || hasRestoredThreadId;
+
+  /**
+   * startupOperation запускается исключительно у нового чата.
+   *
+   * Для загруженной истории:
+   * - session.started уже true через markSessionStarted();
+   * - а также в context есть __history и/или thread ID.
+   *
+   * Вторая проверка — дополнительная защита от повторного startup.
+   */
+  if (!session.started && !isRestoredChat && agent.startupOperation) {
     ops.push(agent.startupOperation);
   }
 
@@ -30,14 +53,17 @@ export async function executeWorkflow(
     ops.push(...agent.workflow);
   }
 
-  for (const op of ops) {
-    const res = await sendOperation(agent, op, session.context, eventBus, { onTrace, signal });
+  for (const operation of ops) {
+    const result = await sendOperation(agent, operation, session.context, eventBus, {
+      onTrace,
+      signal,
+    });
 
-    if (!res.ok) {
+    if (!result.ok) {
       stepResults.push({
-        operation: op,
+        operation,
         ok: false,
-        error: res.error,
+        error: result.error,
       });
 
       if (abortOnError) {
@@ -48,15 +74,18 @@ export async function executeWorkflow(
         };
       }
     } else {
-      session.context = { ...session.context, ...(res.context ?? {}) };
+      session.context = {
+        ...session.context,
+        ...(result.context ?? {}),
+      };
 
       stepResults.push({
-        operation: op,
+        operation,
         ok: true,
-        data: res.data,
-        streaming: res.isStreaming ?? false,
-        fileAttachment: res.fileAttachment,
-        interactive: res.interactive,
+        data: result.data,
+        streaming: result.isStreaming ?? false,
+        fileAttachment: result.fileAttachment,
+        interactive: result.interactive,
       });
     }
 
@@ -66,7 +95,7 @@ export async function executeWorkflow(
   }
 
   return {
-    success: stepResults.every((s) => s.ok),
+    success: stepResults.every((step) => step.ok),
     stepResults,
     context: session.context,
   };

@@ -7,7 +7,10 @@ import { sendOperation } from '../transport/sender';
 export class Agent {
   private config: AgentConfig;
   private bus = new EventBus();
-  private session: { started: boolean; context: Record<string, any> } = { started: false, context: {} };
+  private session: { started: boolean; context: Record<string, any> } = {
+    started: false,
+    context: {},
+  };
   private processing = false;
   private abortController?: AbortController;
 
@@ -51,8 +54,23 @@ export class Agent {
   }
 
   setContext(partial: Record<string, any>): void {
-    this.session.context = { ...this.session.context, ...partial };
+    this.session.context = {
+      ...this.session.context,
+      ...partial,
+    };
+
     this.bus.emit('contextUpdate', { ...this.session.context });
+  }
+
+  /**
+   * Помечает сессию как уже начатую.
+   *
+   * Вызывается после загрузки диалога из истории.
+   * Поэтому следующий пользовательский send продолжает тред
+   * и не запускает startupOperation.
+   */
+  markSessionStarted(): void {
+    this.session.started = true;
   }
 
   abort(): void {
@@ -67,6 +85,7 @@ export class Agent {
     if (this.processing) {
       throw new Error('Agent is already processing');
     }
+
     this.processing = true;
     this.abortController = new AbortController();
 
@@ -84,13 +103,14 @@ export class Agent {
       });
 
       if (!result.success) {
-        const errorMsg = result.stepResults.find((r) => !r.ok)?.error || 'Workflow failed';
-        throw new Error(errorMsg);
+        const errorMessage = result.stepResults.find((step) => !step.ok)?.error || 'Workflow failed';
+        throw new Error(errorMessage);
       }
 
-      const lastStep = result.stepResults.filter((r) => r.ok).pop();
+      const lastStep = result.stepResults.filter((step) => step.ok).pop();
 
       let reply = '';
+
       if (lastStep?.data) {
         reply = typeof lastStep.data === 'string' ? lastStep.data : JSON.stringify(lastStep.data);
       }
@@ -98,13 +118,14 @@ export class Agent {
       if (reply && !lastStep?.streaming) {
         this.bus.emit('chunk', reply);
       }
-      const fileAttachment = (lastStep as any)?.fileAttachment;
+
+      const fileAttachment = lastStep?.fileAttachment;
 
       if (fileAttachment) {
         this.bus.emit('fileAttachment', fileAttachment);
       }
 
-      const interactive = (lastStep as any)?.interactive;
+      const interactive = lastStep?.interactive;
 
       if (interactive) {
         this.bus.emit('interactive', interactive);
@@ -120,22 +141,34 @@ export class Agent {
   }
 
   /**
-   * Выполнить произвольную операцию (эндпоинт) с заданным контекстом.
-   * Не влияет на основной поток диалога, но обновляет сессионный контекст.
+   * Выполнить произвольную операцию с текущим session context.
+   * Используется для history list/load/delete и dynamic suggestions.
    */
   async runOperation(operation: string, additionalContext: Record<string, any> = {}): Promise<any> {
     if (this.processing) {
       throw new Error('Agent is busy');
     }
-    const context = { ...this.session.context, ...additionalContext };
+
+    const context = {
+      ...this.session.context,
+      ...additionalContext,
+    };
+
     const result = await sendOperation(this.config, operation, context, this.bus, {
       signal: this.abortController?.signal,
     });
+
     if (!result.ok) {
       throw new Error(result.error || 'Operation failed');
     }
-    this.session.context = { ...this.session.context, ...result.context };
+
+    this.session.context = {
+      ...this.session.context,
+      ...(result.context ?? {}),
+    };
+
     this.bus.emit('contextUpdate', { ...this.session.context });
+
     return result.data;
   }
 
@@ -143,6 +176,12 @@ export class Agent {
     if (this.processing) {
       throw new Error('Cannot reset while processing');
     }
-    this.session = { started: false, context: {} };
+
+    this.session = {
+      started: false,
+      context: {},
+    };
+
+    this.bus.emit('contextUpdate', {});
   }
 }

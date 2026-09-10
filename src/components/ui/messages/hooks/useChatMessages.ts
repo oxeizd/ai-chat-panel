@@ -16,10 +16,13 @@ function formatHistoryDate(value: any): string {
   if (value == null) {
     return '';
   }
+
   if (typeof value === 'number') {
     return new Date(value).toLocaleString();
   }
+
   const asDate = new Date(value);
+
   return isNaN(asDate.getTime()) ? String(value) : asDate.toLocaleString();
 }
 
@@ -29,21 +32,25 @@ function resolveThreadIdParam(agent: AgentConfig): string {
 
 function normalizeDynamicSuggestions(raw: any): string[] {
   if (Array.isArray(raw)) {
-    return raw.filter((s): s is string => typeof s === 'string' && s.trim().length > 0);
+    return raw.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
   }
+
   if (typeof raw === 'string') {
     return raw
       .split(';')
-      .map((s) => s.trim())
+      .map((item) => item.trim())
       .filter(Boolean);
   }
+
   return [];
 }
 
 export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaUser | null, debug: boolean) => {
   const resettingRef = useRef(false);
+
   const [inputValue, setInputValue] = useState('');
   const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([]);
+  const [threadId, setThreadId] = useState<string | null>(null);
 
   const {
     messages,
@@ -63,6 +70,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
   } = useMessagesState();
 
   const { traces, create, addStep, setReply, setError, remove: removeTrace } = useDebugTraces(debug);
+
   const {
     send,
     abort,
@@ -72,8 +80,11 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     setContext,
     onContextUpdate,
     runOperation,
-  } = useMessageSender({ agent: currentAgent, user });
-  const [threadId, setThreadId] = useState<string | null>(null);
+    markStarted,
+  } = useMessageSender({
+    agent: currentAgent,
+    user,
+  });
 
   useEffect(() => {
     return () => {
@@ -83,40 +94,52 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
 
   useEffect(() => {
     const key = currentAgent?.dynamicSuggestionsContextKey;
+
     if (!onContextUpdate || !key) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setDynamicSuggestions([]);
       return;
     }
-    const unsub = onContextUpdate((ctx) => {
-      setDynamicSuggestions(normalizeDynamicSuggestions(ctx?.[key]));
+
+    const unsubscribe = onContextUpdate((context) => {
+      setDynamicSuggestions(normalizeDynamicSuggestions(context?.[key]));
     });
-    return unsub;
+
+    return unsubscribe;
   }, [onContextUpdate, currentAgent?.dynamicSuggestionsContextKey]);
 
   const sendText = useCallback(
     async (
       text: string,
-      options?: { replaceUserMessageId?: string; extraContext?: Record<string, any> }
+      options?: {
+        replaceUserMessageId?: string;
+        extraContext?: Record<string, any>;
+      }
     ): Promise<boolean> => {
       const trimmed = text.trim();
+
       if (!trimmed || !currentAgent || isSending) {
         return false;
       }
 
       let userMessageId: string;
+
       if (options?.replaceUserMessageId) {
-        const index = messages.findIndex((m) => m.id === options.replaceUserMessageId);
+        const index = messages.findIndex((message) => message.id === options.replaceUserMessageId);
+
         if (index === -1) {
           return false;
         }
+
         pruneFrom(index);
-        const newUserMsg = addUserMessage(trimmed);
-        userMessageId = newUserMsg.id;
+
+        const newUserMessage = addUserMessage(trimmed);
+        userMessageId = newUserMessage.id;
+
         removeTrace(options.replaceUserMessageId);
       } else {
-        const newUserMsg = addUserMessage(trimmed);
-        userMessageId = newUserMsg.id;
+        const newUserMessage = addUserMessage(trimmed);
+        userMessageId = newUserMessage.id;
       }
 
       const assistantPlaceholder = addAssistantPlaceholder();
@@ -128,13 +151,13 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
           trimmed,
           {
             onChunk: (chunk: string) => {
-              updateAssistantText(assistantId, (prev) => prev + chunk);
+              updateAssistantText(assistantId, (previous) => previous + chunk);
             },
             onReasoningChunk: (chunk: string) => {
               updateAssistantThinking(assistantId, chunk);
             },
-            onReasoningComplete: (full: string) => {
-              setAssistantThinkingDone(assistantId, full);
+            onReasoningComplete: (fullReasoning: string) => {
+              setAssistantThinkingDone(assistantId, fullReasoning);
             },
             onStep: (step: any) => {
               if (trace) {
@@ -152,6 +175,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
         );
 
         const newThreadId = getThreadId();
+
         if (newThreadId) {
           setThreadId(newThreadId);
         }
@@ -162,74 +186,76 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
         }
 
         setAssistantFinal(assistantId, reply);
+
         if (trace) {
           setReply(userMessageId, reply);
         }
 
         if (currentAgent.suggestionsSource === 'dynamic_per_reply' && currentAgent.suggestionsOperation) {
-          runOperation(currentAgent.suggestionsOperation).catch((err) => {
-            console.error('Failed to fetch dynamic suggestions:', err);
+          runOperation(currentAgent.suggestionsOperation).catch((error) => {
+            console.error('Failed to fetch dynamic suggestions:', error);
           });
         }
 
         return true;
-      } catch (err) {
+      } catch (error) {
         removeAssistant(assistantId);
-        const parsed = parseApiError(err);
+
+        const parsedError = parseApiError(error);
+
         if (trace) {
-          setError(userMessageId, parsed);
+          setError(userMessageId, parsedError);
         }
-        markUserError(userMessageId, parsed);
-        addErrorAsAi(parsed.message, parsed);
+
+        markUserError(userMessageId, parsedError);
+        addErrorAsAi(parsedError.message, parsedError);
+
         return false;
       }
     },
     [
+      addAssistantPlaceholder,
+      addErrorAsAi,
       addStep,
+      addUserMessage,
+      create,
       currentAgent,
+      getThreadId,
       isSending,
+      markUserError,
       messages,
       pruneFrom,
-      addUserMessage,
-      removeTrace,
-      addAssistantPlaceholder,
-      create,
-      updateAssistantText,
-      updateAssistantThinking,
-      setAssistantThinkingDone,
-      send,
       removeAssistant,
+      removeTrace,
+      runOperation,
+      send,
       setAssistantFinal,
       setAssistantInteractive,
-      setReply,
-      markUserError,
-      addErrorAsAi,
+      setAssistantThinkingDone,
       setError,
-      getThreadId,
-      runOperation,
+      setReply,
+      updateAssistantText,
+      updateAssistantThinking,
     ]
   );
 
   const sendMessage = useCallback(
     (customText?: string) => {
       const text = customText !== undefined ? customText : inputValue;
-      if (text.trim()) {
-        sendText(text);
-        if (customText === undefined) {
-          setInputValue('');
-        }
+
+      if (!text.trim()) {
+        return;
+      }
+
+      void sendText(text);
+
+      if (customText === undefined) {
+        setInputValue('');
       }
     },
     [inputValue, sendText]
   );
 
-  /**
-   * Ответ на pending interactive-подсказку (клик по варианту или сабмит
-   * формы полей в зоне ввода). Отправляется как обычное сообщение
-   * пользователя — как только оно появится в messages, pendingInteractive
-   * в ChatProvider автоматически перестанет указывать на старое сообщение
-   * ассистента (см. вычисление там: "последнее сообщение — от ассистента").
-   */
   const sendInteractive = useCallback(
     async (_assistantMessageId: string, text: string, extraContext?: Record<string, any>) => {
       await sendText(text, { extraContext });
@@ -243,42 +269,48 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
         return;
       }
 
-      const index = messages.findIndex((m) => m.id === messageId);
+      const index = messages.findIndex((message) => message.id === messageId);
+
       if (index === -1 || messages[index].sender !== 'user') {
         return;
       }
-      const originalText = messages[index].text;
-      await sendText(originalText, { replaceUserMessageId: messageId });
+
+      await sendText(messages[index].text, {
+        replaceUserMessageId: messageId,
+      });
     },
-    [messages, sendText, isSending]
+    [isSending, messages, sendText]
   );
 
   const newChat = useCallback(async () => {
     if (resettingRef.current) {
       return;
     }
+
     resettingRef.current = true;
+
     try {
       abort();
       resetMessages();
       setInputValue('');
       setThreadId(null);
       setDynamicSuggestions([]);
+
       try {
         await resetSession();
-      } catch (err) {
-        console.warn('Failed to reset session on backend', err);
+      } catch (error) {
+        console.warn('Failed to reset session on backend', error);
       }
 
       if (currentAgent?.suggestionsSource === 'dynamic_once' && currentAgent.suggestionsOperation) {
-        runOperation(currentAgent.suggestionsOperation).catch((err) => {
-          console.error('Failed to fetch initial suggestions:', err);
+        runOperation(currentAgent.suggestionsOperation).catch((error) => {
+          console.error('Failed to fetch dynamic suggestions:', error);
         });
       }
     } finally {
       resettingRef.current = false;
     }
-  }, [abort, resetMessages, resetSession, currentAgent, runOperation]);
+  }, [abort, currentAgent, resetMessages, resetSession, runOperation]);
 
   const clearChat = useCallback(() => {
     abort();
@@ -291,22 +323,27 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     if (!currentAgent?.history || !currentAgent.historyListOperation) {
       return [];
     }
+
     try {
       const result = await runOperation(currentAgent.historyListOperation);
+
       if (!Array.isArray(result)) {
         return [];
       }
 
-      const fields = { ...DEFAULT_HISTORY_LIST_ITEM_FIELDS, ...currentAgent.historyListItemFields };
+      const fields = {
+        ...DEFAULT_HISTORY_LIST_ITEM_FIELDS,
+        ...currentAgent.historyListItemFields,
+      };
 
-      return result.map((item: any, idx: number) => ({
-        id: String(dotGet(item, fields.id) ?? item?.id ?? idx),
+      return result.map((item: any, index: number) => ({
+        id: String(dotGet(item, fields.id) ?? item?.id ?? index),
         title: String(dotGet(item, fields.title) ?? item?.title ?? 'Без названия'),
         date: formatHistoryDate(dotGet(item, fields.date) ?? item?.date),
         preview: fields.preview ? dotGet(item, fields.preview) : undefined,
       }));
-    } catch (err) {
-      console.error('Failed to fetch threads:', err);
+    } catch (error) {
+      console.error('Failed to fetch threads:', error);
       return [];
     }
   }, [currentAgent, runOperation]);
@@ -316,29 +353,45 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       if (!currentAgent?.history || !currentAgent.historyLoadOperation) {
         return;
       }
+
       try {
-        const param = resolveThreadIdParam(currentAgent);
-        const result = await runOperation(currentAgent.historyLoadOperation, { [param]: threadIdToLoad });
+        abort();
+
+        const threadIdParam = resolveThreadIdParam(currentAgent);
+
+        const result = await runOperation(currentAgent.historyLoadOperation, {
+          [threadIdParam]: threadIdToLoad,
+        });
 
         if (!Array.isArray(result)) {
           console.warn('loadThread: expected array, got', result);
           return;
         }
 
-        const fields = { ...DEFAULT_HISTORY_MESSAGE_FIELDS, ...currentAgent.historyMessageFields };
+        const fields = {
+          ...DEFAULT_HISTORY_MESSAGE_FIELDS,
+          ...currentAgent.historyMessageFields,
+        };
 
         const uiMessages: Message[] = [];
-        const historyForContext: Array<{ role: string; content: any }> = [];
+        const historyForContext: Array<{
+          role: 'user' | 'assistant';
+          content: any;
+        }> = [];
 
         for (const item of result) {
           const rawRole = dotGet(item, fields.role) ?? item?.role;
           const isUser = rawRole === 'user';
+
           const text = dotGet(item, fields.text) ?? item?.[fields.text] ?? item?.text ?? item?.content ?? '';
+
           const timestamp = dotGet(item, fields.timestamp) ?? item?.timestamp ?? Date.now();
-          const id = dotGet(item, fields.id) ?? item?.id ?? `hist_${Date.now()}_${Math.random()}`;
+
+          const messageId =
+            dotGet(item, fields.id) ?? item?.id ?? `hist_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
           uiMessages.push({
-            id: String(id),
+            id: String(messageId),
             text: typeof text === 'string' ? text : JSON.stringify(text),
             sender: isUser ? 'user' : 'ai',
             timestamp: typeof timestamp === 'number' ? timestamp : Date.parse(timestamp) || Date.now(),
@@ -350,19 +403,24 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
           });
         }
 
+        const threadIdContextKey = currentAgent.threadIdContextKey || 'thread_id';
+
         setMessages(uiMessages);
         setThreadId(threadIdToLoad);
+        setInputValue('');
+        setDynamicSuggestions([]);
 
-        const threadIdContextKey = currentAgent.threadIdContextKey || 'thread_id';
         setContext({
           __history: historyForContext,
           [threadIdContextKey]: threadIdToLoad,
         });
-      } catch (err) {
-        console.error('Failed to load thread:', err);
+
+        markStarted();
+      } catch (error) {
+        console.error('Failed to load thread:', error);
       }
     },
-    [currentAgent, runOperation, setMessages, setContext]
+    [abort, currentAgent, markStarted, runOperation, setContext, setMessages]
   );
 
   const deleteThread = useCallback(
@@ -370,12 +428,17 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       if (!currentAgent?.history || !currentAgent.historyDeleteOperation) {
         return null;
       }
+
       try {
-        const param = resolveThreadIdParam(currentAgent);
-        await runOperation(currentAgent.historyDeleteOperation, { [param]: threadIdToDelete });
+        const threadIdParam = resolveThreadIdParam(currentAgent);
+
+        await runOperation(currentAgent.historyDeleteOperation, {
+          [threadIdParam]: threadIdToDelete,
+        });
+
         return true;
-      } catch (err) {
-        console.error('Failed to delete thread:', err);
+      } catch (error) {
+        console.error('Failed to delete thread:', error);
         return false;
       }
     },

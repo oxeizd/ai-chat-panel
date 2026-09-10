@@ -11,18 +11,24 @@ export const useAgent = (config: AgentConfig | null) => {
     if (config) {
       try {
         const newAgent = new Agent(config);
+
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setAgent(newAgent);
+
         setAgentError(null);
-      } catch (err) {
-        console.error('Failed to initialize agent from config:', err, config);
+      } catch (error) {
+        console.error('Failed to initialize agent from config:', error, config);
+
         setAgent(null);
-        setAgentError(err instanceof Error ? err.message : String(err));
+
+        setAgentError(error instanceof Error ? error.message : String(error));
       }
     } else {
       setAgent(null);
+
       setAgentError(null);
     }
+
     return () => {
       setAgent(null);
     };
@@ -33,7 +39,9 @@ export const useAgent = (config: AgentConfig | null) => {
       if (!agent) {
         throw new Error(agentError || 'Agent not initialized');
       }
+
       setIsLoading(true);
+
       try {
         return await agent.sendMessage(userInput, additionalContext, onTrace);
       } finally {
@@ -48,13 +56,29 @@ export const useAgent = (config: AgentConfig | null) => {
       if (!agent) {
         throw new Error(agentError || 'Agent not initialized');
       }
+
       return agent.runOperation(operation, additionalContext);
     },
     [agent, agentError]
   );
 
-  const resetSession = useCallback(() => agent?.resetSession(), [agent]);
-  const abort = useCallback(() => agent?.abort(), [agent]);
+  const resetSession = useCallback(() => {
+    return agent?.resetSession();
+  }, [agent]);
+
+  const abort = useCallback(() => {
+    agent?.abort();
+  }, [agent]);
+
+  /**
+   * Используется после loadThread().
+   *
+   * Помечает session как существующую, поэтому executeWorkflow()
+   * не должен выполнять startupOperation при следующем сообщении.
+   */
+  const markSessionStarted = useCallback(() => {
+    agent?.markSessionStarted();
+  }, [agent]);
 
   const onChunk = useCallback(
     (handler: (chunk: string) => void) => {
@@ -105,8 +129,16 @@ export const useAgent = (config: AgentConfig | null) => {
     [agent]
   );
 
-  const getContextValue = useCallback((key: string) => agent?.getContextValue(key), [agent]);
-  const getContext = useCallback(() => agent?.getContext(), [agent]);
+  const getContextValue = useCallback(
+    (key: string) => {
+      return agent?.getContextValue(key);
+    },
+    [agent]
+  );
+
+  const getContext = useCallback(() => {
+    return agent?.getContext();
+  }, [agent]);
 
   const setContext = useCallback(
     (partial: Record<string, any>) => {
@@ -133,5 +165,6 @@ export const useAgent = (config: AgentConfig | null) => {
     onFileAttachment,
     onInteractive,
     runOperation,
+    markSessionStarted,
   };
 };
