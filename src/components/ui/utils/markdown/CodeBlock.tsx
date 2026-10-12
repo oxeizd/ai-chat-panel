@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Icon, useTheme2 } from '@grafana/ui';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
+import { extractText } from 'components/ui/utils/markdown/chartComponent/utils';
 
 interface CodeBlockProps {
   children: React.ReactNode;
@@ -15,15 +16,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ children, className, inlin
 
   const language = propLanguage || (className?.replace('language-', '') ?? '');
 
-  const codeText = useMemo(() => {
-    if (typeof children === 'string') {
-      return children;
-    }
-    if (React.isValidElement(children) && children.props?.children) {
-      return children.props.children;
-    }
-    return '';
-  }, [children]);
+  const codeText = useMemo(() => extractText(children), [children]);
 
   const handleCopy = () => copy(codeText);
 
@@ -49,7 +42,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ children, className, inlin
         <button
           onClick={handleCopy}
           style={{
-            marginLeft: language ? 'auto' : 'auto',
+            marginLeft: 'auto',
             background: 'transparent',
             border: 'none',
             cursor: 'pointer',
@@ -67,7 +60,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ children, className, inlin
           <Icon name={copied ? 'check' : 'copy'} style={{ width: '16px', height: '16px' }} />
         </button>
       </div>
-      {/* Блок кода – отменяем глобальные бордеры и фон */}
+      {/* Блок кода */}
       <pre
         className={className}
         style={{

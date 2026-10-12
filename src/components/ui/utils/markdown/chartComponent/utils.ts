@@ -1,4 +1,4 @@
-import { useEffect, RefObject } from 'react';
+import React, { useEffect, RefObject } from 'react';
 
 // Константы
 export const TEXT_COLOR_MUTED = '#94a3b8';
@@ -53,4 +53,35 @@ export const useChartResize = (containerRef: RefObject<HTMLDivElement | null>, c
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, [containerRef, chartRef]); // ← добавили chartRef в зависимости
+};
+
+/**
+ * Рекурсивно собирает текст из React-узла.
+ * react-markdown может передавать children как строку, массив,
+ * число или React-элемент — этот хелпер обрабатывает все случаи.
+ */
+export const extractText = (children: React.ReactNode): string => {
+  if (children === null || children === undefined) {
+    return '';
+  }
+  if (typeof children === 'string') {
+    return children;
+  }
+  if (typeof children === 'number') {
+    return String(children);
+  }
+  if (typeof children === 'boolean') {
+    return '';
+  }
+
+  if (Array.isArray(children)) {
+    return children.map(extractText).join('');
+  }
+
+  if (React.isValidElement(children)) {
+    const props = children.props as { children?: React.ReactNode } | undefined;
+    return extractText(props?.children);
+  }
+
+  return '';
 };

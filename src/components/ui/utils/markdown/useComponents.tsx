@@ -2,14 +2,16 @@ import React, { useMemo } from 'react';
 import { ChartComponent } from './chartComponent/ChartComponent';
 import { parseChartConfig, isValidChartConfig } from './chartParsing';
 import { CodeBlock } from 'components/ui/utils/markdown/CodeBlock';
+import { extractText } from 'components/ui/utils/markdown/chartComponent/utils';
 
 export const useMarkdownComponents = (chartContainerClass: string) => {
   return useMemo(
     () => ({
       code({ inline, className, children, ...props }: any) {
-        const match = /language-(\w+)/.exec(className || '');
-        const language = match ? match[1] : '';
-        const codeText = String(children).replace(/\n$/, '');
+        const match = /language-([\w-]+)/.exec(className || '');
+        const language = (match ? match[1] : '').toLowerCase();
+
+        const codeText = extractText(children).replace(/\n$/, '');
 
         if (inline) {
           return (
@@ -29,24 +31,68 @@ export const useMarkdownComponents = (chartContainerClass: string) => {
         }
 
         // Графики
-        if (language === 'chart' && !inline) {
+        if (language === 'chart') {
           try {
             const config = parseChartConfig(codeText);
+
             if (!isValidChartConfig(config)) {
-              throw new Error('Missing data field');
+              throw new Error('Отсутствует обязательное поле: ожидается "data" или "datasets".');
             }
+
             return (
               <div className={chartContainerClass}>
                 <ChartComponent config={config} />
               </div>
             );
           } catch (err) {
-            console.error('Chart parsing error:', err);
+            // Логируем сырой текст, чтобы видеть, что реально пришло от модели
+
+            console.error('Chart parsing error. Raw codeText:', codeText);
+
+            console.error(err);
+
             return (
               <div
-                style={{ color: 'red', padding: '8px', border: '1px solid red', borderRadius: '4px', margin: '8px 0' }}
+                style={{
+                  color: '#ef4444',
+                  padding: '8px 10px',
+                  border: '1px solid #ef4444',
+                  borderRadius: '6px',
+                  margin: '8px 0',
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  fontSize: '0.85rem',
+                }}
               >
-                ❌ Ошибка парсинга графика: {err instanceof Error ? err.message : 'Неверный формат данных'}
+                <div>❌ Ошибка парсинга графика: {err instanceof Error ? err.message : 'Неверный формат данных'}</div>
+
+                <details style={{ marginTop: 6 }}>
+                  <summary
+                    style={{
+                      cursor: 'pointer',
+                      color: '#94a3b8',
+                      fontSize: '0.75rem',
+                      userSelect: 'none',
+                    }}
+                  >
+                    Показать исходные данные
+                  </summary>
+                  <pre
+                    style={{
+                      marginTop: 6,
+                      padding: '0.5rem',
+                      background: 'rgb(69 72 85 / 20%)',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      maxHeight: 240,
+                      overflow: 'auto',
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    {codeText}
+                  </pre>
+                </details>
               </div>
             );
           }
