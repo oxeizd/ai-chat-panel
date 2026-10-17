@@ -516,7 +516,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
       maxHeight: '100vh',
       padding: '16px',
       borderRadius: 0,
-      zIndex: 1000,
+      zIndex: 2500,
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
