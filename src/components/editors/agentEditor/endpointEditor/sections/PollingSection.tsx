@@ -1,7 +1,8 @@
 import React from 'react';
-import { Switch, Field, Input } from '@grafana/ui';
+import { Field, Input } from '@grafana/ui';
 import { EndpointConfig, PollingConfig } from 'types';
 import { CommaSeparatedInput } from 'components/editors/shared/CommaSeparatedInput';
+import { Toggle } from 'components/editors/shared/Toggle';
 
 interface PollingSectionProps {
   endpoint: EndpointConfig;
@@ -16,8 +17,8 @@ export const PollingSection: React.FC<PollingSectionProps> = ({ endpoint, onChan
   const polling: PollingConfig = endpoint.polling ?? { enabled: false };
   const enabled = isPollingEnabled(polling);
 
-  const handlePollingChange = (checked: boolean) => {
-    onChange('polling', checked ? { enabled: true } : { enabled: false });
+  const handlePollingChange = () => {
+    onChange('polling', enabled ? { enabled: false } : { enabled: true });
   };
 
   const handlePollingFieldChange = (field: keyof Extract<PollingConfig, { enabled: true }>, val: any) => {
@@ -36,7 +37,7 @@ export const PollingSection: React.FC<PollingSectionProps> = ({ endpoint, onChan
     <div style={{ marginTop: '16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
         <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>⏱ Result polling</div>
-        <Switch value={enabled} onChange={(e) => handlePollingChange(e.currentTarget.checked)} />
+        <Toggle enabled={enabled} onChange={handlePollingChange} />
       </div>
       {enabled && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
