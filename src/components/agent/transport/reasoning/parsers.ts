@@ -40,11 +40,13 @@ export function extractEmbeddedFinal(ctx: ReasoningExtractContext): { cleanedRep
       eventBus.emit('reasoning:end', reasoningText);
       extracted = true;
     }
-  } else if (r.mode === 'thinking_tags' && r.textPath) {
+  } else if (r.mode === 'thinking_tags') {
+    // reply уже извлечён по textPath, когда он строка — используем его напрямую;
+    // повторное dotGet нужен только если reply нестроковый (например, объект).
     let fullText = '';
     if (typeof reply === 'string') {
       fullText = reply;
-    } else {
+    } else if (r.textPath) {
       const rawText = dotGet(parsedBody, r.textPath);
       if (typeof rawText === 'string') {
         fullText = rawText;
