@@ -50,15 +50,8 @@ const subscribe = (listener: () => void) => {
 const getSnapshot = () => state;
 
 export const useChatHistory = () => {
-  const {
-    setMessages,
-    setInputValue,
-    setContext,
-    markStarted,
-    runOperation,
-    openChat,
-    selectedAgent,
-  } = useChatActions();
+  const { setMessages, setInputValue, setContext, markStarted, runOperation, openChat, selectedAgent } =
+    useChatActions();
 
   // Подписка на общий стор — при любом setState все компоненты, вызвавшие
   // этот хук, перерендерятся с актуальным снапшотом.
@@ -73,7 +66,7 @@ export const useChatHistory = () => {
       const result = await runOperation(selectedAgent.historyListOperation);
 
       // Support wrapped responses like { items: [...], total: N }
-      const items = Array.isArray(result) ? result : result?.items ?? [];
+      const items = Array.isArray(result) ? result : (result?.items ?? []);
 
       if (!Array.isArray(items) || items.length === 0) {
         return [];
@@ -123,7 +116,7 @@ export const useChatHistory = () => {
         });
 
         // Support wrapped responses like { messages: [...], thread_id: "..." }
-        const messages = Array.isArray(result) ? result : result?.messages ?? [];
+        const messages = Array.isArray(result) ? result : (result?.messages ?? []);
 
         if (!Array.isArray(messages) || messages.length === 0) {
           console.warn('loadThread: expected array, got', result);

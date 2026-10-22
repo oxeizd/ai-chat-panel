@@ -1,163 +1,506 @@
 {
-  "annotations": {
-    "list": [
-      {
-        "builtIn": 1,
-        "datasource": {
-          "type": "grafana",
-          "uid": "-- Grafana --"
-        },
-        "enable": true,
-        "hide": true,
-        "iconColor": "rgba(0, 211, 255, 1)",
-        "name": "Annotations & Alerts",
-        "type": "dashboard"
-      }
-    ]
-  },
-  "editable": true,
-  "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
-  "links": [],
-  "panels": [
-    {
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 15,
-        "x": 0,
-        "y": 0
-      },
-      "id": 2,
-      "options": {
-        "code": {
-          "language": "plaintext",
-          "showLineNumbers": false,
-          "showMiniMap": false
-        },
-        "content": "",
-        "mode": "markdown"
-      },
-      "pluginVersion": "12.4.0",
-      "title": "Sample Panel Title",
-      "type": "text"
+  "apiVersion": "dashboard.grafana.app/v2",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "gkvxx4",
+    "namespace": "default",
+    "uid": "da6fe7f4-656f-42cf-b860-7844a56720e1",
+    "resourceVersion": "1792670601921013",
+    "generation": 1,
+    "creationTimestamp": "2026-10-22T12:03:21Z",
+    "labels": {
+      "grafana.app/deprecatedInternalID": "1051561524797440"
     },
-    {
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 9,
-        "x": 15,
-        "y": 0
-      },
-      "id": 1,
-      "options": {
-        "agents": [
-          {
-            "api": "https://openrouter.ai",
-            "config": "",
-            "default": true,
-            "endpoints": [
-              {
-                "body": "{\n  \"model\": \"openai/gpt-3.5-turbo\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{user_input}\"\n    }\n  ]\n}",
-                "headers": {
-                  "Authorization": ""
-                },
-                "method": "POST",
-                "operation": "ask",
-                "path": "/api/v1/chat/completions",
-                "polling": {
-                  "enabled": false
-                },
-                "saveToContext": []
-              }
-            ],
-            "name": "OpenRouter GPT-3.5",
-            "startupOperation": "ask",
-            "workflow": ["ask"]
-          }
-        ],
-        "inlineMode": false,
-        "placeholderText": "",
-        "seriesCountSize": "sm",
-        "showSeriesCount": false,
-        "text": "Default value of text input option"
-      },
-      "pluginVersion": "1.0.0",
-      "title": "",
-      "type": "oxd-aichat-panel"
-    },
-    {
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 24,
-        "x": 0,
-        "y": 2
-      },
-      "id": 3,
-      "options": {
-        "agents": [],
-        "inlineMode": false,
-        "placeholderText": "",
-        "seriesCountSize": "sm",
-        "showSeriesCount": false,
-        "text": "Default value of text input option"
-      },
-      "pluginVersion": "1.0.0",
-      "title": "",
-      "type": "oxd-aichat-panel"
-    },
-    {
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 15,
-        "w": 24,
-        "x": 0,
-        "y": 7
-      },
-      "id": 4,
-      "options": {
-        "code": {
-          "language": "plaintext",
-          "showLineNumbers": false,
-          "showMiniMap": false
-        },
-        "content": "<div style=\"max-width: 1300px; margin: 0 auto; padding: 20px;\">\n    <h2 style=\"margin-bottom: 10px;\">Заголовок 1</h2>\n    <div style=\"display: flex; justify-content: space-between; margin-bottom: 30px;\">\n        <a href=\"https://example.com/link1\" style=\"text-decoration: none; color: white; width: 48%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h3 style=\"margin: 0;\">Плашка 1</h3>\n            <p style=\"margin: 0;\">Текст ниже плашки 1</p>\n        </a>\n        <a href=\"https://example.com/link2\" style=\"text-decoration: none; color: white; width: 48%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h3 style=\"margin: 0;\">Плашка 2</h3>\n            <p style=\"margin: 0;\">Текст ниже плашки 2</p>\n        </a>\n    </div>\n\n    <h2 style=\"margin-bottom: 10px\">Заголовок 2</h2>\n    <div style=\"display: flex; justify-content: space-between; flex-wrap: wrap; margin-bottom: 30px;\">\n        <a href=\"https://example.com/link3\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">1</h4>\n        </a>\n        <a href=\"https://example.com/link3\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">2</h4>\n        </a>\n        <a href=\"https://example.com/link3\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">3</h4>\n        </a>\n        <a href=\"https://example.com/link4\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">4</h4>\n        </a>\n        <a href=\"https://example.com/link5\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">5</h4>\n        </a>\n        <a href=\"https://example.com/link6\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">6</h4>\n        </a>\n        <a href=\"https://example.com/link6\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">7</h4>\n        </a>\n    </div>\n\n    <h2 style=\"margin-bottom: 10px;\">Заголовок 3</h2>\n    <div style=\"display: flex; justify-content: space-between; flex-wrap: wrap; margin-bottom: 30px;\">\n        <a href=\"https://example.com/link7\" style=\"text-decoration: none; color: white; width: 24%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">1</h4>\n            <p style=\"margin: 0;\">Текст для плашки</p>\n        </a>\n        <a href=\"https://example.com/link8\" style=\"text-decoration: none; color: white; width: 24%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">2</h4>\n            <p style=\"margin: 0;\">Текст для плашки</p>\n        </a>\n        <a href=\"https://example.com/link9\" style=\"text-decoration: none; color: white; width: 24%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">3</h4>\n            <p style=\"margin: 0;\">Текст для плашки </p>\n        </a>\n        <a href=\"https://example.com/link10\" style=\"text-decoration: none; color: white; width: 24%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">4</h4>\n            <p style=\"margin: 0;\">Текст для плашки</p>\n        </a>\n    </div>\n\n    <h2 style=\"margin-bottom: 10px;\">Заголовок 4</h2>\n    <div style=\"display: flex; justify-content: space-between; flex-wrap: wrap;\">\n        <a href=\"https://example.com/link11\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 11</h4>\n            <p style=\"margin: 0;\">Текст для плашки 11</p>\n        </a>\n        <a href=\"https://example.com/link12\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 12</h4>\n            <p style=\"margin: 0;\">Текст для плашки 12</p>\n        </a>\n        <a href=\"https://example.com/link13\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 13</h4>\n            <p style=\"margin: 0;\">Текст для плашки 13</p>\n        </a>\n        <a href=\"https://example.com/link14\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 14</h4>\n            <p style=\"margin: 0;\">Текст для плашки 14</p>\n        </a>\n        <a href=\"https://example.com/link14\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 14</h4>\n            <p style=\"margin: 0;\">Текст для плашки 14</p>\n        </a>\n        <a href=\"https://example.com/link14\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 14</h4>\n            <p style=\"margin: 0;\">Текст для плашки 14</p>\n        </a>\n        <a href=\"https://example.com/link14\" style=\"text-decoration: none; color: white; width: 13%; padding: 8px 16px; background: rgb(24, 27, 31); \n            border: 1px solid rgb(46, 49, 54); border-radius: 2px; box-sizing: border-box; \n            display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;\">\n            <h4 style=\"margin: 0;\">Плашка 14</h4>\n            <p style=\"margin: 0;\">Текст для плашки 14</p>\n        </a>\n    </div>\n</div>",
-        "mode": "html"
-      },
-      "pluginVersion": "12.4.0",
-      "title": "",
-      "type": "text"
+    "annotations": {
+      "grafana.app/createdBy": "access-policy:service",
+      "grafana.app/managedBy": "classic-file-provisioning",
+      "grafana.app/managerId": "AI Chat",
+      "grafana.app/sourceChecksum": "546e837cc96b16686c365f753ddebcbf",
+      "grafana.app/sourcePath": "/etc/grafana/provisioning/dashboards/dashboard.json",
+      "grafana.app/sourceTimestamp": "1792670590000",
+      "grafana.app/folder": ""
     }
-  ],
-  "preload": false,
-  "refresh": "",
-  "schemaVersion": 42,
-  "tags": [],
-  "templating": {
-    "list": []
   },
-  "time": {
-    "from": "now-6h",
-    "to": "now"
-  },
-  "timepicker": {},
-  "timezone": "browser",
-  "title": "Provisioned AI Chat dashboard",
-  "uid": "a538aeff-5a8a-42a5-901c-938d896fdd6f",
-  "version": 1,
-  "weekStart": ""
+  "spec": {
+    "annotations": [
+      {
+        "kind": "AnnotationQuery",
+        "spec": {
+          "builtIn": true,
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "query": {
+            "datasource": {
+              "name": "-- Grafana --"
+            },
+            "group": "grafana",
+            "kind": "DataQuery",
+            "spec": {},
+            "version": "v0"
+          }
+        }
+      }
+    ],
+    "cursorSync": "Off",
+    "description": "http://127.0.0.1:3000/?orgId=1&from=now-6h&to=now&timezone=browser&editview=json-model",
+    "editable": true,
+    "elements": {
+      "panel-10": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "",
+          "id": 10,
+          "links": [],
+          "title": "",
+          "vizConfig": {
+            "group": "oxd-aichat-panel",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "options": {
+                "agents": [
+                  {
+                    "default": true,
+                    "endpoints": [
+                      {
+                        "body": {
+                          "messages": [
+                            {
+                              "content": "{user_input}",
+                              "role": "user",
+                              "thread_id": "{$uuid4:thread_id}"
+                            }
+                          ],
+                          "model": "deepseek-r1:1.5b",
+                          "stream": true
+                        },
+                        "headers": {},
+                        "historyConfig": {
+                          "enabled": false
+                        },
+                        "method": "POST",
+                        "operation": "ask",
+                        "path": "/api/chat",
+                        "polling": {
+                          "enabled": false
+                        },
+                        "reasoning": {
+                          "enabled": false
+                        },
+                        "replyField": "",
+                        "saveToContext": [],
+                        "streaming": {
+                          "dataPrefix": "data: ",
+                          "delimiter": "\\n\\n",
+                          "enabled": true,
+                          "parseStrategy": "sse",
+                          "textDeltaField": "delta",
+                          "textEventType": "TEXT_MESSAGE_CONTENT"
+                        }
+                      },
+                      {
+                        "body": {},
+                        "headers": {},
+                        "method": "GET",
+                        "operation": "list",
+                        "path": "/api/threads",
+                        "polling": {
+                          "enabled": false
+                        },
+                        "replyField": "items",
+                        "saveToContext": []
+                      },
+                      {
+                        "body": {},
+                        "headers": {},
+                        "method": "GET",
+                        "operation": "load",
+                        "path": "/api/threads/{thread_id}",
+                        "polling": {
+                          "enabled": false
+                        },
+                        "replyField": "",
+                        "saveToContext": [],
+                        "streaming": {
+                          "enabled": true,
+                          "parseStrategy": "agui"
+                        }
+                      }
+                    ],
+                    "history": true,
+                    "historyListItemFields": {
+                      "date": "last_run_at",
+                      "id": "thread_id",
+                      "title": "title"
+                    },
+                    "historyListOperation": "list",
+                    "historyLoadOperation": "load",
+                    "name": "a",
+                    "startupOperation": "",
+                    "threadIdContextKey": "thread_id",
+                    "threadIdParam": "thread_id",
+                    "url": "http://localhost:3456",
+                    "workflow": [
+                      "ask"
+                    ]
+                  }
+                ],
+                "chatMode": "inline",
+                "chatStyles": {
+                  "buttonText": "Open Chat",
+                  "centerFloatingChat": false,
+                  "centerInput": false,
+                  "fullScale": true,
+                  "inputAreaBackground": false,
+                  "maxWidth": 0
+                },
+                "debug": true,
+                "settings": {
+                  "placeholderText": "",
+                  "showSuggestions": false,
+                  "showWelcomeMessage": false,
+                  "suggestions": "",
+                  "suggestionsAppendToAll": false,
+                  "suggestionsPlacement": "always",
+                  "welcomeMessage": ""
+                },
+                "testMessageButton": true
+              }
+            },
+            "version": "1.1.5"
+          }
+        }
+      },
+      "panel-8": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "",
+          "id": 8,
+          "links": [],
+          "title": "",
+          "vizConfig": {
+            "group": "oxd-aichat-panel",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "options": {
+                "agents": [
+                  {
+                    "default": true,
+                    "endpoints": [
+                      {
+                        "body": {
+                          "messages": [
+                            {
+                              "content": "{user_input}",
+                              "role": "user",
+                              "thread_id": "{$uuid4:thread_id}"
+                            }
+                          ],
+                          "model": "llama-3.2-1b-instruct",
+                          "stream": false
+                        },
+                        "headers": {},
+                        "historyConfig": {
+                          "assistantMessageFields": [
+                            "choices[0].message.role",
+                            "choices[0].message.content"
+                          ],
+                          "enabled": true,
+                          "maxMessages": 100,
+                          "mode": "local",
+                          "userMessageFields": [
+                            "role",
+                            "content",
+                            "thread_id"
+                          ]
+                        },
+                        "method": "POST",
+                        "operation": "ask",
+                        "path": "/v1/chat/completions",
+                        "polling": {
+                          "enabled": false
+                        },
+                        "reasoning": {
+                          "apiField": "choices[0].message.reasoning",
+                          "enabled": true,
+                          "mode": "api_field",
+                          "type": "embedded"
+                        },
+                        "replyField": "",
+                        "saveToContext": [],
+                        "streaming": {
+                          "enabled": false
+                        }
+                      }
+                    ],
+                    "name": "a",
+                    "startupOperation": "",
+                    "url": "http://127.0.0.1:11434",
+                    "workflow": [
+                      "ask"
+                    ]
+                  }
+                ],
+                "chatMode": "floating",
+                "chatStyles": {
+                  "buttonText": "Open Chat",
+                  "centerFloatingChat": false,
+                  "centerInput": false,
+                  "fullScale": true,
+                  "inputAreaBackground": false,
+                  "maxWidth": 0
+                },
+                "debug": true,
+                "settings": {
+                  "placeholderText": "",
+                  "showSuggestions": false,
+                  "showWelcomeMessage": false,
+                  "suggestions": "",
+                  "suggestionsAppendToAll": false,
+                  "suggestionsPlacement": "always",
+                  "welcomeMessage": ""
+                },
+                "testMessageButton": false
+              }
+            },
+            "version": "1.1.5"
+          }
+        }
+      },
+      "panel-9": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "",
+          "id": 9,
+          "links": [],
+          "title": "",
+          "vizConfig": {
+            "group": "oxd-aichat-panel",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "options": {
+                "agents": [
+                  {
+                    "default": true,
+                    "endpoints": [
+                      {
+                        "body": {
+                          "messages": [
+                            {
+                              "content": "{user_input}",
+                              "role": "user",
+                              "thread_id": "{$uuid4:thread_id}"
+                            }
+                          ],
+                          "model": "deepseek-r1:1.5b",
+                          "stream": true
+                        },
+                        "headers": {},
+                        "historyConfig": {
+                          "enabled": false
+                        },
+                        "method": "POST",
+                        "operation": "ask",
+                        "path": "/api/chat",
+                        "polling": {
+                          "enabled": false
+                        },
+                        "reasoning": {
+                          "enabled": false
+                        },
+                        "replyField": "",
+                        "saveToContext": [],
+                        "streaming": {
+                          "dataPrefix": "data: ",
+                          "delimiter": "\\n\\n",
+                          "enabled": true,
+                          "parseStrategy": "sse",
+                          "textDeltaField": "delta",
+                          "textEventType": "TEXT_MESSAGE_CONTENT"
+                        }
+                      },
+                      {
+                        "body": {},
+                        "headers": {},
+                        "method": "GET",
+                        "operation": "list",
+                        "path": "/api/threads",
+                        "polling": {
+                          "enabled": false
+                        },
+                        "replyField": "items",
+                        "saveToContext": []
+                      },
+                      {
+                        "body": {},
+                        "headers": {},
+                        "method": "GET",
+                        "operation": "load",
+                        "path": "/api/threads/{thread_id}",
+                        "polling": {
+                          "enabled": false
+                        },
+                        "replyField": "",
+                        "saveToContext": [],
+                        "streaming": {
+                          "enabled": true,
+                          "parseStrategy": "agui"
+                        }
+                      }
+                    ],
+                    "history": true,
+                    "historyListItemFields": {
+                      "date": "last_run_at",
+                      "id": "thread_id",
+                      "title": "title"
+                    },
+                    "historyListOperation": "list",
+                    "historyLoadOperation": "load",
+                    "name": "a",
+                    "startupOperation": "",
+                    "threadIdContextKey": "thread_id",
+                    "threadIdParam": "thread_id",
+                    "url": "http://localhost:3456",
+                    "workflow": [
+                      "ask"
+                    ]
+                  }
+                ],
+                "chatMode": "floating",
+                "chatStyles": {
+                  "buttonText": "Open Chat",
+                  "centerFloatingChat": false,
+                  "centerInput": false,
+                  "fullScale": true,
+                  "inputAreaBackground": false,
+                  "maxWidth": 0
+                },
+                "debug": true,
+                "settings": {
+                  "placeholderText": "",
+                  "showSuggestions": false,
+                  "showWelcomeMessage": false,
+                  "suggestions": "",
+                  "suggestionsAppendToAll": false,
+                  "suggestionsPlacement": "always",
+                  "welcomeMessage": ""
+                },
+                "testMessageButton": true
+              }
+            },
+            "version": "1.1.5"
+          }
+        }
+      }
+    },
+    "layout": {
+      "kind": "GridLayout",
+      "spec": {
+        "items": [
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-8"
+              },
+              "height": 2,
+              "width": 24,
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-9"
+              },
+              "height": 2,
+              "width": 24,
+              "x": 0,
+              "y": 2
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-10"
+              },
+              "height": 12,
+              "width": 24,
+              "x": 0,
+              "y": 4
+            }
+          }
+        ]
+      }
+    },
+    "links": [],
+    "liveNow": false,
+    "preload": false,
+    "tags": [],
+    "timeSettings": {
+      "autoRefresh": "",
+      "autoRefreshIntervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "fiscalYearStartMonth": 0,
+      "from": "now-6h",
+      "hideTimepicker": true,
+      "timezone": "browser",
+      "to": "now"
+    },
+    "title": "home",
+    "variables": []
+  }
 }
