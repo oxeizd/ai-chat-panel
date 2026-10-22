@@ -1,7 +1,8 @@
 import React from 'react';
-import { Switch, Field, Input, Combobox, useStyles2 } from '@grafana/ui';
+import { Field, Input, Combobox, useStyles2 } from '@grafana/ui';
 import { css } from '@emotion/css';
 import { EndpointConfig, StreamingConfig } from 'types';
+import { Toggle } from 'components/editors/shared/Toggle';
 
 interface StreamingSectionProps {
   endpoint: EndpointConfig;
@@ -59,12 +60,8 @@ export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, on
   const enabled = streaming?.enabled === true;
   const config = enabled ? streaming : null;
 
-  const handleEnable = (checked: boolean) => {
-    if (checked) {
-      onChange('streaming', getDefaultConfig('sse'));
-    } else {
-      onChange('streaming', { enabled: false });
-    }
+  const handleToggle = () => {
+    onChange('streaming', enabled ? { enabled: false } : getDefaultConfig('sse'));
   };
 
   const handleStrategyChange = (strategyValue: string) => {
@@ -181,7 +178,7 @@ export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, on
     <div className={styles.container}>
       <div className={styles.header}>
         <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>📡 Streaming</div>
-        <Switch value={enabled} onChange={(e) => handleEnable(e.currentTarget.checked)} />
+        <Toggle enabled={enabled} onChange={handleToggle} />
       </div>
       {enabled && config && (
         <div className={styles.fields}>
