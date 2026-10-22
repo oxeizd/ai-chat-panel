@@ -23,7 +23,11 @@ export async function handleStreamingResponse(
     return { ok: false, error: 'streaming not enabled' };
   }
 
-  if (streaming.parseStrategy === 'sse') {
+  // AG-UI обрабатывается отдельным транспортом (AGUITransport) на уровне Agent.sendMessage.
+  // Если сюда всё же пришёл endpoint со стратегией 'agui' (например, из workflow),
+  // интерпретируем поток как обычный SSE — так же, как это делалось до добавления AG-UI,
+  // вместо падения с ошибкой "Unsupported parse strategy: agui".
+  if (streaming.parseStrategy === 'sse' || streaming.parseStrategy === 'agui') {
     const result = await handleSSEStream(op, response, context, eventBus, onTrace);
     return {
       ok: true,

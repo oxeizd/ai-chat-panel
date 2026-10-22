@@ -341,4 +341,127 @@ data: {"type":"TEXT_MESSAGE_CONTENT","delta":"ok"}
       expect(traceSteps[0].activityType).toBe('progress');
     });
   });
+
+  describe('sendMessage — streaming (инкрементальный SSE)', () => {
+    // Mock ReadableStream: отдаёт чанки по очереди, затем done
+    const mockStream = (chunks: string[]) => {
+      let i = 0;
+      return {
+        ok: true,
+        status: 200,
+        body: {
+          getReader: () => ({
+            read: async () => {
+              if (i < chunks.length) {
+                return { done: false, value: new TextEncoder().encode(chunks[i++]) };
+              }
+              return { done: true, value: undefined };
+            },
+          }),
+        },
+      };
+    };
+
+    const aguiData = (obj: Record<string, any>) => `data: ${JSON.stringify(obj)}\n\n`;
+
+    it('emits only assistant-role text as chunks (filters intermediate step messages)', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        mockStream([
+          aguiData({ type: 'RUN_STARTED', threadId: '7bb8942d-5110-4eea-82fc-7c943e310fea', runId: 'a1b2c3d4e5f60718293a4b5c6d7e8f90' }),
+          aguiData({ type: 'STEP_STARTED', stepName: 'intent_gatekeeper' }),
+          // Промежуточное сообщение НЕ-assistenta — не должно попасть в ответ
+          aguiData({ type: 'TEXT_MESSAGE_START', messageId: 'msg-c25a4f1e-88d7-4b03-9f61-2ac07de55b31', role: 'user' }),
+          aguiData({ type: 'TEXT_MESSAGE_CONTENT', messageId: 'msg-c25a4f1e-88d7-4b03-9f61-2ac07de55b31', delta: 'internal note' }),
+          aguiData({ type: 'TEXT_MESSAGE_END', messageId: 'msg-c25a4f1e-88d7-4b03-9f61-2ac07de55b31' }),
+          aguiData({ type: 'STEP_FINISHED', stepName: 'intent_gatekeeper' }),
+          // Финальное сообщение ассистента
+          aguiData({ type: 'TEXT_MESSAGE_START', messageId: 'msg-9e1f77c2-4b58-42ad-8c30-6df21aa90e44', role: 'assistant' }),
+          aguiData({ type: 'TEXT_MESSAGE_CONTENT', messageId: 'msg-9e1f77c2-4b58-42ad-8c30-6df21aa90e44', delta: 'Hello' }),
+          aguiData({ type: 'TEXT_MESSAGE_CONTENT', messageId: 'msg-9e1f77c2-4b58-42ad-8c30-6df21aa90e44', delta: ' world' }),
+          aguiData({ type: 'TEXT_MESSAGE_END', messageId: 'msg-9e1f77c2-4b58-42ad-8c30-6df21aa90e44' }),
+          aguiData({ type: 'RUN_FINISHED', threadId: '7bb8942d-5110-4eea-82fc-7c943e310fea', runId: 'a1b2c3d4e5f60718293a4b5c6d7e8f90' }),
+        ])
+      );
+
+      const chunks: string[] = [];
+      bus.on('chunk', (c: string) => chunks.push(c));
+
+      const result = await transport.sendMessage('hi');
+
+      expect(result).toBe('Hello world');
+      expect(chunks.join('')).toBe('Hello world');
+      expect(chunks).not.toContain('internal note');
+    });
+
+    it('saves threadId into bus.context after RUN_STARTED/RUN_FINISHED', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        mockStream([
+          aguiData({ type: 'RUN_STARTED', threadId: '3f2a1b9c-7d4e-48a6-b1f0-e5c9d2a83716', runId: 'ff00aa55de1749b38c620f1e4a7d9c23' }),
+          aguiData({ type: 'TEXT_MESSAGE_START', messageId: 'msg-11d4a2be-6c38-49f7-90ab-2e57f1c3d804', role: 'assistant' }),
+          aguiData({ type: 'TEXT_MESSAGE_CONTENT', messageId: 'msg-11d4a2be-6c38-49f7-90ab-2e57f1c3d804', delta: 'ok' }),
+          aguiData({ type: 'TEXT_MESSAGE_END', messageId: 'msg-11d4a2be-6c38-49f7-90ab-2e57f1c3d804' }),
+          aguiData({ type: 'RUN_FINISHED', threadId: '3f2a1b9c-7d4e-48a6-b1f0-e5c9d2a83716', runId: 'ff00aa55de1749b38c620f1e4a7d9c23' }),
+        ])
+      );
+
+      const contextUpdates: any[] = [];
+      bus.on('contextUpdate', (ctx: any) => contextUpdates.push(ctx));
+
+      await transport.sendMessage('hi');
+
+      expect(bus.context.thread_id).toBe('3f2a1b9c-7d4e-48a6-b1f0-e5c9d2a83716');
+      expect(bus.context.lastRunId).toBe('ff00aa55de1749b38c620f1e4a7d9c23');
+      expect(contextUpdates.length).toBeGreaterThanOrEqual(1);
+      expect(contextUpdates[contextUpdates.length - 1].thread_id).toBe('3f2a1b9c-7d4e-48a6-b1f0-e5c9d2a83716');
+    });
+
+    it('includes threadId in request body when known from previous run', async () => {
+      bus.context.thread_id = 'd8e6f03a-52b1-47c9-9e4d-1a08bc73fe55';
+      (global.fetch as jest.Mock).mockResolvedValue(mockStream([]));
+
+      await transport.sendMessage('next question');
+
+      const [, opts] = (global.fetch as jest.Mock).mock.calls[0];
+      const body = JSON.parse(opts.body);
+      expect(body.threadId).toBe('d8e6f03a-52b1-47c9-9e4d-1a08bc73fe55');
+      expect(body.runId).toBeTruthy();
+    });
+
+    it('handles chunk boundaries splitting SSE events (no lost/duplicated data)', async () => {
+      const stream =
+        aguiData({ type: 'RUN_STARTED', threadId: 'b41c8e77-9f03-42ad-a6d5-30ce18f94b27', runId: '0c9e2f7ab1844d06ae3591cf20d6b748' }) +
+        aguiData({ type: 'TEXT_MESSAGE_START', messageId: 'msg-77a3c1e9-05d8-4b2f-8a61-cc904ef13b52', role: 'assistant' }) +
+        aguiData({ type: 'TEXT_MESSAGE_CONTENT', messageId: 'msg-77a3c1e9-05d8-4b2f-8a61-cc904ef13b52', delta: 'Парагра' }) +
+        aguiData({ type: 'TEXT_MESSAGE_CONTENT', messageId: 'msg-77a3c1e9-05d8-4b2f-8a61-cc904ef13b52', delta: 'ф!' }) +
+        aguiData({ type: 'TEXT_MESSAGE_END', messageId: 'msg-77a3c1e9-05d8-4b2f-8a61-cc904ef13b52' }) +
+        ': keep-alive\n\n' +
+        aguiData({ type: 'RUN_FINISHED', threadId: 'b41c8e77-9f03-42ad-a6d5-30ce18f94b27', runId: '0c9e2f7ab1844d06ae3591cf20d6b748' });
+
+      // Режем поток на мелкие куски в произвольных местах — границы событий рвутся
+      const smallChunks: string[] = [];
+      for (let i = 0; i < stream.length; i += 7) {
+        smallChunks.push(stream.slice(i, i + 7));
+      }
+      (global.fetch as jest.Mock).mockResolvedValue(mockStream(smallChunks));
+
+      const result = await transport.sendMessage('hi');
+
+      expect(result).toBe('Параграф!');
+      expect(bus.context.thread_id).toBe('b41c8e77-9f03-42ad-a6d5-30ce18f94b27');
+    });
+
+    it('processes the final event without trailing blank line (flush)', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        mockStream([
+          aguiData({ type: 'TEXT_MESSAGE_START', messageId: 'msg-5c08e3fa-2b71-4d94-9a60-71fd3ba9c082', role: 'assistant' }),
+          aguiData({ type: 'TEXT_MESSAGE_CONTENT', messageId: 'msg-5c08e3fa-2b71-4d94-9a60-71fd3ba9c082', delta: 'tail' }),
+          // последнее событие без завершающего \n\n
+          'data: {"type":"TEXT_MESSAGE_END","messageId":"msg-5c08e3fa-2b71-4d94-9a60-71fd3ba9c082"}',
+        ])
+      );
+
+      const result = await transport.sendMessage('hi');
+      expect(result).toBe('tail');
+    });
+  });
 });

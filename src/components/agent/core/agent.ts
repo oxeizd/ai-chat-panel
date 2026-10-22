@@ -99,6 +99,9 @@ export class Agent {
         user_input: userInput,
       };
 
+      // Синхронизируем bus.context перед отправкой (AG-UI транспорт читает оттуда threadId)
+      this.syncBusContext();
+
       // AG-UI mode — используем AG-UI transport вместо workflow
       const ep = this.config.endpoints[0];
       if (ep?.streaming?.enabled === true && ep.streaming.parseStrategy === 'agui') {
@@ -112,6 +115,12 @@ export class Agent {
           onTrace,
           this.abortController.signal
         );
+
+        // Переносим контекст (threadId и т.п.), обновлённый транспортом, в сессию
+        this.session.context = {
+          ...this.session.context,
+          ...(this.bus.context ?? {}),
+        };
 
         this.bus.emit('contextUpdate', { ...this.session.context });
 
@@ -258,7 +267,18 @@ export class Agent {
 
     this.bus.emit('contextUpdate', { ...this.session.context });
 
+    // Синхронизируем общий контекст шины (AG-UI транспорт сохраняет туда threadId)
+    this.syncBusContext();
+
     return result.data;
+  }
+
+  /**
+   * Копирует session.context в bus.context, чтобы транспорты (AG-UI)
+   * видели актуальные значения (threadId и т.п.) между сообщениями.
+   */
+  private syncBusContext(): void {
+    this.bus.context = { ...this.session.context };
   }
 
   async resetSession(): Promise<void> {
@@ -272,6 +292,8 @@ export class Agent {
       started: false,
       context: {},
     };
+
+    this.bus.context = {};
 
     this.bus.emit('contextUpdate', {});
   }

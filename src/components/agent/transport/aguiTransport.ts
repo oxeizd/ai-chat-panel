@@ -1,4 +1,5 @@
 import { EventBus } from '../core/eventBus';
+import { SSEParser, type SSEMessage } from './streaming/parsers';
 import type { AgentConfig, TraceStep } from 'types';
 
 /**
@@ -45,13 +46,24 @@ export class AGUITransport {
     this.abortController = new AbortController();
     const mergedSignal = signal || this.abortController.signal;
 
-    const requestBody = {
+    // threadId из контекста сессии (привычный ключ + fallback на 'thread_id'),
+    // чтобы сервер продолжал тред вместо создания нового.
+    const threadIdKey = this.config.threadIdContextKey || this.config.threadIdParam || 'thread_id';
+    const ctx = (this.bus as any).context as Record<string, any> | undefined;
+    const knownThreadId = additionalContext[threadIdKey] ?? ctx?.[threadIdKey] ?? ctx?.thread_id;
+
+    const requestBody: Record<string, any> = {
       message: userInput,
       context: {
         ...additionalContext,
         user_input: userInput,
       },
     };
+
+    if (knownThreadId) {
+      requestBody.threadId = knownThreadId;
+      requestBody.runId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+    }
 
     // Use the first endpoint's URL and path
     const endpoint = this.config.endpoints[0];
@@ -81,28 +93,76 @@ export class AGUITransport {
         throw new Error('No response body');
       }
 
+      // Отладочный след: сырой ответ целиком (для DebugTraceModal).
+      // НЕ эмитим его через onTrace в чат, чтобы «сырые» JSON-куски вроде
+      // {"type":"RUN_STARTED",...} или {"type":"response","responseBody":{...}}
+      // не появлялись в сообщениях.
+      let rawStreamLog = '';
+
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = '';
+      // Инкрементальный SSE-парсер: недопарсенный хвост сохраняется между чанками,
+      // события не теряются и не дублируются при «рваных» границах чанков.
+      const sseParser = new SSEParser();
       let fullResponse = '';
+
+      // ID последнего TEXT_MESSAGE_START (роль assistant) — текст эмитим только для него.
       let currentMessageId = '';
+      // Флаг текущей роли из TEXT_MESSAGE_START: сообщения промежуточных шагов
+      // (user/tool/system) не должны попадать в ответ ассистента.
+      let currentRole = 'assistant';
+      // Последний threadId/runId из RUN_STARTED/RUN_FINISHED — сохраняем в контекст сессии.
+      let lastThreadId = '';
+      let lastRunId = '';
 
-      const processEvents = (events: Array<{ type: string; delta?: string; [key: string]: any }>) => {
-        for (const event of events) {
-          const eventType = event.type?.toUpperCase();
+      const handleEvent = (event: { type: string; delta?: string; [key: string]: any }) => {
+        const eventType = event.type?.toUpperCase();
 
-          if (eventType === 'TEXT_MESSAGE_START') {
-            currentMessageId = event.messageId || '';
-            continue;
-          }
-
-          if (eventType === 'TEXT_MESSAGE_END') {
-            currentMessageId = '';
-            continue;
-          }
-
-          this.processEvent(event, onTrace);
+        if (eventType === 'TEXT_MESSAGE_START') {
+          currentMessageId = event.messageId || '';
+          currentRole = event.role || 'assistant';
+          onTrace?.({
+            type: 'text:start',
+            timestamp: Date.now(),
+            messageId: currentMessageId,
+            role: currentRole,
+          });
+          return;
         }
+
+        if (eventType === 'TEXT_MESSAGE_CONTENT') {
+          // Эмитим текст ТОЛЬКО для сообщений ассистента (текущего открытого сообщения).
+          // Промежуточные шаги (например, intent_gatekeeper) не должны попадать в ответ.
+          if (currentRole === 'assistant' && (!event.messageId || event.messageId === currentMessageId)) {
+            const content = event.delta ?? event.content ?? event.text ?? '';
+            if (typeof content === 'string' && content) {
+              const piece = addNewLineBeforeContent ? '\n' + content : content;
+              fullResponse += piece;
+              this.bus.emit('chunk', piece);
+            }
+          }
+          onTrace?.({
+            type: 'text:chunk',
+            timestamp: Date.now(),
+            messageId: event.messageId,
+            delta: event.delta,
+          });
+          return;
+        }
+
+        if (eventType === 'TEXT_MESSAGE_END') {
+          if (!event.messageId || event.messageId === currentMessageId) {
+            currentMessageId = '';
+          }
+          onTrace?.({
+            type: 'text:end',
+            timestamp: Date.now(),
+            messageId: event.messageId,
+          });
+          return;
+        }
+
+        this.processEvent(event, onTrace);
       };
 
       while (true) {
@@ -113,35 +173,60 @@ export class AGUITransport {
         }
 
         const chunk = decoder.decode(value, { stream: true });
-        buffer += chunk;
+        rawStreamLog += chunk;
+        const messages = sseParser.feed(chunk);
 
-        const events = this.parseSSE(buffer);
-        buffer = '';
+        for (const msg of messages) {
+          for (const event of this.parseSSEMessage(msg)) {
+            if (event.type === 'RUN_ERROR') {
+              // AG-UI ошибка ран — пробрасываем как исключение, чтобы UI показал нормальный error,
+              // а не сырой JSON в чате.
+              const errMsg = typeof event.message === 'string' ? event.message : String(event.error || 'AG-UI run error');
 
-        for (const event of events) {
-          const eventType = event.type?.toUpperCase();
-
-          if (eventType === 'TEXT_MESSAGE_CONTENT') {
-            const content = event.delta || event.content || event.text || '';
-
-            if (event.messageId === currentMessageId) {
-              if (addNewLineBeforeContent) {
-                fullResponse += '\n' + content;
-                this.bus.emit('chunk', '\n' + content);
-              } else {
-                fullResponse += content;
-                this.bus.emit('chunk', content);
-              }
+              throw new Error(errMsg);
             }
-          } else {
-            processEvents([event]);
+            if (event.type === 'RUN_STARTED' && event.threadId) {
+              lastThreadId = event.threadId;
+            }
+            if (event.type === 'RUN_FINISHED' && event.threadId) {
+              lastThreadId = event.threadId;
+              lastRunId = event.runId || lastRunId;
+            }
+            handleEvent(event);
           }
         }
       }
 
-      if (buffer.trim()) {
-        const events = this.parseSSE(buffer);
-        processEvents(events);
+      // Дообрабатываем хвост буфера (последнее событие без завершающего \n\n)
+      for (const msg of sseParser.flush()) {
+        for (const event of this.parseSSEMessage(msg)) {
+          if (event.type === 'RUN_STARTED' && event.threadId) {
+            lastThreadId = event.threadId;
+          }
+          if (event.type === 'RUN_FINISHED' && event.threadId) {
+            lastThreadId = event.threadId;
+            lastRunId = event.runId || lastRunId;
+          }
+          handleEvent(event);
+        }
+      }
+
+      // Отладочный след сырого потока — только в консоль (DevTools), НЕ в чат.
+      if (rawStreamLog) {
+        // eslint-disable-next-line no-console
+        console.debug('[AGUI] raw stream:', rawStreamLog);
+      }
+
+      // Сохраняем threadId в общий контекст сессии, чтобы следующее сообщение
+      // шло в тот же тред (AG-UI сервер создаёт новый тред, если threadId не передан).
+      if (lastThreadId) {
+        const threadIdKey = this.config.threadIdContextKey || this.config.threadIdParam || 'thread_id';
+        this.bus.context[threadIdKey] = lastThreadId;
+        this.bus.context.thread_id = lastThreadId;
+        if (lastRunId) {
+          this.bus.context.lastRunId = lastRunId;
+        }
+        this.bus.emit('contextUpdate', { ...this.bus.context });
       }
 
       return fullResponse;
@@ -261,6 +346,57 @@ export class AGUITransport {
   }
 
   /**
+   * Преобразовать одно SSE-сообщение (из инкрементального SSEParser) в события AG-UI.
+   */
+  private parseSSEMessage(msg: SSEMessage): Array<{ type: string; delta?: string; [key: string]: any }> {
+    const data = (msg.data ?? '').trim();
+
+    if (!data || data === '[DONE]') {
+      return [];
+    }
+
+    // comment/keep-alive строки (": keep-alive") уже отфильтрованы парсером,
+    // но на всякий случай пропускаем всё, что не похоже на JSON.
+    if (!data.startsWith('{') && !data.startsWith('[')) {
+      return [];
+    }
+
+    try {
+      const json = JSON.parse(data);
+      if (json && typeof json === 'object' && json.type) {
+        const type = msg.event || json.type;
+        return [
+          {
+            type: String(type).toUpperCase(),
+            delta: json.delta,
+            ...json,
+          },
+        ];
+      }
+      return [];
+    } catch {
+      // Несколько склеенных JSON-объектов в одном сообщении — разбираем поштучно
+      const events: Array<{ type: string; delta?: string; [key: string]: any }> = [];
+      for (const jsonStr of this.extractJsonObjects(data)) {
+        try {
+          const json = JSON.parse(jsonStr);
+          if (json && typeof json === 'object' && json.type) {
+            const type = msg.event || json.type;
+            events.push({
+              type: String(type).toUpperCase(),
+              delta: json.delta,
+              ...json,
+            });
+          }
+        } catch {
+          // Пропускаем
+        }
+      }
+      return events;
+    }
+  }
+
+  /**
    * Парсить SSE события из буфера.
    *
    * SSE формат:
@@ -275,7 +411,10 @@ export class AGUITransport {
    * Или plain JSON (без префикса):
    *   {"type":"TEXT_MESSAGE_CONTENT","delta":"..."}\n
    *   \n
+   *
+   * NOTE: used by tests; the live stream path uses SSEParser + parseSSEMessage.
    */
+  // @ts-expect-error TS6133: метод используется только тестами через (transport as any).parseSSE
   private parseSSE(buffer: string): Array<{
     type: string;
     delta?: string;

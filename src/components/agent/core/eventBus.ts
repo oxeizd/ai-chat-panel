@@ -13,6 +13,13 @@ export class EventBus {
   private listeners = new Map<string, Set<(...args: any[]) => void>>();
 
   /**
+   * Общий контекст сессии (threadId и т.п.).
+   * Транспорты читают/обновляют его напрямую — это позволяет, например,
+   * сохранять threadId из RUN_STARTED между сообщениями в AG-UI режиме.
+   */
+  public context: Record<string, any> = {};
+
+  /**
    * Подписаться на событие.
    * @param event - имя события (например, 'chunk', 'reasoningChunk', 'toolCall')
    * @param handler - функция-обработчик
