@@ -1,6 +1,7 @@
 import { ReasoningConfig } from 'types';
 import { ReasoningState, ReasoningChunkContext, ReasoningExtractContext } from './types';
 import { dotGet } from 'components/agent/utils/utils';
+import { DEFAULT_REASONING } from 'components/agent/config/defaults';
 
 /** Обработка одного чанка для embedded-режима (api_field или thinking_tags) */
 export function processEmbeddedChunk(ctx: ReasoningChunkContext): ReasoningState {
@@ -39,19 +40,21 @@ export function extractEmbeddedFinal(ctx: ReasoningExtractContext): { cleanedRep
       eventBus.emit('reasoning:end', reasoningText);
       extracted = true;
     }
-  } else if (r.mode === 'thinking_tags' && r.textPath) {
+  } else if (r.mode === 'thinking_tags') {
+    // reply уже извлечён по textPath, когда он строка — используем его напрямую;
+    // повторное dotGet нужен только если reply нестроковый (например, объект).
     let fullText = '';
     if (typeof reply === 'string') {
       fullText = reply;
-    } else {
+    } else if (r.textPath) {
       const rawText = dotGet(parsedBody, r.textPath);
       if (typeof rawText === 'string') {
         fullText = rawText;
       }
     }
     if (fullText) {
-      const startMarker = r.startMarker ?? '<?thinking?>';
-      const endMarker = r.endMarker ?? '<?/thinking?>';
+      const startMarker = r.startMarker ?? DEFAULT_REASONING.startMarker;
+      const endMarker = r.endMarker ?? DEFAULT_REASONING.endMarker;
       const startIdx = fullText.indexOf(startMarker);
       const endIdx = fullText.indexOf(endMarker);
       if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {

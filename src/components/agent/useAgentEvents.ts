@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { FileAttachment } from 'components/agent/utils/download';
 
 interface AgentEventsCallbacks {
   onChunk?: (chunk: string) => void;
@@ -6,7 +7,7 @@ interface AgentEventsCallbacks {
   onReasoningChunk?: (chunk: string) => void;
   onReasoningEnd?: (text: string) => void;
   onContextUpdate?: (ctx: Record<string, any>) => void;
-  onFileAttachment?: (file: any) => void;
+  onFileAttachment?: (file: FileAttachment) => void;
   onInteractive?: (payload: any) => void;
 }
 
@@ -17,7 +18,7 @@ interface UseAgentEventsOptions {
     onReasoningChunk?: (handler: (chunk: string) => void) => () => void;
     onReasoningEnd?: (handler: (text: string) => void) => () => void;
     onContextUpdate?: (handler: (ctx: Record<string, any>) => void) => () => void;
-    onFileAttachment?: (handler: (file: any) => void) => () => void;
+    onFileAttachment?: (handler: (file: FileAttachment) => void) => () => void;
     onInteractive?: (handler: (payload: any) => void) => () => void;
   } | null;
   callbacksRef: React.MutableRefObject<AgentEventsCallbacks>;

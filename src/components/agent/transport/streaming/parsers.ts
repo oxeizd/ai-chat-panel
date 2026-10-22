@@ -45,6 +45,7 @@ export class SSEParser {
       } else {
         field = line.slice(0, colonIdx);
         value = line.slice(colonIdx + 1);
+        // По спецификации WHATWG SSE удаляется ровно один ведущий пробел.
         if (value.startsWith(' ')) {
           value = value.slice(1);
         }
@@ -69,11 +70,33 @@ export class SSEParser {
   }
 
   flush(): SSEMessage[] {
-    if (this.buffer.trim() === '' && this.dataLines.length === 0) {
+    // Добираем последнюю линию из буфера (поток мог оборваться без завершающего \n\n).
+    if (this.buffer !== '') {
+      const line = this.buffer;
+      this.buffer = '';
+      if (!line.startsWith(':')) {
+        const colonIdx = line.indexOf(':');
+        let field: string, value: string;
+        if (colonIdx === -1) {
+          field = line;
+          value = '';
+        } else {
+          field = line.slice(0, colonIdx);
+          value = line.slice(colonIdx + 1);
+          if (value.startsWith(' ')) {
+            value = value.slice(1);
+          }
+        }
+        if (field === 'data') {
+          this.dataLines.push(value);
+        }
+      }
+    }
+
+    if (this.dataLines.length === 0) {
       return [];
     }
     const message = { data: this.dataLines.join('\n') };
-    this.buffer = '';
     this.dataLines = [];
     return [message];
   }

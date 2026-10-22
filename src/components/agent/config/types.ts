@@ -109,8 +109,6 @@ export type StreamingConfig =
       enabled: true;
       parseStrategy: 'sse' | 'jsonl';
       textPath?: string;
-      delimiter?: string;
-      dataPrefix?: string;
       textEventType?: string;
       textDeltaField?: string;
     };
@@ -153,6 +151,9 @@ export type ReasoningConfig =
       resultField?: string;
     };
 
+/** Вложенный объект fileAttachment в Message — структура совпадает с FileAttachment из utils/download. */
+export type MessageFileAttachment = import('components/agent/utils/download').FileAttachment;
+
 export interface Message {
   id: string;
   text: string;
@@ -164,12 +165,7 @@ export interface Message {
     message: string;
     raw?: string;
   };
-  fileAttachment?: {
-    filename: string;
-    data: string;
-    mimeType?: string;
-    isUrl?: boolean;
-  };
+  fileAttachment?: MessageFileAttachment;
   thinking?: string;
   isThinking?: boolean;
   /** Карточка с вариантами/полями, пришедшая вместе с этим ответом ассистента. */

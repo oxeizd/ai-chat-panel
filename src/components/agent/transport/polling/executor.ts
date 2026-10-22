@@ -44,7 +44,6 @@ export async function handlePolling(
 
       // ✅ Применяем сохранение полей в контекст (было)
       applySaveToContext(context, op.saveToContext, body);
-      console.log(body);
 
       const status = dotGet(body, statusField);
 

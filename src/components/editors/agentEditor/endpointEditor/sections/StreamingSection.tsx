@@ -3,6 +3,7 @@ import { Field, Input, Combobox, useStyles2 } from '@grafana/ui';
 import { css } from '@emotion/css';
 import { EndpointConfig, StreamingConfig } from 'types';
 import { Toggle } from 'components/editors/shared/Toggle';
+import { DEFAULT_STREAMING } from 'components/agent/config/defaults';
 
 interface StreamingSectionProps {
   endpoint: EndpointConfig;
@@ -24,15 +25,13 @@ function getDefaultConfig(strategy: 'sse' | 'jsonl'): StreamingConfig & { enable
     return {
       enabled: true,
       parseStrategy: 'sse',
-      textPath: 'choices[0].delta.content',
-      delimiter: '\\n\\n',
-      dataPrefix: 'data: ',
+      textPath: DEFAULT_STREAMING.textPath,
     };
   }
   return {
     enabled: true,
     parseStrategy: 'jsonl',
-    textPath: 'choices[0].delta.content',
+    textPath: DEFAULT_STREAMING.textPath,
   };
 }
 
@@ -110,7 +109,7 @@ export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, on
         {extractionMode === 'jsonpath' ? (
           <Field label="JSON path (dot notation)" description="e.g., choices[0].delta.content">
             <Input
-              value={config.textPath ?? 'choices[0].delta.content'}
+              value={config.textPath ?? DEFAULT_STREAMING.textPath}
               onChange={(e) => handleFieldChange('textPath', e.currentTarget.value)}
             />
           </Field>
@@ -130,18 +129,6 @@ export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, on
             </Field>
           </>
         )}
-        <Field label="Delimiter">
-          <Input
-            value={config.delimiter ?? '\\n\\n'}
-            onChange={(e) => handleFieldChange('delimiter', e.currentTarget.value)}
-          />
-        </Field>
-        <Field label="Data prefix">
-          <Input
-            value={config.dataPrefix ?? 'data: '}
-            onChange={(e) => handleFieldChange('dataPrefix', e.currentTarget.value)}
-          />
-        </Field>
       </>
     );
   };
@@ -153,7 +140,7 @@ export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, on
     return (
       <Field label="JSON path (dot notation)" description="e.g., choices[0].delta.content">
         <Input
-          value={config.textPath ?? 'choices[0].delta.content'}
+          value={config.textPath ?? DEFAULT_STREAMING.textPath}
           onChange={(e) => handleFieldChange('textPath', e.currentTarget.value)}
         />
       </Field>
