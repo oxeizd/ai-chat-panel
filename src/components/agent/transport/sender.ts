@@ -5,7 +5,7 @@ import { handleStreamingResponse } from './streaming/executor';
 import { DEFAULT_CHAT_REPLY_FIELD, DEFAULT_RETRY, DEFAULT_TIMEOUT } from '../config/defaults';
 import { extractReasoningFromFullResponse } from './reasoning/processor';
 import { applySaveToContext, dotGet, parseHttpResponse } from '../utils/utils';
-import { AgentConfig, EndpointConfig, InteractivePayload, SendResult, TraceStep } from '../config/types';
+import { AgentConfig, EndpointConfig, InteractiveActivity, SendResult, TraceStep } from '../config/types';
 import { saveAssistantMessage, syncIncomingHistory } from '../core/historyManager';
 import { buildRequestConfig } from './requestBuilder';
 
@@ -168,7 +168,7 @@ async function processApiResponse(
   finalReply: any;
   reasoningText?: string;
   fileAttachment?: any;
-  interactive?: InteractivePayload;
+  interactive?: InteractiveActivity;
   context: Record<string, any>;
 }> {
   applySaveToContext(context, op.saveToContext, parsedBody);
@@ -210,14 +210,22 @@ async function processApiResponse(
     }
   }
 
-  let interactive: InteractivePayload | undefined = undefined;
+  let interactive: InteractiveActivity | undefined = undefined;
   if (op.interactiveField && rawBody) {
     const rawInteractive = dotGet(rawBody, op.interactiveField);
     if (rawInteractive && typeof rawInteractive === 'object') {
+      // Поддержка старого формата (options/fields) и нового (actions/form)
+      const hasActions = Array.isArray(rawInteractive.actions) && rawInteractive.actions.length > 0;
+      const hasForm = Array.isArray(rawInteractive.form) && rawInteractive.form.length > 0;
       const hasOptions = Array.isArray(rawInteractive.options) && rawInteractive.options.length > 0;
       const hasFields = Array.isArray(rawInteractive.fields) && rawInteractive.fields.length > 0;
-      if (hasOptions || hasFields) {
-        interactive = rawInteractive as InteractivePayload;
+
+      if (hasActions || hasForm || hasOptions || hasFields) {
+        interactive = {
+          actions: rawInteractive.actions ?? rawInteractive.options,
+          form: rawInteractive.form ?? rawInteractive.fields,
+          submitLabel: rawInteractive.submitLabel,
+        };
       }
     }
   }

@@ -197,14 +197,14 @@ export const InputArea = memo(
       );
     }, [showPopup, suggestions, styles, floatingStyles, refs, popupRef, handleSuggestionClick, selectedAgent]);
 
-    const hasFieldsForm = !!pendingInteractive?.payload.fields?.length;
-    const hasOptions = !!pendingInteractive?.payload.options?.length;
+    const hasFieldsForm = !!pendingInteractive?.payload.form?.length || !!pendingInteractive?.payload.fields?.length;
+    const hasOptions = !!pendingInteractive?.payload.actions?.length || !!pendingInteractive?.payload.options?.length;
 
     let inputSlot: React.ReactNode;
     if (hasFieldsForm) {
       inputSlot = (
         <InteractiveFieldsForm
-          fields={pendingInteractive!.payload.fields!}
+          fields={pendingInteractive!.payload.form ?? pendingInteractive!.payload.fields!}
           onSubmit={handleInteractiveSubmit}
           sendButtonClassName={styles.input.sendButton}
         />
@@ -212,7 +212,7 @@ export const InputArea = memo(
     } else if (hasOptions) {
       inputSlot = (
         <InteractiveOptionsColumn
-          options={pendingInteractive!.payload.options!}
+          options={pendingInteractive!.payload.actions ?? pendingInteractive!.payload.options!}
           onSubmit={handleInteractiveSubmit}
           sendButtonClassName={styles.input.sendButton}
         />

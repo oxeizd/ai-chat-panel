@@ -337,6 +337,12 @@ export const ChatMessage = React.memo(
                       );
                     }
 
+                    // Пропускаем activity:snapshot с activityType: "interactive" —
+                    // они рендерятся в области ввода через pendingInteractive
+                    if (step.type === 'activity:snapshot' && step.activityType === 'interactive') {
+                      return null;
+                    }
+
                     // Default — показываем как есть
                     return (
                       <div

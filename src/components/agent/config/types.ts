@@ -40,8 +40,9 @@ export interface ChatHistoryItem {
   preview?: string;
 }
 
-/** Один вариант выбора в интерактивной подсказке. */
-export interface InteractiveOption {
+/** Одно действие (кнопка) в интерактивной подсказке. AG-UI standard: ActionEntry */
+export interface ActionEntry {
+  /** Текст кнопки */
   label: string;
   /** Значение, отправляемое как сообщение пользователя при выборе. Если не задано — используется label. */
   value?: string;
@@ -49,29 +50,51 @@ export interface InteractiveOption {
   allowCustom?: boolean;
 }
 
-/** Одно поле формы в интерактивной подсказке. */
-export interface InteractiveField {
+/** Одно поле формы в интерактивной подсказке. AG-UI standard: FormField */
+export interface FormField {
+  /** Уникальный идентификатор поля */
   name: string;
+  /** Отображаемый лейбл */
   label?: string;
+  /** Тип поля: текстовый, числовой, многострочный или выпадающий список */
   type?: 'text' | 'number' | 'textarea' | 'select';
+  /** Плейсхолдер для пустого поля */
   placeholder?: string;
   /** Варианты для type: 'select'. */
   options?: string[];
+  /** Если true — поле обязательно для заполнения */
   required?: boolean;
 }
 
 /**
- * Структура, которую агент может вернуть вместе с ответом (через
- * EndpointConfig.interactiveField, dot-path в теле ответа) — набор кнопок-
- * вариантов и/или форма полей. Отображается не под сообщением ассистента,
- * а в зоне ввода (пока это последнее сообщение и на него не ответили).
+ * Интерактивная активность — UI-виджет, который агент может отправить
+ * через AG-UI ACTIVITY_SNAPSHOT с activityType: "interactive".
+ *
+ * Отображается в зоне ввода (пока это последнее сообщение и на него не ответили).
  */
-export interface InteractivePayload {
-  options?: InteractiveOption[];
-  fields?: InteractiveField[];
+export interface InteractiveActivity {
+  /** Список кнопок-действий (быстрые варианты ответа) */
+  actions?: ActionEntry[];
+  /** Форма с полями для заполнения */
+  form?: FormField[];
   /** Текст кнопки отправки формы полей. По умолчанию "Отправить". */
   submitLabel?: string;
+
+  // === Legacy aliases for backward compatibility ===
+  /** Legacy alias for `actions`. Supports old format from non-AG-UI sources. */
+  options?: ActionEntry[];
+  /** Legacy alias for `form`. Supports old format from non-AG-UI sources. */
+  fields?: FormField[];
 }
+
+export type InteractivePayload = InteractiveActivity;
+
+export type InteractiveOption = ActionEntry;
+
+/**
+ * Legacy alias for FormField. Kept for backward compatibility with old code.
+ */
+export type InteractiveField = FormField;
 
 export interface EndpointConfig {
   operation: string;
@@ -87,7 +110,7 @@ export interface EndpointConfig {
   historyConfig?: ChatHistoryConfig;
   url?: string;
   fileField?: string;
-  /** Dot-path в теле ответа, где лежит InteractivePayload (варианты/поля для этого ответа). */
+  /** Dot-path в теле ответа, где лежит InteractiveActivity (actions/form/submitLabel). */
   interactiveField?: string;
 }
 
@@ -174,8 +197,8 @@ export interface Message {
   };
   thinking?: string;
   isThinking?: boolean;
-  /** Карточка с вариантами/полями, пришедшая вместе с этим ответом ассистента. */
-  interactive?: InteractivePayload;
+  /** Интерактивная активность (кнопки/форма), пришедшая вместе с этим ответом ассистента. */
+  interactive?: InteractiveActivity;
   /** AG-UI события (reasoning, tool calls, steps) для отрисовки в истории. */
   traceSteps?: TraceStep[];
 }
@@ -208,7 +231,7 @@ export interface SendResult {
   reasoningText?: string;
   lastEvent?: any;
   fileAttachment?: any;
-  interactive?: InteractivePayload;
+  interactive?: InteractiveActivity;
 }
 
 export interface RequestConfig {
@@ -236,5 +259,5 @@ export type AgentEvent =
   | { type: 'reasoning:end'; payload: string }
   | { type: 'contextUpdate'; payload: Record<string, any> }
   | { type: 'fileAttachment'; payload: any }
-  | { type: 'interactive'; payload: InteractivePayload }
+  | { type: 'interactive'; payload: InteractiveActivity }
   | { type: 'custom'; payload: Record<string, any> };

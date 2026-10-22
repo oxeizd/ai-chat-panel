@@ -526,6 +526,43 @@ export class AGUITransport {
         this.bus.emit('custom', { payload: event });
         break;
 
+      // === Activity (UI-виджеты: кнопки, формы, прогресс) — AG-UI standard ===
+      case 'ACTIVITY_SNAPSHOT':
+        onTrace?.({
+          type: 'activity:snapshot',
+          timestamp: Date.now(),
+          messageId: event.messageId,
+          activityType: event.activityType,
+          content: event.content,
+        });
+        // Если activityType === "interactive" — эмитим interactive event
+        if (event.activityType === 'interactive') {
+          const payload = event.content || {};
+          // Поддержка старого формата (options/fields) и нового (actions/form)
+          const interactivePayload: any = {
+            actions: payload.actions ?? payload.options,
+            form: payload.form ?? payload.fields,
+            submitLabel: payload.submitLabel,
+          };
+          this.bus.emit('interactive', interactivePayload);
+        }
+        break;
+
+      case 'ACTIVITY_DELTA':
+        onTrace?.({
+          type: 'activity:delta',
+          timestamp: Date.now(),
+          messageId: event.messageId,
+          activityType: event.activityType,
+          patch: event.patch,
+        });
+        // Если activityType === "interactive" — эмитим обновление
+        if (event.activityType === 'interactive') {
+          const payload = event.patch || {};
+          this.bus.emit('interactive', payload);
+        }
+        break;
+
       // === Error ===
       case 'ERROR':
         onTrace?.({ type: 'error', timestamp: Date.now(), error: event.error || event.message });

@@ -138,6 +138,8 @@ const SSE_EVENTS = [
   'event: STEP_FINISHED\ndata: {"type":"STEP_FINISHED","stepName":"dataset_planner"}\n\n',
   // CUSTOM событие с чартом
   'event: CUSTOM\ndata: {"type":"CUSTOM","chart":{"type":"line","title":"График параболы y = x²","data":[{"x":0,"y":0},{"x":1,"y":1},{"x":2,"y":4},{"x":3,"y":9},{"x":4,"y":16},{"x":5,"y":25},{"x":6,"y":36},{"x":7,"y":49},{"x":8,"y":64},{"x":9,"y":81},{"x":10,"y":100},{"x":-1,"y":1},{"x":-2,"y":4},{"x":-3,"y":9},{"x":-4,"y":16},{"x":-5,"y":25},{"x":-6,"y":36},{"x":-7,"y":49},{"x":-8,"y":64},{"x":-9,"y":81},{"x":-10,"y":100}],"xAxis":"x","yAxis":"y"}}\n\n',
+  // INTERACTIVE событие — форма с полями
+  'event: ACTIVITY_SNAPSHOT\ndata: {"type":"ACTIVITY_SNAPSHOT","messageId":"msg-interactive-3","activityType":"interactive","content":{"form":[{"name":"count","label":"Количество строк","type":"number","placeholder":"1000","required":true},{"name":"format","label":"Формат","type":"select","options":["csv","json","parquet"],"required":true}],"submitLabel":"Сгенерировать"}}\n\n',
   'event: RUN_FINISHED\ndata: {"type":"RUN_FINISHED","runId":"run-1"}\n\n',
 ];
 
@@ -166,6 +168,8 @@ const SSE_EVENTS_WITH_CHART = [
   'event: TEXT_MESSAGE_END\ndata: {"type":"TEXT_MESSAGE_END","messageId":"msg-chart-4"}\n\n',
   // CUSTOM событие с чартом
   'event: CUSTOM\ndata: {"type":"CUSTOM","chart":{"type":"line","title":"Парабола y = x²","data":[{"x":0,"y":0},{"x":1,"y":1},{"x":2,"y":4},{"x":3,"y":9},{"x":4,"y":16},{"x":5,"y":25},{"x":6,"y":36},{"x":7,"y":49},{"x":8,"y":64},{"x":9,"y":81},{"x":10,"y":100},{"x":-1,"y":1},{"x":-2,"y":4},{"x":-3,"y":9},{"x":-4,"y":16},{"x":-5,"y":25},{"x":-6,"y":36},{"x":-7,"y":49},{"x":-8,"y":64},{"x":-9,"y":81},{"x":-10,"y":100}],"xAxis":"x","yAxis":"y"}}\n\n',
+  // INTERACTIVE событие — форма после графика
+  'event: ACTIVITY_SNAPSHOT\ndata: {"type":"ACTIVITY_SNAPSHOT","messageId":"msg-interactive-2","activityType":"interactive","content":{"actions":[{"label":"Да, построить","value":"yes_build"},{"label":"Нет, спасибо","value":"no_thanks"}],"form":[{"name":"format","label":"Формат","type":"select","options":["png","svg","jpg"],"required":true},{"name":"resolution","label":"Разрешение","type":"text","placeholder":"1920x1080"}],"submitLabel":"Скачать"}}\n\n',
   'event: RUN_FINISHED\ndata: {"type":"RUN_FINISHED","runId":"run-2"}\n\n',
 ];
 

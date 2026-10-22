@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { css } from '@emotion/css';
 import { Combobox, Input, useTheme2 } from '@grafana/ui';
-import { InteractiveField, InteractiveOption } from 'types';
+import { FormField, ActionEntry } from 'types';
 import { SubmitButton } from 'components/ui/hooks/useSubmitBehavior';
 
 const COMPOSER_MIN_HEIGHT = 72;
@@ -12,7 +12,7 @@ const COMPOSER_ACTION_SAFE_AREA = COMPOSER_ACTION_SIZE + COMPOSER_RIGHT_OFFSET +
 const COMPACT_INPUT_STYLE: React.CSSProperties = { height: 28 };
 
 interface InteractiveOptionsColumnProps {
-  options: InteractiveOption[];
+  options: ActionEntry[];
   onSubmit: (text: string) => void;
   /** Ваш существующий CSS-класс стандартной кнопки отправки чата. */
   sendButtonClassName?: string;
@@ -43,7 +43,7 @@ export const InteractiveOptionsColumn: React.FC<InteractiveOptionsColumnProps> =
     }
   `;
 
-  const handleOptionClick = (option: InteractiveOption, idx: number) => {
+  const handleOptionClick = (option: ActionEntry, idx: number) => {
     if (option.allowCustom) {
       setCustomOptionIdx(idx);
       setCustomValue('');
@@ -138,7 +138,7 @@ export const InteractiveOptionsColumn: React.FC<InteractiveOptionsColumnProps> =
 };
 
 interface InteractiveFieldsFormProps {
-  fields: InteractiveField[];
+  fields: FormField[];
   onSubmit: (text: string, extraContext?: Record<string, any>) => void;
   /** Ваш существующий CSS-класс стандартной кнопки отправки чата. */
   sendButtonClassName?: string;
@@ -178,7 +178,7 @@ export const InteractiveFieldsForm: React.FC<InteractiveFieldsFormProps> = ({
     onSubmit(text, { formData: fieldValues });
   };
 
-  const renderField = (field: InteractiveField) => {
+  const renderField = (field: FormField) => {
     const value = fieldValues[field.name] ?? '';
 
     if (field.type === 'select') {

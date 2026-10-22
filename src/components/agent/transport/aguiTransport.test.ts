@@ -246,4 +246,99 @@ data: {"type":"TEXT_MESSAGE_CONTENT","delta":"ok"}
       expect(headers['Content-Type']).toBe('application/json');
     });
   });
+
+  describe('processEvent — ACTIVITY_SNAPSHOT (AG-UI interactive)', () => {
+    it('should emit interactive event for activityType: interactive', () => {
+      const interactivePayloads: any[] = [];
+      bus.on('interactive', (payload: any) => interactivePayloads.push(payload));
+
+      (transport as any).processEvent({
+        type: 'ACTIVITY_SNAPSHOT',
+        messageId: 'msg-1',
+        activityType: 'interactive',
+        content: {
+          actions: [{ label: 'Да', value: 'yes' }],
+          form: [{ name: 'comment', type: 'text' }],
+          submitLabel: 'Отправить',
+        },
+      });
+
+      expect(interactivePayloads).toHaveLength(1);
+      expect(interactivePayloads[0].actions).toEqual([{ label: 'Да', value: 'yes' }]);
+      expect(interactivePayloads[0].form).toEqual([{ name: 'comment', type: 'text' }]);
+      expect(interactivePayloads[0].submitLabel).toBe('Отправить');
+    });
+
+    it('should support old format (options/fields) in ACTIVITY_SNAPSHOT', () => {
+      const interactivePayloads: any[] = [];
+      bus.on('interactive', (payload: any) => interactivePayloads.push(payload));
+
+      (transport as any).processEvent({
+        type: 'ACTIVITY_SNAPSHOT',
+        messageId: 'msg-2',
+        activityType: 'interactive',
+        content: {
+          options: [{ label: 'Нет', value: 'no' }],
+          fields: [{ name: 'email', type: 'text' }],
+        },
+      });
+
+      expect(interactivePayloads).toHaveLength(1);
+      expect(interactivePayloads[0].actions).toEqual([{ label: 'Нет', value: 'no' }]);
+      expect(interactivePayloads[0].form).toEqual([{ name: 'email', type: 'text' }]);
+    });
+
+    it('should log activity:snapshot trace for non-interactive activityType', () => {
+      const traceSteps: any[] = [];
+
+      (transport as any).processEvent(
+        {
+          type: 'ACTIVITY_SNAPSHOT',
+          messageId: 'msg-3',
+          activityType: 'progress',
+          content: { percent: 50 },
+        },
+        (step: any) => traceSteps.push(step)
+      );
+
+      expect(traceSteps).toHaveLength(1);
+      expect(traceSteps[0].type).toBe('activity:snapshot');
+      expect(traceSteps[0].activityType).toBe('progress');
+    });
+  });
+
+  describe('processEvent — ACTIVITY_DELTA', () => {
+    it('should emit interactive event for activityType: interactive', () => {
+      const interactivePayloads: any[] = [];
+      bus.on('interactive', (payload: any) => interactivePayloads.push(payload));
+
+      (transport as any).processEvent({
+        type: 'ACTIVITY_DELTA',
+        messageId: 'msg-1',
+        activityType: 'interactive',
+        patch: { submitLabel: 'Готово' },
+      });
+
+      expect(interactivePayloads).toHaveLength(1);
+      expect(interactivePayloads[0].submitLabel).toBe('Готово');
+    });
+
+    it('should log activity:delta trace for non-interactive activityType', () => {
+      const traceSteps: any[] = [];
+
+      (transport as any).processEvent(
+        {
+          type: 'ACTIVITY_DELTA',
+          messageId: 'msg-1',
+          activityType: 'progress',
+          patch: [{ op: 'replace', path: '/percent', value: 75 }],
+        },
+        (step: any) => traceSteps.push(step)
+      );
+
+      expect(traceSteps).toHaveLength(1);
+      expect(traceSteps[0].type).toBe('activity:delta');
+      expect(traceSteps[0].activityType).toBe('progress');
+    });
+  });
 });

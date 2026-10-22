@@ -29,20 +29,20 @@ export const ChatTextarea: React.FC<ChatTextareaProps> = ({ disabled }) => {
     [pendingInteractive, sendInteractive]
   );
 
-  const hasFieldsForm = !!pendingInteractive?.payload.fields?.length;
-  const hasOptions = !!pendingInteractive?.payload.options?.length;
+  const hasFieldsForm = !!pendingInteractive?.payload.form?.length || !!pendingInteractive?.payload.fields?.length;
+  const hasOptions = !!pendingInteractive?.payload.actions?.length || !!pendingInteractive?.payload.options?.length;
 
   return (
     <div className={styles.input.container}>
       {hasFieldsForm ? (
         <InteractiveFieldsForm
-          fields={pendingInteractive!.payload.fields!}
+          fields={pendingInteractive!.payload.form ?? pendingInteractive!.payload.fields!}
           onSubmit={handleInteractiveSubmit}
           sendButtonClassName={styles.input.sendButton}
         />
       ) : hasOptions ? (
         <InteractiveOptionsColumn
-          options={pendingInteractive!.payload.options!}
+          options={pendingInteractive!.payload.actions ?? pendingInteractive!.payload.options!}
           onSubmit={handleInteractiveSubmit}
           sendButtonClassName={styles.input.sendButton}
         />
