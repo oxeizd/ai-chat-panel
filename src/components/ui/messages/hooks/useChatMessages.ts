@@ -1,34 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { AgentConfig, ChatHistoryItem, Message } from 'types';
+import { AgentConfig } from 'types';
 import { GrafanaUser } from 'components/hooks/useGrafanaUser';
-import { dotGet } from 'components/agent/utils/utils';
-import {
-  DEFAULT_HISTORY_LIST_ITEM_FIELDS,
-  DEFAULT_HISTORY_MESSAGE_FIELDS,
-  DEFAULT_THREAD_ID_PARAM,
-} from 'components/agent/config/agentConfig';
 import { useMessageSender } from './useMessageSender';
 import { useMessagesState } from './useMessagesState';
 import { useDebugTraces } from 'components/ui/debug/hooks/useDebugTraces';
 import { parseApiError } from '../../debug/hooks/utils/errorParser';
-
-function formatHistoryDate(value: any): string {
-  if (value == null) {
-    return '';
-  }
-
-  if (typeof value === 'number') {
-    return new Date(value).toLocaleString();
-  }
-
-  const asDate = new Date(value);
-
-  return isNaN(asDate.getTime()) ? String(value) : asDate.toLocaleString();
-}
-
-function resolveThreadIdParam(agent: AgentConfig): string {
-  return agent.threadIdParam || agent.threadIdContextKey || DEFAULT_THREAD_ID_PARAM;
-}
 
 function normalizeDynamicSuggestions(raw: any): string[] {
   if (Array.isArray(raw)) {
@@ -319,132 +295,6 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
 
   const getTrace = useCallback((messageId: string) => traces.get(messageId), [traces]);
 
-  const fetchThreads = useCallback(async (): Promise<ChatHistoryItem[]> => {
-    if (!currentAgent?.history || !currentAgent.historyListOperation) {
-      return [];
-    }
-
-    try {
-      const result = await runOperation(currentAgent.historyListOperation);
-
-      if (!Array.isArray(result)) {
-        return [];
-      }
-
-      const fields = {
-        ...DEFAULT_HISTORY_LIST_ITEM_FIELDS,
-        ...currentAgent.historyListItemFields,
-      };
-
-      return result.map((item: any, index: number) => ({
-        id: String(dotGet(item, fields.id) ?? item?.id ?? index),
-        title: String(dotGet(item, fields.title) ?? item?.title ?? 'Без названия'),
-        date: formatHistoryDate(dotGet(item, fields.date) ?? item?.date),
-        preview: fields.preview ? dotGet(item, fields.preview) : undefined,
-      }));
-    } catch (error) {
-      console.error('Failed to fetch threads:', error);
-      return [];
-    }
-  }, [currentAgent, runOperation]);
-
-  const loadThread = useCallback(
-    async (threadIdToLoad: string) => {
-      if (!currentAgent?.history || !currentAgent.historyLoadOperation) {
-        return;
-      }
-
-      try {
-        abort();
-
-        const threadIdParam = resolveThreadIdParam(currentAgent);
-
-        const result = await runOperation(currentAgent.historyLoadOperation, {
-          [threadIdParam]: threadIdToLoad,
-        });
-
-        if (!Array.isArray(result)) {
-          console.warn('loadThread: expected array, got', result);
-          return;
-        }
-
-        const fields = {
-          ...DEFAULT_HISTORY_MESSAGE_FIELDS,
-          ...currentAgent.historyMessageFields,
-        };
-
-        const uiMessages: Message[] = [];
-        const historyForContext: Array<{
-          role: 'user' | 'assistant';
-          content: any;
-        }> = [];
-
-        for (const item of result) {
-          const rawRole = dotGet(item, fields.role) ?? item?.role;
-          const isUser = rawRole === 'user';
-
-          const text = dotGet(item, fields.text) ?? item?.[fields.text] ?? item?.text ?? item?.content ?? '';
-
-          const timestamp = dotGet(item, fields.timestamp) ?? item?.timestamp ?? Date.now();
-
-          const messageId =
-            dotGet(item, fields.id) ?? item?.id ?? `hist_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-
-          uiMessages.push({
-            id: String(messageId),
-            text: typeof text === 'string' ? text : JSON.stringify(text),
-            sender: isUser ? 'user' : 'ai',
-            timestamp: typeof timestamp === 'number' ? timestamp : Date.parse(timestamp) || Date.now(),
-          });
-
-          historyForContext.push({
-            role: isUser ? 'user' : 'assistant',
-            content: text,
-          });
-        }
-
-        const threadIdContextKey = currentAgent.threadIdContextKey || 'thread_id';
-
-        setMessages(uiMessages);
-        setThreadId(threadIdToLoad);
-        setInputValue('');
-        setDynamicSuggestions([]);
-
-        setContext({
-          __history: historyForContext,
-          [threadIdContextKey]: threadIdToLoad,
-        });
-
-        markStarted();
-      } catch (error) {
-        console.error('Failed to load thread:', error);
-      }
-    },
-    [abort, currentAgent, markStarted, runOperation, setContext, setMessages]
-  );
-
-  const deleteThread = useCallback(
-    async (threadIdToDelete: string): Promise<boolean | null> => {
-      if (!currentAgent?.history || !currentAgent.historyDeleteOperation) {
-        return null;
-      }
-
-      try {
-        const threadIdParam = resolveThreadIdParam(currentAgent);
-
-        await runOperation(currentAgent.historyDeleteOperation, {
-          [threadIdParam]: threadIdToDelete,
-        });
-
-        return true;
-      } catch (error) {
-        console.error('Failed to delete thread:', error);
-        return false;
-      }
-    },
-    [currentAgent, runOperation]
-  );
-
   return {
     messages,
     isLoading: isSending,
@@ -459,9 +309,9 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     traces,
     getTrace,
     threadId,
-    fetchThreads,
-    loadThread,
-    deleteThread,
+    setContext,
+    markStarted,
+    runOperation,
     dynamicSuggestions,
   };
 };

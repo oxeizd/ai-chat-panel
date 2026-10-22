@@ -18,7 +18,10 @@ export const ResponseHandlingSection: React.FC<ResponseHandlingSectionProps> = (
         placeholder="thread_id, run_id, user_id"
         description="These fields will be available in subsequent requests"
       />
-      <Field label="Chat reply field">
+      <Field
+        label="Reply field"
+        description="Dot-path to the reply text in the response (e.g., 'text', 'message', 'choices[0].message.content'). If not set, the full response body is used."
+      >
         <Input
           value={endpoint.replyField || ''}
           onChange={(e) => onChange('replyField', e.currentTarget.value)}

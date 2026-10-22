@@ -8,6 +8,7 @@ interface HistoryModalProps {
   historyChats: ChatHistoryItem[];
   onSelectChat: (chatId: string) => void;
   onDeleteChat: (chatId: string) => Promise<void>;
+  hasDeleteOperation: boolean;
 }
 
 export const HistoryModal: React.FC<HistoryModalProps> = ({
@@ -16,11 +17,15 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
   historyChats,
   onSelectChat,
   onDeleteChat,
+  hasDeleteOperation,
 }) => {
   const theme = useTheme2();
 
   const handleDelete = async (e: React.MouseEvent, chatId: string) => {
     e.stopPropagation();
+    if (!hasDeleteOperation) {
+      return;
+    }
     await onDeleteChat(chatId);
   };
 
@@ -50,7 +55,12 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                   <div style={{ fontSize: '12px', color: theme.colors.text.secondary }}>{chat.date}</div>
                   {chat.preview && <div style={{ fontSize: '12px' }}>{chat.preview}</div>}
                 </div>
-                <IconButton name="trash-alt" onClick={(e) => handleDelete(e, chat.id)} tooltip="Удалить диалог" />
+                <IconButton
+                  name="trash-alt"
+                  onClick={(e) => handleDelete(e, chat.id)}
+                  tooltip={hasDeleteOperation ? 'Удалить диалог' : 'Удаление не настроено'}
+                  disabled={!hasDeleteOperation}
+                />
               </li>
             ))}
           </ul>

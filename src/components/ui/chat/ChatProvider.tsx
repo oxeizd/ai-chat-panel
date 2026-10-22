@@ -62,9 +62,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     retryMessage,
     getTrace,
     threadId,
-    fetchThreads,
-    loadThread,
-    deleteThread,
+    setContext,
+    markStarted,
+    runOperation,
     dynamicSuggestions,
   } = useChatMessages(selectedAgent, user, debug);
 
@@ -238,9 +238,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       debug,
       getTrace,
       testMessageButton,
-      fetchThreads,
-      loadThread,
-      deleteThread,
+      setContext,
+      markStarted,
+      runOperation,
     }),
     [
       setMessages,
@@ -279,10 +279,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       debug,
       getTrace,
       testMessageButton,
-      fetchThreads,
-      loadThread,
-      deleteThread,
-    ]
+      setContext,
+      markStarted,
+      runOperation,
+    ],
   );
 
   return (

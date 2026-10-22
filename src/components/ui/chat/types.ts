@@ -1,5 +1,5 @@
 import React from 'react';
-import { InteractivePayload, Message, AgentConfig, DebugTrace, ChatHistoryItem } from 'types';
+import { InteractivePayload, Message, AgentConfig, DebugTrace } from 'types';
 
 export interface PendingInteractive {
   /** id сообщения ассистента, к которому относится подсказка. */
@@ -56,9 +56,9 @@ export interface ChatActions {
   debug: boolean;
   getTrace?: (messageId: string) => DebugTrace | undefined;
   testMessageButton?: boolean;
-  fetchThreads: () => Promise<ChatHistoryItem[]>;
-  loadThread: (threadId: string) => Promise<void>;
-  deleteThread: (threadId: string) => Promise<boolean | null>;
+  setContext: (partial: Record<string, any>) => void;
+  markStarted: () => void;
+  runOperation: (operation: string, additionalContext?: Record<string, any>) => Promise<any>;
 }
 
 export interface ChatConfig extends ChatState, ChatActions {}
