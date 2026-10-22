@@ -207,12 +207,12 @@ describe('Agent.runOperation with AGUI', () => {
       // Give sendMessage time to start processing
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Agent is now processing
-      await expect(agent.runOperation('list_threads')).rejects.toThrow('Agent is busy');
+      // Agent is now processing — use a non-history operation that will throw
+      await expect(agent.runOperation('get_suggestions')).rejects.toThrow('Agent is busy');
 
       // Clean up
       agent.abort();
       // Don't wait for sendPromise - it never resolves by design
-    }, 10000);
+    }, 5000);
   });
 });
