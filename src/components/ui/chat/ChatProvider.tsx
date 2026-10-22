@@ -282,7 +282,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       setContext,
       markStarted,
       runOperation,
-    ],
+    ]
   );
 
   return (
