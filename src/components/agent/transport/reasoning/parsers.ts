@@ -1,6 +1,7 @@
 import { ReasoningConfig } from 'types';
 import { ReasoningState, ReasoningChunkContext, ReasoningExtractContext } from './types';
 import { dotGet } from 'components/agent/utils/utils';
+import { DEFAULT_REASONING } from 'components/agent/config/defaults';
 
 /** Обработка одного чанка для embedded-режима (api_field или thinking_tags) */
 export function processEmbeddedChunk(ctx: ReasoningChunkContext): ReasoningState {
@@ -50,8 +51,8 @@ export function extractEmbeddedFinal(ctx: ReasoningExtractContext): { cleanedRep
       }
     }
     if (fullText) {
-      const startMarker = r.startMarker ?? '<?thinking?>';
-      const endMarker = r.endMarker ?? '<?/thinking?>';
+      const startMarker = r.startMarker ?? DEFAULT_REASONING.startMarker;
+      const endMarker = r.endMarker ?? DEFAULT_REASONING.endMarker;
       const startIdx = fullText.indexOf(startMarker);
       const endIdx = fullText.indexOf(endMarker);
       if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {

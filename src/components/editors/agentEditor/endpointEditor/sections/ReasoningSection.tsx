@@ -3,6 +3,7 @@ import { Field, Input, Combobox, useStyles2 } from '@grafana/ui';
 import { css } from '@emotion/css';
 import { EndpointConfig, ReasoningConfig } from 'types';
 import { Toggle } from 'components/editors/shared/Toggle';
+import { DEFAULT_REASONING } from 'components/agent/config/defaults';
 
 interface ReasoningSectionProps {
   endpoint: EndpointConfig;
@@ -23,16 +24,16 @@ const DEFAULT_EMBEDDED_API: ReasoningConfig = {
   enabled: true,
   type: 'embedded',
   mode: 'api_field',
-  apiField: 'choices[0].delta.reasoning',
+  apiField: DEFAULT_REASONING.apiField,
 };
 
 const DEFAULT_EMBEDDED_TAGS: ReasoningConfig = {
   enabled: true,
   type: 'embedded',
   mode: 'thinking_tags',
-  textPath: 'choices[0].message.content',
-  startMarker: '<thinking>',
-  endMarker: '</thinking>',
+  textPath: DEFAULT_REASONING.textPath,
+  startMarker: DEFAULT_REASONING.startMarker,
+  endMarker: DEFAULT_REASONING.endMarker,
 };
 
 const DEFAULT_SEPARATE: ReasoningConfig = {

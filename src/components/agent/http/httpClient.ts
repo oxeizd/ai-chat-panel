@@ -1,22 +1,8 @@
-import { TraceStep } from 'types';
+// Единое объявление RequestConfig/HttpResponse — в components/agent/config/types.ts
+// (реэкспортируется через src/types.ts), здесь только переэкспорт для совместимости импортов.
+import { RequestConfig, HttpResponse } from 'components/agent/config/types';
 
-export interface RequestConfig {
-  url: string;
-  method: string;
-  headers: Record<string, string>;
-  body?: string;
-  onTrace?: (step: TraceStep) => void;
-}
-
-export interface HttpResponse {
-  ok: boolean;
-  status: number;
-  headers: Headers;
-  body: ReadableStream<Uint8Array> | null;
-  clone(): HttpResponse;
-  text(): Promise<string>;
-  json(): Promise<any>;
-}
+export type { RequestConfig, HttpResponse };
 
 export interface HttpExecuteOptions {
   timeoutMs?: number;

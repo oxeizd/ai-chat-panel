@@ -7,9 +7,7 @@ export const DEFAULT_POLLING = {
 } as const;
 
 export const DEFAULT_STREAMING = {
-  textPath: 'choices.0.delta.content',
-  delimiter: '\n\n',
-  dataPrefix: 'data: ',
+  textPath: 'choices[0].delta.content',
 } as const;
 
 export const DEFAULT_HISTORY = {

@@ -3,6 +3,7 @@ import { Field, Input } from '@grafana/ui';
 import { EndpointConfig, PollingConfig } from 'types';
 import { CommaSeparatedInput } from 'components/editors/shared/CommaSeparatedInput';
 import { Toggle } from 'components/editors/shared/Toggle';
+import { DEFAULT_POLLING } from 'components/agent/config/defaults';
 
 interface PollingSectionProps {
   endpoint: EndpointConfig;
@@ -44,32 +45,32 @@ export const PollingSection: React.FC<PollingSectionProps> = ({ endpoint, onChan
           <Field label="Interval (ms)">
             <Input
               type="number"
-              value={polling.intervalMs ?? 1000}
+              value={polling.intervalMs ?? DEFAULT_POLLING.intervalMs}
               onChange={(e) => handlePollingFieldChange('intervalMs', parseInt(e.currentTarget.value, 10))}
             />
           </Field>
           <Field label="Max attempts">
             <Input
               type="number"
-              value={polling.maxAttempts ?? 10}
+              value={polling.maxAttempts ?? DEFAULT_POLLING.maxAttempts}
               onChange={(e) => handlePollingFieldChange('maxAttempts', parseInt(e.currentTarget.value, 10))}
             />
           </Field>
           <Field label="Status field">
             <Input
-              value={polling.statusField ?? 'status'}
+              value={polling.statusField ?? DEFAULT_POLLING.statusField}
               onChange={(e) => handlePollingFieldChange('statusField', e.currentTarget.value)}
             />
           </Field>
           <Field label="Success value">
             <Input
-              value={polling.successValue ?? 'completed'}
+              value={polling.successValue ?? DEFAULT_POLLING.successValue}
               onChange={(e) => handlePollingFieldChange('successValue', e.currentTarget.value)}
             />
           </Field>
           <Field label="Result field">
             <Input
-              value={polling.resultField ?? 'result'}
+              value={polling.resultField ?? DEFAULT_POLLING.resultField}
               onChange={(e) => handlePollingFieldChange('resultField', e.currentTarget.value)}
             />
           </Field>
