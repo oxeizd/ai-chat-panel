@@ -1,5 +1,5 @@
 import { EventBus } from './eventBus';
-import { AgentConfig, TraceStep, AgentEvent } from 'types';
+import { AgentConfig, TraceStep, AgentEvent, ChartData } from 'types';
 import { executeWorkflow } from './workflowManager';
 import { createAgentConfig } from '../config/agentConfig';
 import { sendOperation } from '../transport/sender';
@@ -13,6 +13,8 @@ export class Agent {
   };
   private processing = false;
   private abortController?: AbortController;
+  /** Флаг: графики уже были эмитлены через EventBus во время стрима (не дублировать в конце). */
+  private chartsEmittedDuringStream = false;
 
   constructor(rawConfig: unknown) {
     this.config = createAgentConfig(rawConfig);
@@ -43,6 +45,10 @@ export class Agent {
 
   onContextUpdate(handler: (ctx: Record<string, any>) => void): () => void {
     return this.on('contextUpdate', handler);
+  }
+
+  onChart(handler: (chart: ChartData) => void): () => void {
+    return this.on('chart', handler);
   }
 
   getContextValue(key: string): any {
@@ -88,6 +94,13 @@ export class Agent {
 
     this.processing = true;
     this.abortController = new AbortController();
+    this.chartsEmittedDuringStream = false;
+
+    // Графики, пришедшие во время стрима через EventBus, уже попали в UI —
+    // помечаем это, чтобы не эмитить их повторно после workflow.
+    const offChartGuard = this.bus.on('chart', () => {
+      this.chartsEmittedDuringStream = true;
+    });
 
     try {
       this.session.context = {
@@ -115,9 +128,26 @@ export class Agent {
         reply = typeof lastStep.data === 'string' ? lastStep.data : JSON.stringify(lastStep.data);
       }
 
+      // AG-UI RUN_ERROR / render:'error': поток оборвался с ошибкой.
+      // Если текста уже набралось — показываем его + ошибку отдельным абзацем,
+      // иначе — ошибка как весь ответ.
+      const streamError = result.stepResults.find((step) => step.ok && step.error)?.error;
+      if (streamError) {
+        reply = reply ? `${reply}\n\n⚠️ ${streamError}` : `⚠️ ${streamError}`;
+      }
+
       if (reply && !lastStep?.streaming) {
         this.bus.emit('chunk', reply);
       }
+
+      // Графики из CUSTOM-событий потока уже эмитились во время стрима ('chart'),
+      // но если пришли не через EventBus (например, workflow из нескольких шагов) —
+      // догоняем их здесь.
+      const charts: ChartData[] = result.stepResults.flatMap((step) => step.charts ?? []);
+      if (charts.length && !this.chartsEmittedDuringStream) {
+        charts.forEach((c) => this.bus.emit('chart', c));
+      }
+      this.chartsEmittedDuringStream = false;
 
       const fileAttachment = lastStep?.fileAttachment;
 
@@ -135,6 +165,7 @@ export class Agent {
 
       return reply;
     } finally {
+      offChartGuard();
       this.processing = false;
       this.abortController = undefined;
     }

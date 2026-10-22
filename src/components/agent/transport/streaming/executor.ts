@@ -1,9 +1,42 @@
 import { SSEParser, NdjsonParser } from './parsers';
 import { EventBus } from 'components/agent/core/eventBus';
-import { createInitialStreamState, processStreamChunk, finalizeStream } from './processor';
+import {
+  createInitialStreamState,
+  processStreamChunk,
+  finalizeStream,
+  appendTextDelta,
+} from './processor';
 import { HttpResponse, EndpointConfig, TraceStep, SendResult } from 'types';
 import { dotGet } from 'components/agent/utils/utils';
-import { finalizeReasoning } from '../reasoning/processor';
+import { matchCustomEventHandler } from './customEvents';
+
+/**
+ * AG-UI: события TEXT_MESSAGE_START / TEXT_MESSAGE_END не содержат текста,
+ * но задают границы сообщений. Возвращает messageId, если событие — START.
+ */
+function getTextMessageStartId(event: any): string | undefined {
+  if (event && typeof event === 'object' && event.type === 'TEXT_MESSAGE_START') {
+    return typeof event.messageId === 'string' ? event.messageId : '';
+  }
+  return undefined;
+}
+
+/** Извлекает дельту текста из события по настройкам извлечения. */
+function extractTextDelta(parsedEvent: any, cfg: { textPath?: string; textEventType?: string; textDeltaField?: string }): unknown {
+  let textDelta: unknown = null;
+  if (cfg.textEventType) {
+    if (parsedEvent.type === cfg.textEventType) {
+      if (cfg.textDeltaField) {
+        textDelta = parsedEvent[cfg.textDeltaField];
+      } else if (cfg.textPath) {
+        textDelta = dotGet(parsedEvent, cfg.textPath);
+      }
+    }
+  } else if (cfg.textPath) {
+    textDelta = dotGet(parsedEvent, cfg.textPath);
+  }
+  return textDelta;
+}
 
 function isStreamingEnabled(
   streaming: EndpointConfig['streaming']
@@ -32,6 +65,8 @@ export async function handleStreamingResponse(
       reasoningText: result.reasoningText,
       isStreaming: true,
       lastEvent: result.lastEvent,
+      charts: result.charts.length ? result.charts : undefined,
+      error: result.streamError,
     };
   }
 
@@ -44,6 +79,8 @@ export async function handleStreamingResponse(
       reasoningText: result.reasoningText,
       isStreaming: true,
       lastEvent: result.lastEvent,
+      charts: result.charts.length ? result.charts : undefined,
+      error: result.streamError,
     };
   }
 
@@ -59,7 +96,14 @@ async function handleSSEStream(
   context: Record<string, any>,
   eventBus: EventBus,
   onTrace?: (step: TraceStep) => void
-): Promise<{ reply: string; reasoningText: string | undefined; context: Record<string, any>; lastEvent: any }> {
+): Promise<{
+  reply: string;
+  reasoningText: string | undefined;
+  context: Record<string, any>;
+  lastEvent: any;
+  charts: any[];
+  streamError?: string;
+}> {
   if (!res.body) {
     throw new Error('SSE response has no body');
   }
@@ -76,9 +120,8 @@ async function handleSSEStream(
     throw new Error('Streaming config missing');
   }
 
-  const textPath = streaming.textPath;
-  const textEventType = streaming.textEventType;
-  const textDeltaField = streaming.textDeltaField;
+  const paragraphBetweenMessages = streaming.paragraphBetweenMessages !== false;
+  const customRules = streaming.customEvents;
 
   let rawMessages: string[] | undefined = onTrace ? [] : undefined;
 
@@ -107,48 +150,56 @@ async function handleSSEStream(
           continue;
         }
 
-        let textDelta: string | null = null;
-        if (textEventType) {
-          if (parsedEvent.type === textEventType) {
-            if (textDeltaField) {
-              textDelta = parsedEvent[textDeltaField];
-            } else if (textPath) {
-              textDelta = dotGet(parsedEvent, textPath);
-            }
-          }
-        } else {
-          if (textPath) {
-            textDelta = dotGet(parsedEvent, textPath);
-          }
+        // AG-UI: границы текстовых сообщений (TEXT_MESSAGE_START с новым messageId)
+        const startId = getTextMessageStartId(parsedEvent);
+        let boundaryId: string | undefined;
+        if (startId !== undefined && startId !== state.currentMessageId) {
+          state.currentMessageId = startId;
+          boundaryId = startId;
         }
 
-        if (typeof textDelta === 'string' && textDelta) {
-          if (state.reasoningState.active) {
-            state.reasoningState = finalizeReasoning(state.reasoningState, eventBus);
+        // События CUSTOM матчатся только правилами — не пытаемся извлечь из них текст.
+        const matchedCustomRule = !!customRules?.length && matchCustomEventHandler(parsedEvent, customRules);
+        if (!matchedCustomRule) {
+          const textDelta = extractTextDelta(parsedEvent, streaming);
+          if (typeof textDelta === 'string') {
+            state = appendTextDelta(state, textDelta, eventBus, {
+              paragraphBetweenMessages,
+              messageId: typeof parsedEvent.messageId === 'string' ? parsedEvent.messageId : state.currentMessageId,
+              boundaryMessageId: boundaryId,
+            });
           }
-          state.fullReply += textDelta;
-          eventBus.emit('chunk', textDelta);
         }
 
         state = processStreamChunk(parsedEvent, op, context, state, eventBus, {
           onTrace,
           eventType: parsedEvent.type,
         });
+
+        if (state.streamError) {
+          break;
+        }
+      }
+
+      if (state.streamError) {
+        break;
       }
     }
 
-    const finalMessages = parser.flush();
-    for (const msg of finalMessages) {
-      if (msg.data === '[DONE]') {
-        continue;
+    if (!state.streamError) {
+      const finalMessages = parser.flush();
+      for (const msg of finalMessages) {
+        if (msg.data === '[DONE]') {
+          continue;
+        }
+        try {
+          const parsedEvent = JSON.parse(msg.data);
+          state = processStreamChunk(parsedEvent, op, context, state, eventBus, {
+            onTrace,
+            eventType: parsedEvent.type,
+          });
+        } catch {}
       }
-      try {
-        const parsedEvent = JSON.parse(msg.data);
-        state = processStreamChunk(parsedEvent, op, context, state, eventBus, {
-          onTrace,
-          eventType: parsedEvent.type,
-        });
-      } catch {}
     }
 
     state = finalizeStream(state, eventBus);
@@ -166,7 +217,9 @@ async function handleSSEStream(
       reply: state.fullReply,
       reasoningText: state.reasoningState.fullText,
       lastEvent,
-      context,
+      context: { ...context, ...state.pendingContext },
+      charts: state.charts,
+      streamError: state.streamError,
     };
   } finally {
     reader.releaseLock();
@@ -182,7 +235,14 @@ async function handleNdjsonStream(
   context: Record<string, any>,
   eventBus: EventBus,
   onTrace?: (step: TraceStep) => void
-): Promise<{ reply: string; reasoningText: string | undefined; context: Record<string, any>; lastEvent: any }> {
+): Promise<{
+  reply: string;
+  reasoningText: string | undefined;
+  context: Record<string, any>;
+  lastEvent: any;
+  charts: any[];
+  streamError?: string;
+}> {
   if (!res.body) {
     throw new Error('NDJSON response has no body');
   }
@@ -197,7 +257,8 @@ async function handleNdjsonStream(
     throw new Error('Streaming config missing');
   }
 
-  const textPath = streaming.textPath;
+  const paragraphBetweenMessages = streaming.paragraphBetweenMessages !== false;
+  const customRules = streaming.customEvents;
   let rawMessages: string[] | undefined = onTrace ? [] : undefined;
 
   try {
@@ -214,29 +275,45 @@ async function handleNdjsonStream(
         }
         lastEvent = obj;
 
-        let textDelta: string | null = null;
-        if (textPath) {
-          textDelta = dotGet(obj, textPath);
+        const startId = getTextMessageStartId(obj);
+        let boundaryId: string | undefined;
+        if (startId !== undefined && startId !== state.currentMessageId) {
+          state.currentMessageId = startId;
+          boundaryId = startId;
         }
 
-        if (typeof textDelta === 'string' && textDelta) {
-          if (state.reasoningState.active) {
-            state.reasoningState = finalizeReasoning(state.reasoningState, eventBus);
+        const matchedCustomRule = !!customRules?.length && matchCustomEventHandler(obj, customRules);
+        if (!matchedCustomRule) {
+          const textDelta = extractTextDelta(obj, streaming);
+          if (typeof textDelta === 'string') {
+            state = appendTextDelta(state, textDelta, eventBus, {
+              paragraphBetweenMessages,
+              messageId: typeof obj.messageId === 'string' ? obj.messageId : state.currentMessageId,
+              boundaryMessageId: boundaryId,
+            });
           }
-          state.fullReply += textDelta;
-          eventBus.emit('chunk', textDelta);
         }
 
         state = processStreamChunk(obj, op, context, state, eventBus, {
           onTrace,
           eventType: obj.type, // может быть undefined, но для jsonl обычно не нужен
         });
+
+        if (state.streamError) {
+          break;
+        }
+      }
+
+      if (state.streamError) {
+        break;
       }
     }
 
-    const finalObjects = parser.flush();
-    for (const obj of finalObjects) {
-      state = processStreamChunk(obj, op, context, state, eventBus, { onTrace, eventType: obj.type });
+    if (!state.streamError) {
+      const finalObjects = parser.flush();
+      for (const obj of finalObjects) {
+        state = processStreamChunk(obj, op, context, state, eventBus, { onTrace, eventType: obj.type });
+      }
     }
 
     state = finalizeStream(state, eventBus);
@@ -254,7 +331,9 @@ async function handleNdjsonStream(
       reply: state.fullReply,
       reasoningText: state.reasoningState.fullText,
       lastEvent,
-      context,
+      context: { ...context, ...state.pendingContext },
+      charts: state.charts,
+      streamError: state.streamError,
     };
   } finally {
     reader.releaseLock();

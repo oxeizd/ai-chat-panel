@@ -18,6 +18,7 @@ interface SendCallbacks {
   onStep?: (step: TraceStep) => void;
   onFileAttachment?: (file: any) => void;
   onInteractive?: (payload: any) => void;
+  onChart?: (chart: any) => void;
 }
 
 export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderOptions) => {
@@ -33,6 +34,7 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
     onContextUpdate,
     onFileAttachment,
     onInteractive,
+    onChart,
     getContextValue,
     setContext,
     runOperation,
@@ -60,6 +62,12 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
       },
       onFileAttachment,
       onInteractive,
+      onChart: (handler) => {
+        return onChart((chart) => {
+          handler(chart);
+          callbacksRef.current.onChart?.(chart);
+        });
+      },
     },
     callbacksRef: callbacksRef as any,
   });

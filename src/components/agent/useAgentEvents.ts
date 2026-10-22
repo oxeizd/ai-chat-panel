@@ -9,6 +9,7 @@ interface AgentEventsCallbacks {
   onContextUpdate?: (ctx: Record<string, any>) => void;
   onFileAttachment?: (file: FileAttachment) => void;
   onInteractive?: (payload: any) => void;
+  onChart?: (chart: any) => void;
 }
 
 interface UseAgentEventsOptions {
@@ -20,6 +21,7 @@ interface UseAgentEventsOptions {
     onContextUpdate?: (handler: (ctx: Record<string, any>) => void) => () => void;
     onFileAttachment?: (handler: (file: FileAttachment) => void) => () => void;
     onInteractive?: (handler: (payload: any) => void) => () => void;
+    onChart?: (handler: (chart: any) => void) => () => void;
   } | null;
   callbacksRef: React.MutableRefObject<AgentEventsCallbacks>;
 }
@@ -84,6 +86,14 @@ export const useAgentEvents = ({ subscriptions, callbacksRef }: UseAgentEventsOp
       unsubFunctions.push(
         subscriptions.onInteractive((payload) => {
           callbacksRef.current.onInteractive?.(payload);
+        })
+      );
+    }
+
+    if (subscriptions.onChart) {
+      unsubFunctions.push(
+        subscriptions.onChart((chart) => {
+          callbacksRef.current.onChart?.(chart);
         })
       );
     }
