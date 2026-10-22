@@ -9,6 +9,8 @@ import { MessageListStyles } from './MessageList';
 import { REMARK_PLUGINS, REHYPE_PLUGINS } from '../utils/markdown/plugins';
 import { downloadFile } from 'components/agent/utils/download';
 import { preprocessMarkdown } from './hooks/utils/preprocess';
+import { ChartComponent } from 'components/ui/utils/markdown/chartComponent/ChartComponent';
+import { isValidChartConfig } from 'components/ui/utils/markdown/chartParsing';
 
 interface ChatMessageProps {
   message: {
@@ -25,6 +27,7 @@ interface ChatMessageProps {
     };
     thinking?: string;
     isThinking?: boolean;
+    traceSteps?: any[];
   };
   styles: MessageListStyles;
   debug: boolean;
@@ -158,6 +161,197 @@ export const ChatMessage = React.memo(
                   style={{ fontSize: '14px', opacity: 0.7, cursor: 'pointer', alignSelf: 'center' }}
                   onClick={handleInfoClick}
                 />
+              )}
+
+              {/* AG-UI trace steps — reasoning, tool calls */}
+              {message.traceSteps && message.traceSteps.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  {message.traceSteps.map((step: any, idx: number) => {
+                    // Пропускаем служебные события — они не нужны в UI
+                    if (
+                      step.type?.startsWith('text:') ||
+                      step.type?.startsWith('run:') ||
+                      step.type === 'state:snapshot' ||
+                      step.type === 'state:delta'
+                    ) {
+                      return null;
+                    }
+
+                    // Reasoning — отображаем как thinking
+                    if (step.type?.startsWith('reasoning:')) {
+                      if (step.type === 'reasoning:start' || step.type === 'reasoning:end') {
+                        return null;
+                      }
+
+                      return (
+                        <details
+                          key={idx}
+                          open={false}
+                          style={{
+                            marginBottom: 4,
+                            padding: '4px 8px',
+                            background: 'rgba(148,163,184,0.08)',
+                            borderRadius: 4,
+                            borderLeft: '2px solid rgba(148,163,184,0.3)',
+                          }}
+                        >
+                          <summary
+                            style={{
+                              cursor: 'pointer',
+                              color: '#94a3b8',
+                              fontSize: '0.8rem',
+                              fontStyle: 'italic',
+                            }}
+                          >
+                            💭 Thinking...
+                          </summary>
+                          <div
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '0.8rem',
+                              color: '#94a3b8',
+                              whiteSpace: 'pre-wrap',
+                              maxHeight: '200px',
+                              overflowY: 'auto',
+                            }}
+                          >
+                            {step.delta || step.text || ''}
+                          </div>
+                        </details>
+                      );
+                    }
+
+                    // Tool calls — отображаем как карточки
+                    if (step.type?.startsWith('tool:')) {
+                      const isEnd = step.type === 'tool:end';
+                      const isArgs = step.type === 'tool:args';
+                      const isResult = step.type === 'tool:result';
+
+                      if (isEnd || isArgs) {
+                        return null;
+                      } // Пропускаем
+
+                      return (
+                        <details
+                          key={idx}
+                          open={false}
+                          style={{
+                            marginBottom: 4,
+                            padding: '4px 8px',
+                            background: 'rgba(59,130,246,0.08)',
+                            borderRadius: 4,
+                            borderLeft: '2px solid rgba(59,130,246,0.3)',
+                          }}
+                        >
+                          <summary
+                            style={{
+                              cursor: 'pointer',
+                              color: '#3b82f6',
+                              fontSize: '0.8rem',
+                              fontWeight: 500,
+                            }}
+                          >
+                            🔧 {step.toolName || 'Tool Call'}
+                          </summary>
+                          <div
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '0.8rem',
+                              color: '#64748b',
+                              fontFamily: 'monospace',
+                            }}
+                          >
+                            {isResult ? (
+                              <div>
+                                <div style={{ marginBottom: 4, fontWeight: 500 }}>Result:</div>
+                                <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                                  {step.content || step.delta || ''}
+                                </pre>
+                              </div>
+                            ) : (
+                              <div>
+                                {step.toolCallId && (
+                                  <div style={{ marginBottom: 4, opacity: 0.7 }}>ID: {step.toolCallId}</div>
+                                )}
+                                <div>Args: {step.delta || ''}</div>
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      );
+                    }
+
+                    // Steps — отображаем как прогресс
+                    if (step.type?.startsWith('step:')) {
+                      if (step.type === 'step:end') {
+                        return null;
+                      }
+
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            padding: '2px 8px',
+                            fontSize: '0.75rem',
+                            color: '#64748b',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                        >
+                          <span style={{ opacity: 0.5 }}>⏳</span>
+                          {step.stepName || 'Processing...'}
+                        </div>
+                      );
+                    }
+
+                    // Custom events — рендерим графики и другой кастомный контент
+                    if (step.type === 'custom') {
+                      try {
+                        const chartData = step.data?.chart || step.data?.data;
+                        if (chartData && isValidChartConfig(chartData)) {
+                          return (
+                            <div key={idx} className="chartContainer" style={{ marginTop: 8 }}>
+                              <ChartComponent config={chartData} />
+                            </div>
+                          );
+                        }
+                      } catch (err) {
+                        console.error('Custom chart parsing error:', err);
+                      }
+                      // Если не график — показываем как JSON
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            padding: '8px',
+                            fontSize: '0.75rem',
+                            color: '#64748b',
+                            background: 'rgba(148,163,184,0.08)',
+                            borderRadius: 4,
+                            marginTop: 4,
+                          }}
+                        >
+                          <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{JSON.stringify(step.data, null, 2)}</pre>
+                        </div>
+                      );
+                    }
+
+                    // Default — показываем как есть
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          padding: '2px 8px',
+                          fontSize: '0.75rem',
+                          color: '#64748b',
+                        }}
+                      >
+                        {JSON.stringify(step)}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </>
           )}

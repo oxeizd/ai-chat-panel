@@ -34,7 +34,7 @@ const subscribe = (listener: () => void) => {
 const getSnapshot = () => state;
 
 export const useChatHistory = () => {
-  const { fetchThreads, loadThread, deleteThread } = useChatActions();
+  const { fetchThreads, loadThread, deleteThread, openChat } = useChatActions();
 
   // Подписка на общий стор — при любом setState все компоненты, вызвавшие
   // этот хук, перерендерятся с актуальным снапшотом.
@@ -65,9 +65,10 @@ export const useChatHistory = () => {
   const selectChat = useCallback(
     async (chatId: string) => {
       await loadThread(chatId);
+      openChat();
       closeHistoryModal();
     },
-    [loadThread, closeHistoryModal]
+    [loadThread, openChat, closeHistoryModal]
   );
 
   const deleteChat = useCallback(

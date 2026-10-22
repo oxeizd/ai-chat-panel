@@ -1,6 +1,6 @@
 {
   "name": "ai-chat",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "scripts": {
     "build": "webpack -c ./.config/webpack/webpack.config.ts --env production",
     "dev": "webpack -w -c ./.config/webpack/webpack.config.ts --env development",
@@ -68,6 +68,8 @@
     "node": ">=22"
   },
   "dependencies": {
+    "@ag-ui/client": "^1.0.3",
+    "@ag-ui/core": "^1.0.3",
     "@emotion/css": "11.10.6",
     "@grafana/data": "^12.4.0",
     "@grafana/i18n": "^12.4.0",

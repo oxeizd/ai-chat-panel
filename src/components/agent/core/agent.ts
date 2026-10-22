@@ -3,6 +3,7 @@ import { AgentConfig, TraceStep, AgentEvent } from 'types';
 import { executeWorkflow } from './workflowManager';
 import { createAgentConfig } from '../config/agentConfig';
 import { sendOperation } from '../transport/sender';
+import { AGUITransport } from '../transport/aguiTransport';
 
 export class Agent {
   private config: AgentConfig;
@@ -13,6 +14,7 @@ export class Agent {
   };
   private processing = false;
   private abortController?: AbortController;
+  private aguiTransport?: AGUITransport;
 
   constructor(rawConfig: unknown) {
     this.config = createAgentConfig(rawConfig);
@@ -74,6 +76,7 @@ export class Agent {
   }
 
   abort(): void {
+    this.aguiTransport?.abort();
     this.abortController?.abort();
   }
 
@@ -95,6 +98,25 @@ export class Agent {
         ...additionalContext,
         user_input: userInput,
       };
+
+      // AG-UI mode — используем AG-UI transport вместо workflow
+      const ep = this.config.endpoints[0];
+      if (ep?.streaming?.enabled === true && ep.streaming.parseStrategy === 'agui') {
+        if (!this.aguiTransport) {
+          this.aguiTransport = new AGUITransport(this.config, this.bus);
+        }
+
+        const reply = await this.aguiTransport.sendMessage(
+          userInput,
+          additionalContext,
+          onTrace,
+          this.abortController.signal
+        );
+
+        this.bus.emit('contextUpdate', { ...this.session.context });
+
+        return reply;
+      }
 
       const result = await executeWorkflow(this.config, this.session, this.bus, {
         onTrace,
@@ -146,7 +168,27 @@ export class Agent {
    */
   async runOperation(operation: string, additionalContext: Record<string, any> = {}): Promise<any> {
     if (this.processing) {
-      throw new Error('Agent is busy');
+      // History-операции (list/load/delete) должны работать даже во время processing,
+      // потому что пользователь может переключить тред пока агент отвечает
+      const historyOps = [
+        this.config.historyListOperation,
+        this.config.historyLoadOperation,
+        this.config.historyDeleteOperation,
+      ];
+      if (!historyOps.includes(operation)) {
+        throw new Error('Agent is busy');
+      }
+      // Ждём завершения текущей операции перед выполнением history-операции
+      await new Promise<void>((resolve) => {
+        const check = () => {
+          if (!this.processing) {
+            resolve();
+          } else {
+            setTimeout(check, 50);
+          }
+        };
+        check();
+      });
     }
 
     const context = {
@@ -154,6 +196,53 @@ export class Agent {
       ...additionalContext,
     };
 
+    // AG-UI mode — делегируем history-операции в AGUITransport
+    const ep = this.config.endpoints[0];
+    const isAGUI = ep?.streaming?.enabled === true && ep.streaming.parseStrategy === 'agui';
+    console.log(
+      '[Agent.runOperation] operation:',
+      operation,
+      'isAGUI:',
+      isAGUI,
+      'historyListOperation:',
+      this.config.historyListOperation
+    );
+
+    if (isAGUI) {
+      if (!this.aguiTransport) {
+        this.aguiTransport = new AGUITransport(this.config, this.bus);
+      }
+
+      // History list — всегда используем AGUI endpoint /threads
+      if (operation === this.config.historyListOperation) {
+        const data = await this.aguiTransport.listThreads();
+        this.bus.emit('contextUpdate', { ...this.session.context });
+        return data;
+      }
+
+      // History load — извлекаем threadId из контекста
+      if (operation === this.config.historyLoadOperation) {
+        const threadIdParam = this.config.threadIdParam || this.config.threadIdContextKey || 'chatId';
+        const threadId = additionalContext[threadIdParam] || this.session.context[threadIdParam];
+
+        if (!threadId) {
+          throw new Error('threadId is required for history load operation');
+        }
+
+        const data = await this.aguiTransport.loadThread(threadId);
+        this.bus.emit('contextUpdate', { ...this.session.context });
+        return data;
+      }
+
+      // History delete — AGUI протокол пока не поддерживает удаление,
+      // но если endpoint настроен — пробуем через sendOperation
+      if (operation === this.config.historyDeleteOperation) {
+        // AGUI protocol doesn't have a built-in delete endpoint.
+        // Fall back to sendOperation if a delete endpoint is configured.
+      }
+    }
+
+    // Non-AGUI — используем sendOperation, он сам найдёт endpoint по имени операции
     const result = await sendOperation(this.config, operation, context, this.bus, {
       signal: this.abortController?.signal,
     });
@@ -176,6 +265,8 @@ export class Agent {
     if (this.processing) {
       throw new Error('Cannot reset while processing');
     }
+
+    this.aguiTransport = undefined;
 
     this.session = {
       started: false,

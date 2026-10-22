@@ -1,5 +1,5 @@
 import React from 'react';
-import { Field, Input, Combobox, useStyles2 } from '@grafana/ui';
+import { Field, Input, Combobox, useStyles2, Text, Switch } from '@grafana/ui';
 import { css } from '@emotion/css';
 import { EndpointConfig, StreamingConfig } from 'types';
 import { Toggle } from 'components/editors/shared/Toggle';
@@ -12,6 +12,7 @@ interface StreamingSectionProps {
 const PARSE_STRATEGY_OPTIONS = [
   { label: 'SSE (Server-Sent Events)', value: 'sse' },
   { label: 'JSON Lines (jsonl)', value: 'jsonl' },
+  { label: 'AG-UI Protocol', value: 'agui' },
 ];
 
 const EXTRACTION_MODE_OPTIONS = [
@@ -19,7 +20,13 @@ const EXTRACTION_MODE_OPTIONS = [
   { label: 'Event type + field', value: 'eventfield' },
 ];
 
-function getDefaultConfig(strategy: 'sse' | 'jsonl'): StreamingConfig & { enabled: true } {
+function getDefaultConfig(strategy: 'sse' | 'jsonl' | 'agui'): StreamingConfig & { enabled: true } {
+  if (strategy === 'agui') {
+    return {
+      enabled: true,
+      parseStrategy: 'agui',
+    };
+  }
   if (strategy === 'sse') {
     return {
       enabled: true,
@@ -73,7 +80,7 @@ export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, on
   };
 
   const handleFieldChange = <K extends keyof Extract<StreamingConfig, { enabled: true }>>(field: K, value: any) => {
-    if (!config) {
+    if (!config || config.parseStrategy === 'agui') {
       return;
     }
     onChange('streaming', { ...config, [field]: value });
@@ -169,6 +176,28 @@ export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, on
       return null;
     }
     switch (config.parseStrategy) {
+      case 'agui': {
+        const addNewLine = config.aguiNewLineBeforeContent === true;
+        const handleNewLineToggle = () => {
+          onChange('streaming', { ...config, aguiNewLineBeforeContent: !addNewLine });
+        };
+        return (
+          <>
+            <Field
+              label="AG-UI Protocol"
+              description="AG-UI protocol для стриминга событий, истории диалогов и tool calls"
+            >
+              <Text>
+                Автоматическая обработка SSE-событий: TEXT_MESSAGE_CONTENT, REASONING_*, TOOL_CALL_*, STATE_SNAPSHOT и
+                др.
+              </Text>
+            </Field>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Switch label="Новая строка перед контентом" checked={addNewLine} onChange={handleNewLineToggle} />
+            </div>
+          </>
+        );
+      }
       case 'sse':
         return renderSseFields();
       case 'jsonl':

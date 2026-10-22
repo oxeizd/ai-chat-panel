@@ -438,7 +438,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
     // ===== Меню =====
     menu: {
       customMenu: css`
-        z-index: 2500 !important;
+        z-index: 9999 !important;
         background: ${toRgba(bgColor, 0.7)};
         backdrop-filter: blur(12px);
         min-width: 240px;
@@ -516,7 +516,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
       maxHeight: '100vh',
       padding: '16px',
       borderRadius: 0,
-      zIndex: 2500,
+      zIndex: 3000,
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',

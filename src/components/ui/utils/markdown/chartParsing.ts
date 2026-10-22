@@ -144,5 +144,15 @@ export const parseChartConfig = (codeText: string): ChartData => {
 };
 
 export const isValidChartConfig = (config: ChartData): boolean => {
-  return !!(config && (config.datasets || config.data));
+  if (!config || typeof config !== 'object') {
+    return false;
+  }
+
+  // AG-UI CUSTOM event: { type: 'line'|'bar'|..., title?, data: [{x,y},...], xAxis?, yAxis? }
+  if (config.type && Array.isArray(config.data)) {
+    return true;
+  }
+
+  // ECharts формат: { datasets: [...] } или { data: [...] }
+  return !!(config.datasets || config.data);
 };

@@ -62,6 +62,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     setAssistantThinkingDone,
     setAssistantFinal,
     setAssistantInteractive,
+    addTraceStep,
     removeAssistant,
     addErrorAsAi,
     markUserError,
@@ -163,6 +164,8 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
               if (trace) {
                 addStep(userMessageId, step);
               }
+              // Добавляем traceStep к сообщению ассистента для рендера в UI
+              addTraceStep(assistantId, step);
             },
             onFileAttachment: (file: any) => {
               setAssistantFinal(assistantId, undefined, file);
@@ -217,6 +220,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       addAssistantPlaceholder,
       addErrorAsAi,
       addStep,
+      addTraceStep,
       addUserMessage,
       create,
       currentAgent,
@@ -320,12 +324,49 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
   const getTrace = useCallback((messageId: string) => traces.get(messageId), [traces]);
 
   const fetchThreads = useCallback(async (): Promise<ChatHistoryItem[]> => {
-    if (!currentAgent?.history || !currentAgent.historyListOperation) {
+    if (!currentAgent?.history) {
       return [];
     }
 
     try {
-      const result = await runOperation(currentAgent.historyListOperation);
+      // Find the endpoint for historyListOperation
+      const listEp = currentAgent.endpoints?.find((e) => e.operation === currentAgent.historyListOperation);
+      const baseUrl = (listEp?.url || currentAgent.url).replace(/\/+$/, '');
+      const url = `${baseUrl}${listEp?.path || '/api/threads'}`;
+
+      // Build headers from the endpoint config
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const epHeaders = listEp?.headers;
+      if (epHeaders) {
+        for (const [k, v] of Object.entries(epHeaders)) {
+          headers[k] = typeof v === 'string' ? v : String(v);
+        }
+      }
+
+      const res = await fetch(url, { method: 'GET', headers });
+      if (!res.ok) {
+        console.error('Failed to fetch threads:', res.status, res.statusText);
+        return [];
+      }
+
+      const result = await res.json();
+      console.log('[fetchThreads] Результат:', result);
+
+      // AG-UI формат: { items: [...], total: N }
+      if (result && typeof result === 'object' && 'items' in result && Array.isArray(result.items)) {
+        const items: any[] = result.items;
+        const fields = {
+          ...DEFAULT_HISTORY_LIST_ITEM_FIELDS,
+          ...currentAgent.historyListItemFields,
+        };
+
+        return items.map((item: any, index: number) => ({
+          id: String(dotGet(item, fields.id) ?? item?.thread_id ?? item?.id ?? index),
+          title: String(dotGet(item, fields.title) ?? item?.title ?? 'Без названия'),
+          date: formatHistoryDate(dotGet(item, fields.date) ?? item?.last_run_at ?? item?.date),
+          preview: fields.preview ? dotGet(item, fields.preview) : undefined,
+        }));
+      }
 
       if (!Array.isArray(result)) {
         return [];
@@ -346,7 +387,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       console.error('Failed to fetch threads:', error);
       return [];
     }
-  }, [currentAgent, runOperation]);
+  }, [currentAgent]);
 
   const loadThread = useCallback(
     async (threadIdToLoad: string) => {
@@ -363,7 +404,25 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
           [threadIdParam]: threadIdToLoad,
         });
 
-        if (!Array.isArray(result)) {
+        // unwrap SendResult { ok, data, context } if present
+        const raw = result && typeof result === 'object' && 'ok' in result ? result.data : result;
+        const payload = raw ?? result;
+
+        // AG-UI формат: { messages: [...] } или { thread_id: "...", messages: [...] }
+        let messagesArray: any[] = payload;
+
+        if (!Array.isArray(payload) && payload && typeof payload === 'object') {
+          if (Array.isArray(payload.messages)) {
+            messagesArray = payload.messages;
+          } else if (Array.isArray(payload.data)) {
+            messagesArray = payload.data;
+          } else {
+            console.warn('loadThread: expected array or object with messages, got', payload);
+            return;
+          }
+        }
+
+        if (!Array.isArray(messagesArray)) {
           console.warn('loadThread: expected array, got', result);
           return;
         }
@@ -379,7 +438,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
           content: any;
         }> = [];
 
-        for (const item of result) {
+        for (const item of messagesArray) {
           const rawRole = dotGet(item, fields.role) ?? item?.role;
           const isUser = rawRole === 'user';
 
@@ -390,12 +449,36 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
           const messageId =
             dotGet(item, fields.id) ?? item?.id ?? `hist_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-          uiMessages.push({
+          // AG-UI events — извлекаем reasoning, tool calls, steps
+          const traceSteps = item?.traceSteps ?? item?.events ?? item?.steps ?? [];
+
+          const aiMessage: Message = {
             id: String(messageId),
             text: typeof text === 'string' ? text : JSON.stringify(text),
             sender: isUser ? 'user' : 'ai',
             timestamp: typeof timestamp === 'number' ? timestamp : Date.parse(timestamp) || Date.now(),
-          });
+          };
+
+          // Reasoning — извлекаем из AG-UI events
+          if (isUser === false) {
+            const reasoningSteps = traceSteps.filter((s: any) => s.type?.startsWith('reasoning:'));
+            const reasoningText = reasoningSteps
+              .filter((s: any) => s.type === 'reasoning:chunk')
+              .map((s: any) => s.delta || s.text || '')
+              .join('');
+
+            if (reasoningText) {
+              aiMessage.thinking = reasoningText;
+              aiMessage.isThinking = false;
+            }
+
+            // Сохраняем все traceSteps для отрисовки
+            if (traceSteps.length > 0) {
+              aiMessage.traceSteps = traceSteps;
+            }
+          }
+
+          uiMessages.push(aiMessage);
 
           historyForContext.push({
             role: isUser ? 'user' : 'assistant',
@@ -410,9 +493,12 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
         setInputValue('');
         setDynamicSuggestions([]);
 
+        // Сохраняем user_input из текущего контекста перед перезаписью
+        const currentCtx = (setContext as any).__getCurrentContext?.();
         setContext({
           __history: historyForContext,
           [threadIdContextKey]: threadIdToLoad,
+          ...(currentCtx?.user_input ? { user_input: currentCtx.user_input } : {}),
         });
 
         markStarted();

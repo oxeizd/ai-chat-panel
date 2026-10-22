@@ -164,7 +164,10 @@ export function normalizeEndpointConfig(input: Partial<EndpointConfig>, baseUrl?
     saveToContext: input.saveToContext ?? [],
     replyField: input.replyField,
     polling: input.polling ?? DEFAULT_POLLING_FALSE,
-    streaming: input.streaming ?? DEFAULT_STREAMING_FALSE,
+    streaming:
+      input.streaming && input.streaming.enabled
+        ? { ...input.streaming, enabled: true, parseStrategy: (input.streaming as any).parseStrategy ?? 'sse' }
+        : DEFAULT_STREAMING_FALSE,
     historyConfig: input.historyConfig ?? DEFAULT_HISTORY_FALSE,
     reasoning: input.reasoning ?? DEFAULT_REASONING_FALSE,
     url: baseUrl ?? '',

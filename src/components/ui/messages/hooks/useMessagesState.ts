@@ -95,6 +95,32 @@ export const useMessagesState = () => {
     );
   }, []);
 
+  /** Добавляет traceStep к сообщению ассистента. */
+  const addTraceStep = useCallback((assistantId: string, step: any) => {
+    // Пропускаем служебные события — они не нужны в UI и вызывают лишние ререндеры
+    const stepType = step?.type;
+    if (
+      stepType?.startsWith('text:') ||
+      stepType?.startsWith('run:') ||
+      stepType?.startsWith('state:') ||
+      stepType === 'step:end' ||
+      stepType === 'reasoning:start' ||
+      stepType === 'reasoning:end'
+    ) {
+      return;
+    }
+
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id !== assistantId || msg.sender !== 'ai') {
+          return msg;
+        }
+        const steps = msg.traceSteps ? [...msg.traceSteps, step] : [step];
+        return { ...msg, traceSteps: steps };
+      })
+    );
+  }, []);
+
   const removeAssistant = useCallback((assistantId: string) => {
     setMessages((prev) => prev.filter((msg) => msg.id !== assistantId));
   }, []);
@@ -135,6 +161,7 @@ export const useMessagesState = () => {
     setAssistantThinkingDone,
     setAssistantFinal,
     setAssistantInteractive,
+    addTraceStep,
     removeAssistant,
     addErrorAsAi,
     markUserError,

@@ -107,12 +107,14 @@ export type StreamingConfig =
   | { enabled: false }
   | {
       enabled: true;
-      parseStrategy: 'sse' | 'jsonl';
+      parseStrategy: 'sse' | 'jsonl' | 'agui';
       textPath?: string;
       delimiter?: string;
       dataPrefix?: string;
       textEventType?: string;
       textDeltaField?: string;
+      /** Если true — каждое TEXT_MESSAGE_CONTENT добавляется с новой строки. */
+      aguiNewLineBeforeContent?: boolean;
     };
 
 export type ChatHistoryConfig =
@@ -174,6 +176,8 @@ export interface Message {
   isThinking?: boolean;
   /** Карточка с вариантами/полями, пришедшая вместе с этим ответом ассистента. */
   interactive?: InteractivePayload;
+  /** AG-UI события (reasoning, tool calls, steps) для отрисовки в истории. */
+  traceSteps?: TraceStep[];
 }
 
 export interface TraceStep {
@@ -232,4 +236,5 @@ export type AgentEvent =
   | { type: 'reasoning:end'; payload: string }
   | { type: 'contextUpdate'; payload: Record<string, any> }
   | { type: 'fileAttachment'; payload: any }
-  | { type: 'interactive'; payload: InteractivePayload };
+  | { type: 'interactive'; payload: InteractivePayload }
+  | { type: 'custom'; payload: Record<string, any> };

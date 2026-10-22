@@ -18,7 +18,10 @@ export const DebugTraceModal: React.FC<DebugTraceModalProps> = ({ isOpen, trace,
 
   const styles = {
     modalStyle: css`
-      z-index: 100000 !important;
+      z-index: 99999 !important;
+      & > [class*='ModalOverlay'] {
+        z-index: 99999 !important;
+      }
     `,
     container: css`
       max-height: 70vh;
