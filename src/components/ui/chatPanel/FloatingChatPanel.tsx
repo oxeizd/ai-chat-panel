@@ -64,6 +64,7 @@ export const FloatingChatPanel: React.FC = () => {
         onContinue={handleContinue}
         continueMode={continueMode}
         onSendText={handleSendText}
+        isChatOpen={isChatOpen}
         className={cx(isChatOpen && styles.input.containerHidden)}
       />
       {isChatOpen && (

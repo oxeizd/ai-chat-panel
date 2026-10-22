@@ -1,5 +1,5 @@
 import React from 'react';
-import { Field, Input, Combobox, useStyles2, Text, Switch } from '@grafana/ui';
+import { Field, Input, Combobox, useStyles2 } from '@grafana/ui';
 import { css } from '@emotion/css';
 import { EndpointConfig, StreamingConfig } from 'types';
 import { Toggle } from 'components/editors/shared/Toggle';
@@ -182,20 +182,10 @@ export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, on
           onChange('streaming', { ...config, aguiNewLineBeforeContent: !addNewLine });
         };
         return (
-          <>
-            <Field
-              label="AG-UI Protocol"
-              description="AG-UI protocol для стриминга событий, истории диалогов и tool calls"
-            >
-              <Text>
-                Автоматическая обработка SSE-событий: TEXT_MESSAGE_CONTENT, REASONING_*, TOOL_CALL_*, STATE_SNAPSHOT и
-                др.
-              </Text>
-            </Field>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Switch label="Новая строка перед контентом" checked={addNewLine} onChange={handleNewLineToggle} />
-            </div>
-          </>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Toggle enabled={addNewLine} onChange={handleNewLineToggle} />
+            <span style={{ fontSize: '13px' }}>New line before content</span>
+          </div>
         );
       }
       case 'sse':

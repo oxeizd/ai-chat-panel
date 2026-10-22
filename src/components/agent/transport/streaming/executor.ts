@@ -91,64 +91,72 @@ async function handleSSEStream(
       const chunk = decoder.decode(value, { stream: true });
       const messages = parser.feed(chunk);
       for (const msg of messages) {
-        if (rawMessages) {
-          rawMessages.push(msg.data);
-        }
-        if (msg.data === '[DONE]') {
-          continue;
-        }
+        // Разбиваем data на отдельные JSON-строки (для raw JSON format без data: prefix)
+        const dataLines = msg.data.split('\n').filter((l) => l.trim());
+        for (const dataLine of dataLines) {
+          if (rawMessages) {
+            rawMessages.push(dataLine);
+          }
+          if (dataLine === '[DONE]') {
+            continue;
+          }
 
-        let parsedEvent: any;
-        try {
-          parsedEvent = JSON.parse(msg.data);
-          lastEvent = parsedEvent;
-        } catch {
-          onTrace?.({ type: 'sse_parse_error', timestamp: Date.now(), rawLine: msg.data });
-          continue;
-        }
+          let parsedEvent: any;
+          try {
+            parsedEvent = JSON.parse(dataLine);
+            lastEvent = parsedEvent;
+          } catch {
+            onTrace?.({ type: 'sse_parse_error', timestamp: Date.now(), rawLine: dataLine });
+            continue;
+          }
 
-        let textDelta: string | null = null;
-        if (textEventType) {
-          if (parsedEvent.type === textEventType) {
-            if (textDeltaField) {
-              textDelta = parsedEvent[textDeltaField];
-            } else if (textPath) {
+          let textDelta: string | null = null;
+          if (textEventType) {
+            if (parsedEvent.type === textEventType) {
+              if (textDeltaField) {
+                textDelta = parsedEvent[textDeltaField];
+              } else if (textPath) {
+                textDelta = dotGet(parsedEvent, textPath);
+              }
+            }
+          } else {
+            if (textPath) {
               textDelta = dotGet(parsedEvent, textPath);
             }
           }
-        } else {
-          if (textPath) {
-            textDelta = dotGet(parsedEvent, textPath);
-          }
-        }
 
-        if (typeof textDelta === 'string' && textDelta) {
-          if (state.reasoningState.active) {
-            state.reasoningState = finalizeReasoning(state.reasoningState, eventBus);
+          if (typeof textDelta === 'string' && textDelta) {
+            if (state.reasoningState.active) {
+              state.reasoningState = finalizeReasoning(state.reasoningState, eventBus);
+            }
+            state.fullReply += textDelta;
+            eventBus.emit('chunk', textDelta);
           }
-          state.fullReply += textDelta;
-          eventBus.emit('chunk', textDelta);
-        }
 
-        state = processStreamChunk(parsedEvent, op, context, state, eventBus, {
-          onTrace,
-          eventType: parsedEvent.type,
-        });
+          state = processStreamChunk(parsedEvent, op, context, state, eventBus, {
+            onTrace,
+            eventType: parsedEvent.type,
+          });
+        }
       }
     }
 
     const finalMessages = parser.flush();
     for (const msg of finalMessages) {
-      if (msg.data === '[DONE]') {
-        continue;
+      // Разбиваем data на отдельные JSON-строки
+      const dataLines = msg.data.split('\n').filter((l) => l.trim());
+      for (const dataLine of dataLines) {
+        if (dataLine === '[DONE]') {
+          continue;
+        }
+        try {
+          const parsedEvent = JSON.parse(dataLine);
+          state = processStreamChunk(parsedEvent, op, context, state, eventBus, {
+            onTrace,
+            eventType: parsedEvent.type,
+          });
+        } catch {}
       }
-      try {
-        const parsedEvent = JSON.parse(msg.data);
-        state = processStreamChunk(parsedEvent, op, context, state, eventBus, {
-          onTrace,
-          eventType: parsedEvent.type,
-        });
-      } catch {}
     }
 
     state = finalizeStream(state, eventBus);

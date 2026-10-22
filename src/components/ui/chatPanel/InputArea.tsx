@@ -17,6 +17,7 @@ interface InputAreaProps {
   onContinue?: () => void;
   continueMode?: boolean;
   onSendText?: (text: string) => void;
+  isChatOpen?: boolean;
 }
 
 const formatWelcomeMessage = (text: string) => {
@@ -41,8 +42,12 @@ export const InputArea = memo(
     const theme = useTheme2();
     const styles = useStyles(theme);
 
-    const { className, onSend, onContinue, continueMode, onSendText } = props;
+    const { className, onSend, onContinue, continueMode, onSendText, isChatOpen } = props;
     const { inputValue, isLoading, pendingInteractive } = useChatState();
+
+    // Pending interactive — показываем только когда чат открыт
+    const effectiveInteractive = isChatOpen ? pendingInteractive : null;
+
     const {
       setInputValue,
       sendMessage,
@@ -120,11 +125,11 @@ export const InputArea = memo(
 
     const handleInteractiveSubmit = useCallback(
       (text: string, extraContext?: Record<string, any>) => {
-        if (pendingInteractive) {
-          sendInteractive(pendingInteractive.messageId, text, extraContext);
+        if (effectiveInteractive) {
+          sendInteractive(effectiveInteractive.messageId, text, extraContext);
         }
       },
-      [pendingInteractive, sendInteractive]
+      [effectiveInteractive, sendInteractive]
     );
 
     const formattedWelcomeMessage = useMemo(() => formatWelcomeMessage(welcomeMessage || ''), [welcomeMessage]);
@@ -140,6 +145,11 @@ export const InputArea = memo(
     );
 
     const actionButton = useMemo(() => {
+      // Если есть pendingInteractive — показываем форму/кнопки вместо continueMode
+      if (effectiveInteractive) {
+        return null;
+      }
+
       if (continueMode) {
         return (
           <Button
@@ -157,7 +167,7 @@ export const InputArea = memo(
       }
 
       return <SubmitButton onClick={handleAction} disabled={isLoading || !inputValue.trim()} />;
-    }, [continueMode, handleAction, isLoading, inputValue]);
+    }, [continueMode, handleAction, isLoading, inputValue, effectiveInteractive]);
 
     const menu = useMemo(() => <ChatMenu className={styles.menu.customMenu} />, [styles.menu.customMenu]);
 
@@ -197,14 +207,16 @@ export const InputArea = memo(
       );
     }, [showPopup, suggestions, styles, floatingStyles, refs, popupRef, handleSuggestionClick, selectedAgent]);
 
-    const hasFieldsForm = !!pendingInteractive?.payload.form?.length || !!pendingInteractive?.payload.fields?.length;
-    const hasOptions = !!pendingInteractive?.payload.actions?.length || !!pendingInteractive?.payload.options?.length;
+    const hasFieldsForm =
+      !!effectiveInteractive?.payload.form?.length || !!effectiveInteractive?.payload.fields?.length;
+    const hasOptions =
+      !!effectiveInteractive?.payload.actions?.length || !!effectiveInteractive?.payload.options?.length;
 
     let inputSlot: React.ReactNode;
     if (hasFieldsForm) {
       inputSlot = (
         <InteractiveFieldsForm
-          fields={pendingInteractive!.payload.form ?? pendingInteractive!.payload.fields!}
+          fields={effectiveInteractive!.payload.form ?? effectiveInteractive!.payload.fields!}
           onSubmit={handleInteractiveSubmit}
           sendButtonClassName={styles.input.sendButton}
         />
@@ -212,7 +224,7 @@ export const InputArea = memo(
     } else if (hasOptions) {
       inputSlot = (
         <InteractiveOptionsColumn
-          options={pendingInteractive!.payload.actions ?? pendingInteractive!.payload.options!}
+          options={effectiveInteractive!.payload.actions ?? effectiveInteractive!.payload.options!}
           onSubmit={handleInteractiveSubmit}
           sendButtonClassName={styles.input.sendButton}
         />

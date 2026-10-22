@@ -7,6 +7,9 @@ export interface SSEMessage {
 
 /**
  *  SSE Parser
+ *  Поддерживает:
+ *  - Стандартный SSE: event: X\n data: {...}\n\n
+ *  - Raw JSON lines: {"type":"..."}\n (когда нет префикса data:)
  */
 export class SSEParser {
   private buffer = '';
@@ -62,6 +65,10 @@ export class SSEParser {
           break;
         case 'retry':
           currentMessage.retry = parseInt(value, 10);
+          break;
+        default:
+          // Raw JSON line (no data: prefix) — treat as data
+          this.dataLines.push(line);
           break;
       }
     }

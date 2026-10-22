@@ -172,7 +172,9 @@ export const ChatMessage = React.memo(
                       step.type?.startsWith('text:') ||
                       step.type?.startsWith('run:') ||
                       step.type === 'state:snapshot' ||
-                      step.type === 'state:delta'
+                      step.type === 'state:delta' ||
+                      step.type === 'fullStream' ||
+                      step.type === 'request'
                     ) {
                       return null;
                     }
