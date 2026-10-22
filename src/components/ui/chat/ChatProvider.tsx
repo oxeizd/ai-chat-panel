@@ -99,6 +99,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         body.fullscreen-chat-open .grafana-app {
           overflow: hidden !important;
         }
+        /* Поднимаем portal контейнер выше fullscreen чата */
+        body.fullscreen-chat-open #grafana-portal-container {
+          z-index: 100000 !important;
+        }
       `;
       document.head.appendChild(styleTag);
     }

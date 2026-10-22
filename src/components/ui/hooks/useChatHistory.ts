@@ -2,11 +2,6 @@ import { useCallback, useSyncExternalStore } from 'react';
 import { ChatHistoryItem } from 'types';
 import { useChatActions } from '../chat/ChatContext';
 
-// Мини "внешний стор" — состояние живёт вне React-дерева, в замыкании модуля.
-// Все компоненты, которые зовут useChatHistory(), подписываются на один и тот
-// же объект и получают одинаковый historyChats / isHistoryModalOpen /
-// isLoading без Context.Provider и без прокидывания пропсов.
-
 interface ChatHistoryStoreState {
   historyChats: ChatHistoryItem[];
   isHistoryModalOpen: boolean;
@@ -34,7 +29,7 @@ const subscribe = (listener: () => void) => {
 const getSnapshot = () => state;
 
 export const useChatHistory = () => {
-  const { fetchThreads, loadThread, deleteThread } = useChatActions();
+  const { fetchThreads, loadThread, deleteThread, openChat } = useChatActions();
 
   // Подписка на общий стор — при любом setState все компоненты, вызвавшие
   // этот хук, перерендерятся с актуальным снапшотом.
@@ -65,17 +60,14 @@ export const useChatHistory = () => {
   const selectChat = useCallback(
     async (chatId: string) => {
       await loadThread(chatId);
+      openChat();
       closeHistoryModal();
     },
-    [loadThread, closeHistoryModal]
+    [loadThread, openChat, closeHistoryModal]
   );
 
   const deleteChat = useCallback(
     async (chatId: string) => {
-      // Если у агента настроена historyDeleteOperation — пытаемся удалить и там.
-      // Если операция не настроена (deleteThread возвращает null) или упала
-      // (false) — всё равно убираем элемент из локального списка, как и раньше,
-      // просто теперь при неудачном сетевом удалении явно логируем причину.
       const result = await deleteThread(chatId);
       if (result === false) {
         console.warn(`Не удалось удалить тред "${chatId}" на backend — убираю только из локального списка`);

@@ -418,6 +418,9 @@ export const getStyles = (theme: GrafanaTheme2) => {
         flex-direction: column;
         overflow: hidden;
         z-index: 1000;
+        &.fullscreen-chat {
+          z-index: 99999 !important;
+        }
       `,
     },
 
@@ -438,7 +441,7 @@ export const getStyles = (theme: GrafanaTheme2) => {
     // ===== Меню =====
     menu: {
       customMenu: css`
-        z-index: 2500 !important;
+        z-index: 100000 !important;
         background: ${toRgba(bgColor, 0.7)};
         backdrop-filter: blur(12px);
         min-width: 240px;
@@ -516,7 +519,6 @@ export const getStyles = (theme: GrafanaTheme2) => {
       maxHeight: '100vh',
       padding: '16px',
       borderRadius: 0,
-      zIndex: 1000,
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',

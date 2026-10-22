@@ -1,7 +1,8 @@
 import React, { useCallback } from 'react';
-import { Switch, Field, Input, Combobox, useStyles2 } from '@grafana/ui';
+import { Field, Input, Combobox, useStyles2 } from '@grafana/ui';
 import { css } from '@emotion/css';
 import { EndpointConfig, ReasoningConfig } from 'types';
+import { Toggle } from 'components/editors/shared/Toggle';
 
 interface ReasoningSectionProps {
   endpoint: EndpointConfig;
@@ -78,12 +79,9 @@ export const ReasoningSection: React.FC<ReasoningSectionProps> = ({ endpoint, on
   const enabled = isReasoningEnabled(reasoning);
   const currentType = enabled ? reasoning.type : 'embedded';
 
-  const handleToggle = useCallback(
-    (checked: boolean) => {
-      onChange('reasoning', checked ? DEFAULT_EMBEDDED_API : { enabled: false });
-    },
-    [onChange]
-  );
+  const handleToggle = useCallback(() => {
+    onChange('reasoning', enabled ? { enabled: false } : DEFAULT_EMBEDDED_API);
+  }, [enabled, onChange]);
 
   const handleTypeChange = useCallback(
     (type: 'embedded' | 'separate') => {
@@ -125,9 +123,9 @@ export const ReasoningSection: React.FC<ReasoningSectionProps> = ({ endpoint, on
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
         <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>🤔 Reasoning / Thinking</div>
-        <Switch value={enabled} onChange={(e) => handleToggle(e.currentTarget.checked)} />
+        <Toggle enabled={enabled} onChange={handleToggle} />
       </div>
 
       {enabled && (

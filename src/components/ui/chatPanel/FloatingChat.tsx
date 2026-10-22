@@ -18,7 +18,11 @@ export const FloatingChat = forwardRef<HTMLDivElement, FloatingChatProps>(
     const styles = useStyles(theme);
 
     return ReactDOM.createPortal(
-      <div ref={ref} className={styles.floating.chat} style={isFullscreen ? styles.fullscreenStyle : chatStyle}>
+      <div
+        ref={ref}
+        className={`${styles.floating.chat}${isFullscreen ? ' fullscreen-chat' : ''}`}
+        style={isFullscreen ? styles.fullscreenStyle : chatStyle}
+      >
         <ChatLayout
           onBack={isFullscreen ? undefined : onClose}
           isFullscreen={isFullscreen}

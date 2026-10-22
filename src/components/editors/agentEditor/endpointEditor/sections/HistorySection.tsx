@@ -1,8 +1,9 @@
 import React, { useCallback } from 'react';
-import { Switch, Field, Input, Combobox, useStyles2 } from '@grafana/ui';
+import { Field, Input, Combobox, useStyles2 } from '@grafana/ui';
 import { css } from '@emotion/css';
 import { EndpointConfig, ChatHistoryConfig } from 'types';
 import { CommaSeparatedInput } from 'components/editors/shared/CommaSeparatedInput';
+import { Toggle } from 'components/editors/shared/Toggle';
 
 interface HistorySectionProps {
   endpoint: EndpointConfig;
@@ -68,12 +69,9 @@ export const HistorySection: React.FC<HistorySectionProps> = ({ endpoint, onChan
   const enabled = isHistoryEnabled(rawConfig);
   const currentMode = enabled && rawConfig.mode === 'incoming_sync' ? 'incoming_sync' : 'local';
 
-  const handleToggle = useCallback(
-    (checked: boolean) => {
-      onChange('historyConfig', checked ? DEFAULT_LOCAL : { enabled: false });
-    },
-    [onChange]
-  );
+  const handleToggle = useCallback(() => {
+    onChange('historyConfig', enabled ? { enabled: false } : DEFAULT_LOCAL);
+  }, [enabled, onChange]);
 
   const handleModeChange = useCallback(
     (mode: 'local' | 'incoming_sync') => {
@@ -112,7 +110,7 @@ export const HistorySection: React.FC<HistorySectionProps> = ({ endpoint, onChan
     <div className={styles.container}>
       <div className={styles.header}>
         <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}> Conversation History</div>
-        <Switch value={enabled} onChange={(e) => handleToggle(e.currentTarget.checked)} />
+        <Toggle enabled={enabled} onChange={handleToggle} />
       </div>
 
       {enabled && (
