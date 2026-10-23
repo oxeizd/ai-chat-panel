@@ -37,8 +37,12 @@ export class SSEParser {
       this.dataField = '';
       this.stripLeadingSpace = false;
     } else {
-      this.dataField = prefix.trimEnd(); // например 'data:' или 'data_stream:'
-      this.stripLeadingSpace = prefix.length > this.dataField.length; // был хотя бы один пробел после двоеточия
+      // Имя поля берём ДО двоеточия: 'data: ' -> 'data', 'data_stream:' -> 'data_stream'.
+      const colonIdx = prefix.indexOf(':');
+      this.dataField = colonIdx === -1 ? prefix.trimEnd() : prefix.slice(0, colonIdx);
+      // Ровно один ведущий пробел после значения поля удаляется всегда (спецификация WHATWG SSE),
+      // независимо от того, указан ли пробел в настройке префикса.
+      this.stripLeadingSpace = true;
     }
   }
 
@@ -112,10 +116,21 @@ export class SSEParser {
     }
 
     // Режем буфер по настроенному разделителю; последняя (неполная) часть остаётся в буфере.
+    // CRLF-нормализация: если разделитель содержит '\n', приводим \r\n -> \n, чтобы найти его корректно.
+    let delimiter = this.delimiter;
+    let buffer = this.buffer;
+    if (delimiter.includes('\n')) {
+      buffer = buffer.replace(/\r\n/g, '\n');
+      delimiter = delimiter.replace(/\r\n/g, '\n');
+    } else if (delimiter.includes('\r')) {
+      buffer = buffer.replace(/\n\r/g, '\r');
+    }
+    this.buffer = buffer;
+
     let idx: number;
-    while ((idx = this.buffer.indexOf(this.delimiter)) !== -1) {
+    while ((idx = this.buffer.indexOf(delimiter)) !== -1) {
       const block = this.buffer.slice(0, idx);
-      this.buffer = this.buffer.slice(idx + this.delimiter.length);
+      this.buffer = this.buffer.slice(idx + delimiter.length);
       for (const line of block.split(/\r?\n/)) {
         this.processLine(line, currentMessage);
       }
