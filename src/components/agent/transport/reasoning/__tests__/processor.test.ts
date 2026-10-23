@@ -1,5 +1,10 @@
 import { EventBus } from 'components/agent/core/eventBus';
-import { createInitialReasoningState, finalizeReasoning, processReasoningChunk, extractReasoningFromFullResponse } from '../processor';
+import {
+  createInitialReasoningState,
+  finalizeReasoning,
+  processReasoningChunk,
+  extractReasoningFromFullResponse,
+} from '../processor';
 import { ReasoningConfig } from 'types';
 
 const embeddedApiField = {
@@ -86,7 +91,14 @@ describe('processReasoningChunk — separate', () => {
     let state = createInitialReasoningState();
     state = processReasoningChunk({ text: 'deep', state: 'RUNNING' }, separateCfg, state, bus, undefined, 'thinking');
     expect(state.active).toBe(true);
-    state = processReasoningChunk({ text: '!', state: 'END_OF_THOUGHT' }, separateCfg, state, bus, undefined, 'thinking');
+    state = processReasoningChunk(
+      { text: '!', state: 'END_OF_THOUGHT' },
+      separateCfg,
+      state,
+      bus,
+      undefined,
+      'thinking'
+    );
 
     expect(endedWith).toBe('deep!');
     expect(state.active).toBe(false);
@@ -94,7 +106,14 @@ describe('processReasoningChunk — separate', () => {
 
   it('без настроенного eventType ничего не делает', () => {
     const cfg = { enabled: true, type: 'separate', contentField: 'text' } as ReasoningConfig;
-    const state = processReasoningChunk({ text: 'x' }, cfg, createInitialReasoningState(), new EventBus(), undefined, 'anything');
+    const state = processReasoningChunk(
+      { text: 'x' },
+      cfg,
+      createInitialReasoningState(),
+      new EventBus(),
+      undefined,
+      'anything'
+    );
     expect(state.active).toBe(false);
   });
 });
@@ -137,12 +156,7 @@ describe('extractReasoningFromFullResponse — thinking_tags', () => {
   });
 
   it('перевёрнутые маркеры (end раньше start) игнорируются', () => {
-    const res = extractReasoningFromFullResponse(
-      null,
-      '</thinking> oops <thinking>',
-      tagCfg,
-      new EventBus()
-    );
+    const res = extractReasoningFromFullResponse(null, '</thinking> oops <thinking>', tagCfg, new EventBus());
     expect(res.extracted).toBe(false);
     expect(res.cleanedReply).toBe('</thinking> oops <thinking>');
   });

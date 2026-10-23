@@ -6,97 +6,129 @@ export interface SSEMessage {
 }
 
 /**
- *  SSE Parser
+ *  SSE Parser (стандартный WHATWG SSE)
+ *
+ *  Сообщения всегда разделяются пустой линией ('\n\n'), линии — '\n' (CRLF/CR нормализуются).
+ *  Поддерживаемые настройки:
+ *  - dataPrefix — префикс данных (по умолчанию 'data: '); например 'data_stream:' для нестандартных серверов.
  */
 export class SSEParser {
   private buffer = '';
   private dataLines: string[] = [];
+  private readonly dataField: string;
+
+  constructor(options?: { dataPrefix?: string }) {
+    const prefix = options?.dataPrefix ?? 'data: ';
+    if (prefix.trimEnd() === '') {
+      // Поток без префикса вообще: каждая линия трактуется как data.
+      this.dataField = '';
+    } else {
+      // Имя поля берём ДО двоеточия: 'data: ' -> 'data', 'data_stream:' -> 'data_stream'.
+      const colonIdx = prefix.indexOf(':');
+      this.dataField = colonIdx === -1 ? prefix.trimEnd() : prefix.slice(0, colonIdx);
+    }
+  }
+
+  /** Разбирает одну линию потока; возвращает true, если линия завершает текущее сообщение. */
+  private processLine(line: string, currentMessage: Partial<SSEMessage>): boolean {
+    if (line === '') {
+      return true; // пустая линия всегда завершает сообщение (стандартный SSE)
+    }
+    if (line.startsWith(':')) {
+      return false; // комментарий
+    }
+
+    const colonIdx = line.indexOf(':');
+    let field: string, value: string;
+    if (this.dataField === '') {
+      // Поток без префикса: вся линия целиком является данными (JSON может содержать двоеточия).
+      this.dataLines.push(line);
+      return false;
+    }
+    if (colonIdx === -1) {
+      // Линия без двоеточия — поле без значения (спецификация WHATWG SSE).
+      field = line;
+      value = '';
+    } else {
+      field = line.slice(0, colonIdx);
+      value = line.slice(colonIdx + 1);
+      // Ровно один ведущий пробел после значения поля удаляется всегда (спецификация WHATWG SSE).
+      if (value.startsWith(' ')) {
+        value = value.slice(1);
+      }
+    }
+
+    switch (field) {
+      case 'event':
+        currentMessage.event = value;
+        break;
+      case 'id':
+        currentMessage.id = value;
+        break;
+      case 'retry':
+        currentMessage.retry = parseInt(value, 10);
+        break;
+      default:
+        // data-поле (по умолчанию 'data') либо любое неизвестное поле при нестандартном префиксе.
+        if (field === this.dataField || !['event', 'id', 'retry'].includes(field)) {
+          this.dataLines.push(value);
+        }
+    }
+    return false;
+  }
 
   feed(chunk: string): SSEMessage[] {
-    this.buffer += chunk;
-    const lines = this.buffer.split(/\r?\n/);
-    this.buffer = lines.pop() || '';
+    // Нормализуем CRLF/CR -> LF, затем режем на линии; неполная последняя линия остаётся в буфере.
+    this.buffer += chunk.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     const messages: SSEMessage[] = [];
     let currentMessage: Partial<SSEMessage> = {};
 
+    const lines = this.buffer.split('\n');
+    this.buffer = lines.pop() ?? '';
     for (const line of lines) {
-      if (line === '') {
-        if (Object.keys(currentMessage).length > 0 || this.dataLines.length > 0) {
+      const isTerminator = this.processLine(line, currentMessage);
+      // Сообщение выдаётся только на пустой линии (терминаторе) — так multiple data-линии
+      // одного события склеиваются через '\n' (WHATWG SSE).
+      if (isTerminator) {
+        if (this.dataLines.length > 0 || Object.keys(currentMessage).length > 0) {
           messages.push({
             data: this.dataLines.join('\n'),
             event: currentMessage.event,
             id: currentMessage.id,
             retry: currentMessage.retry,
           });
-          currentMessage = {};
-          this.dataLines = [];
         }
-        continue;
-      }
-      if (line.startsWith(':')) {
-        continue;
-      }
-
-      const colonIdx = line.indexOf(':');
-      let field: string, value: string;
-      if (colonIdx === -1) {
-        field = line;
-        value = '';
-      } else {
-        field = line.slice(0, colonIdx);
-        value = line.slice(colonIdx + 1);
-        // По спецификации WHATWG SSE удаляется ровно один ведущий пробел.
-        if (value.startsWith(' ')) {
-          value = value.slice(1);
-        }
-      }
-
-      switch (field) {
-        case 'event':
-          currentMessage.event = value;
-          break;
-        case 'data':
-          this.dataLines.push(value);
-          break;
-        case 'id':
-          currentMessage.id = value;
-          break;
-        case 'retry':
-          currentMessage.retry = parseInt(value, 10);
-          break;
+        currentMessage = {};
+        this.dataLines = [];
       }
     }
     return messages;
   }
 
   flush(): SSEMessage[] {
-    // Добираем последнюю линию из буфера (поток мог оборваться без завершающего \n\n).
-    if (this.buffer !== '') {
-      const line = this.buffer;
-      this.buffer = '';
-      if (!line.startsWith(':')) {
-        const colonIdx = line.indexOf(':');
-        let field: string, value: string;
-        if (colonIdx === -1) {
-          field = line;
-          value = '';
-        } else {
-          field = line.slice(0, colonIdx);
-          value = line.slice(colonIdx + 1);
-          if (value.startsWith(' ')) {
-            value = value.slice(1);
-          }
-        }
-        if (field === 'data') {
-          this.dataLines.push(value);
-        }
+    // Добираем остаток буфера (поток мог оборваться без завершающей пустой линии).
+    const remaining = this.buffer;
+    this.buffer = '';
+    const currentMessage: Partial<SSEMessage> = {};
+    if (remaining !== '') {
+      for (const line of remaining.split('\n')) {
+        this.processLine(line, currentMessage);
       }
     }
 
     if (this.dataLines.length === 0) {
       return [];
     }
-    const message = { data: this.dataLines.join('\n') };
+    const message: SSEMessage = { data: this.dataLines.join('\n') };
+    if (currentMessage.event) {
+      message.event = currentMessage.event;
+    }
+    if (currentMessage.id) {
+      message.id = currentMessage.id;
+    }
+    if (currentMessage.retry !== undefined) {
+      message.retry = currentMessage.retry;
+    }
     this.dataLines = [];
     return [message];
   }

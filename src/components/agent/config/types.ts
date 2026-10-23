@@ -111,6 +111,10 @@ export type StreamingConfig =
       textPath?: string;
       textEventType?: string;
       textDeltaField?: string;
+      /** Включить перенос строки между текстовыми сообщениями (event breaks). undefined = по умолчанию включено. */
+      eventBreaks?: boolean;
+      /** Префикс данных в SSE (по умолчанию 'data: '). */
+      dataPrefix?: string;
     };
 
 export type ChatHistoryConfig =

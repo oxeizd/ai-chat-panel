@@ -5,8 +5,8 @@
     "name": "gkvxx4",
     "namespace": "default",
     "uid": "aebfed0b-a0fb-4e88-ba24-335851482e77",
-    "resourceVersion": "1792676496057017",
-    "generation": 2,
+    "resourceVersion": "1792745907908003",
+    "generation": 4,
     "creationTimestamp": "2026-10-22T13:27:24Z",
     "labels": {
       "grafana.app/deprecatedInternalID": "1072709959602176"
@@ -15,11 +15,11 @@
       "grafana.app/createdBy": "access-policy:service",
       "grafana.app/managedBy": "classic-file-provisioning",
       "grafana.app/managerId": "AI Chat",
-      "grafana.app/sourceChecksum": "8a0ab28506574db4bacad9f58ba37dfe",
+      "grafana.app/sourceChecksum": "291056ffee77c2d1d87f383bcb0c6e63",
       "grafana.app/sourcePath": "/etc/grafana/provisioning/dashboards/dashboard.json",
-      "grafana.app/sourceTimestamp": "1792676460000",
+      "grafana.app/sourceTimestamp": "1792745893000",
       "grafana.app/updatedBy": "access-policy:service",
-      "grafana.app/updatedTimestamp": "2026-10-22T13:41:36Z",
+      "grafana.app/updatedTimestamp": "2026-10-23T08:58:27Z",
       "grafana.app/folder": ""
     }
   },
@@ -105,6 +105,14 @@
                         "replyField": "",
                         "saveToContext": [],
                         "streaming": {
+                          "customEvents": [
+                            {
+                              "eventType": "CUSTOM",
+                              "render": "chart",
+                              "valuePath": "chart",
+                              "wholeEvent": true
+                            }
+                          ],
                           "dataPrefix": "data: ",
                           "delimiter": "\\n\\n",
                           "enabled": true,
@@ -154,6 +162,158 @@
                     "threadIdContextKey": "thread_id",
                     "threadIdParam": "thread_id",
                     "url": "http://localhost:3456",
+                    "workflow": [
+                      "ask"
+                    ]
+                  }
+                ],
+                "chatMode": "inline",
+                "chatStyles": {
+                  "buttonText": "Open Chat",
+                  "centerFloatingChat": false,
+                  "centerInput": false,
+                  "fullScale": true,
+                  "inputAreaBackground": false,
+                  "maxWidth": 0
+                },
+                "debug": true,
+                "settings": {
+                  "placeholderText": "",
+                  "showSuggestions": false,
+                  "showWelcomeMessage": false,
+                  "suggestions": "",
+                  "suggestionsAppendToAll": false,
+                  "suggestionsPlacement": "always",
+                  "welcomeMessage": ""
+                },
+                "testMessageButton": true
+              }
+            },
+            "version": "1.1.6"
+          }
+        }
+      },
+      "panel-11": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "",
+          "id": 11,
+          "links": [],
+          "title": "",
+          "vizConfig": {
+            "group": "oxd-aichat-panel",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "options": {
+                "agents": [
+                  {
+                    "default": true,
+                    "endpoints": [
+                      {
+                        "body": {
+                          "messages": [
+                            {
+                              "content": "{user_input}",
+                              "role": "user",
+                              "thread_id": "{$uuid4:thread_id}"
+                            }
+                          ],
+                          "model": "deepseek-r1:1.5b",
+                          "stream": true
+                        },
+                        "headers": {},
+                        "historyConfig": {
+                          "enabled": false
+                        },
+                        "method": "POST",
+                        "operation": "ask",
+                        "path": "/api/chat",
+                        "polling": {
+                          "enabled": false
+                        },
+                        "reasoning": {
+                          "enabled": false
+                        },
+                        "replyField": "",
+                        "saveToContext": [],
+                        "streaming": {
+                          "customEvents": [
+                            {
+                              "eventName": "graph",
+                              "eventType": "CUSTOM",
+                              "eventTypeField": "type",
+                              "render": "chart",
+                              "valuePath": "value"
+                            },
+                            {
+                              "eventType": "RUN_ERROR",
+                              "eventTypeField": "type",
+                              "render": "error",
+                              "valuePath": "message"
+                            }
+                          ],
+                          "dataPrefix": "data: ",
+                          "delimiter": "\\n\\n",
+                          "enabled": true,
+                          "paragraphBetweenMessages": true,
+                          "parseStrategy": "sse",
+                          "textDeltaField": "delta",
+                          "textEventType": "TEXT_MESSAGE_CONTENT"
+                        }
+                      },
+                      {
+                        "body": {},
+                        "headers": {},
+                        "method": "GET",
+                        "operation": "list",
+                        "path": "/api/threads",
+                        "polling": {
+                          "enabled": false
+                        },
+                        "replyField": "items",
+                        "saveToContext": []
+                      },
+                      {
+                        "body": {},
+                        "headers": {},
+                        "method": "GET",
+                        "operation": "load",
+                        "path": "/api/threads/{thread_id}",
+                        "polling": {
+                          "enabled": false
+                        },
+                        "replyField": "messages",
+                        "saveToContext": [],
+                        "streaming": {
+                          "enabled": false
+                        }
+                      }
+                    ],
+                    "history": true,
+                    "historyListItemFields": {
+                      "date": "last_run_at",
+                      "id": "thread_id",
+                      "title": "title"
+                    },
+                    "historyListOperation": "list",
+                    "historyLoadOperation": "load",
+                    "name": "a",
+                    "startupOperation": "",
+                    "threadIdContextKey": "thread_id",
+                    "threadIdParam": "thread_id",
+                    "url": "http://localhost:3457",
                     "workflow": [
                       "ask"
                     ]
@@ -467,10 +627,23 @@
                 "kind": "ElementReference",
                 "name": "panel-10"
               },
-              "height": 12,
+              "height": 17,
               "width": 24,
               "x": 0,
               "y": 4
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-11"
+              },
+              "height": 17,
+              "width": 24,
+              "x": 0,
+              "y": 21
             }
           }
         ]

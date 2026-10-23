@@ -129,6 +129,22 @@ export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, on
             </Field>
           </>
         )}
+        <Field
+          label="Event breaks"
+          description="Каждое текстовое событие выводить с новой строки (markdown-перенос \n\n)"
+        >
+          <Toggle
+            enabled={config.eventBreaks !== false}
+            onChange={() => handleFieldChange('eventBreaks', !(config.eventBreaks !== false))}
+          />
+        </Field>
+        <Field label="Data prefix" description="Префикс данных в SSE (по умолчанию 'data: ')">
+          <Input
+            value={config.dataPrefix ?? 'data: '}
+            placeholder="data: "
+            onChange={(e) => handleFieldChange('dataPrefix', e.currentTarget.value || undefined)}
+          />
+        </Field>
       </>
     );
   };
