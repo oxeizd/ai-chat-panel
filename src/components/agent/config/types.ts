@@ -149,6 +149,12 @@ export interface StreamEventHandler {
   wholeEvent?: boolean;
   /** Для render:'error': текст ошибки, если в событии нет поля message. */
   errorMessage?: string;
+  /**
+   * Для render:'text' | 'code': не эмитить текст как чанк основного ответа.
+   * Полезно, когда тот же payload уже рендерится отдельным виджетом
+   * (например, сервер шлёт и ```chart-блок в тексте, и CUSTOM-событие с графиком).
+   */
+  silent?: boolean;
 }
 
 export type StreamingConfig =

@@ -140,12 +140,15 @@ export class Agent {
         this.bus.emit('chunk', reply);
       }
 
-      // Графики из CUSTOM-событий потока уже эмитились во время стрима ('chart'),
-      // но если пришли не через EventBus (например, workflow из нескольких шагов) —
-      // догоняем их здесь.
-      const charts: ChartData[] = result.stepResults.flatMap((step) => step.charts ?? []);
-      if (charts.length && !this.chartsEmittedDuringStream) {
-        charts.forEach((c) => this.bus.emit('chart', c));
+      // Графики из CUSTOM-событий потока уже эмитились во время стрима ('chart') —
+      // они уже в UI. Догоняющий эмит из stepResults нужен только для шагов,
+      // где графики накопились без live-эмита (например, workflow из нескольких
+      // нестриминговых шагов). Иначе не дублируем показ.
+      if (!this.chartsEmittedDuringStream) {
+        const charts: ChartData[] = result.stepResults.flatMap((step) => step.charts ?? []);
+        for (const c of charts) {
+          this.bus.emit('chart', c);
+        }
       }
       this.chartsEmittedDuringStream = false;
 

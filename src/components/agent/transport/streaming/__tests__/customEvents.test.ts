@@ -266,6 +266,54 @@ describe('processCustomEvent', () => {
     expect(state.charts).toHaveLength(0);
     expect(state.streamError).toBeUndefined();
   });
+
+  it('fallback: CUSTOM с chart внутри без правил → ровно один график (форма из спеки AG-UI)', () => {
+    const bus = new EventBus();
+    const charts: any[] = [];
+    bus.on('chart', (c: any) => charts.push(c));
+    let state = createInitialStreamState();
+    const ev = {
+      type: 'CUSTOM',
+      chart: {
+        type: 'line',
+        title: 'График параболы y = x²',
+        data: [
+          { x: 0, y: 0 },
+          { x: 1, y: 1 },
+          { x: 2, y: 4 },
+        ],
+        xAxis: 'x',
+        yAxis: 'y',
+      },
+    };
+    // Правил нет вообще — включается fallback по полю chart.
+    state = processCustomEvent(ev, opWithRules([]), state, bus);
+    expect(state.charts).toHaveLength(1);
+    expect(charts).toHaveLength(1);
+    expect(state.charts[0].title).toBe('График параболы y = x²');
+    expect(state.charts[0].datasets![0].data).toEqual([0, 1, 4]);
+  });
+
+  it('без дублей: правило chart + fallback не срабатывают дважды для одного события', () => {
+    const bus = new EventBus();
+    const charts: any[] = [];
+    bus.on('chart', (c: any) => charts.push(c));
+    let state = createInitialStreamState();
+    const ev = {
+      type: 'CUSTOM',
+      wholeEvent: true as never, // просто чтобы событие было валидным объектом
+      chart: { type: 'line', data: [{ x: 1, y: 1 }] },
+    };
+    // Правило матчает CUSTOM целиком (wholeEvent) — fallback выключен, т.к. rules непустые.
+    state = processCustomEvent(
+      ev,
+      opWithRules([{ eventType: 'CUSTOM', render: 'chart', wholeEvent: true }]),
+      state,
+      bus
+    );
+    expect(state.charts).toHaveLength(1);
+    expect(charts).toHaveLength(1);
+  });
 });
 
 /**

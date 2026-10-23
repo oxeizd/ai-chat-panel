@@ -33,12 +33,62 @@ function makeDefaultRule(): StreamEventHandler {
   return { eventType: 'CUSTOM', render: 'chart', eventName: 'graph', valuePath: 'value' };
 }
 
+/**
+ * Стартовые правила для AG-UI потока. Включают матчинг по ПОЛНОМУ имени события
+ * (eventTypeField: 'type'), чтобы правило CUSTOM не перехватывало TEXT_MESSAGE_CONTENT
+ * и другие текстовые события (иначе их delta теряется из ответа).
+ *
+ * Важно про дубли графиков: у события вида {type:"CUSTOM", chart:{...}} (без поля
+ * name/value) правило с eventName:'graph' его НЕ матчит, и в дело вступает fallback
+ * в processCustomEvent — он даёт ровно один график. Если же добавить второе правило
+ * без eventName (chart), оно матчнётся ПЕРВЫМ и вернёт undefined по valuePath:'value',
+ * т.е. графики без name перестанут рендериться вовсе. Поэтому в пресете — только
+ * правило для именованных событий {name:'graph', value:{...}}.
+ */
+function makeAguiRules(): StreamEventHandler[] {
+  return [
+    {
+      eventType: 'CUSTOM',
+      render: 'chart',
+      eventName: 'graph',
+      valuePath: 'value',
+      eventTypeField: 'type',
+    },
+    {
+      eventType: 'RUN_ERROR',
+      render: 'error',
+      eventTypeField: 'type',
+      valuePath: 'message',
+    },
+  ];
+}
+
+/** Пресеты «быстрого старта» для кнопки «AG-UI». */
+const AG_UI_PRESETS: Array<{ label: string; build: () => Record<string, any> }> = [
+  {
+    label: 'AG-UI: графики + ошибки (рекомендуется)',
+    build: () => ({ customEvents: makeAguiRules(), paragraphBetweenMessages: true }),
+  },
+  {
+    label: 'AG-UI: только графики',
+    build: () => ({ customEvents: [makeAguiRules()[0]], paragraphBetweenMessages: true }),
+  },
+  {
+    label: 'AG-UI: только обработка RUN_ERROR',
+    build: () => ({ customEvents: [makeAguiRules()[1]] }),
+  },
+];
+
 function getDefaultConfig(strategy: 'sse' | 'jsonl'): StreamingConfig & { enabled: true } {
   if (strategy === 'sse') {
     return {
       enabled: true,
       parseStrategy: 'sse',
-      textPath: DEFAULT_STREAMING.textPath,
+      // AG-UI по умолчанию: извлечение текста по типу события + граница сообщений.
+      textEventType: 'TEXT_MESSAGE_CONTENT',
+      textDeltaField: 'delta',
+      paragraphBetweenMessages: true,
+      customEvents: makeAguiRules(),
     };
   }
   return {
@@ -122,6 +172,30 @@ export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, on
   };
 
   const addRule = () => updateRules([...rules, makeDefaultRule()]);
+
+  /** Применяет AG-UI пресет (по индексу из AG_UI_PRESETS) к текущему стриминг-конфигу. */
+  const applyAguiPreset = (presetIndex: number) => {
+    if (!config) {
+      return;
+    }
+    const preset = AG_UI_PRESETS[presetIndex];
+    if (!preset) {
+      return;
+    }
+    // SSE по умолчанию переключаем на извлечение текста по типу события (AG-UI).
+    const patch: Record<string, any> = { ...preset.build() };
+    if (config.parseStrategy === 'sse' && !config.textEventType) {
+      const { textPath, ...rest } = config as any;
+      onChange('streaming', {
+        ...rest,
+        textEventType: 'TEXT_MESSAGE_CONTENT',
+        textDeltaField: 'delta',
+        ...patch,
+      });
+      return;
+    }
+    onChange('streaming', { ...config, ...patch });
+  };
 
   const removeRule = (index: number) => updateRules(rules.filter((_, i) => i !== index));
 
@@ -243,13 +317,26 @@ export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, on
           <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)' }}>
             ⚙️ Кастомные события (Event type + field)
           </div>
-          <Button variant="secondary" size="sm" icon="plus" onClick={addRule}>
-            Добавить событие
-          </Button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Combobox
+              width={18}
+              placeholder="Пресеты AG-UI…"
+              options={AG_UI_PRESETS.map((p, i) => ({ label: p.label, value: String(i) }))}
+              onChange={(opt) => {
+                if (opt?.value !== undefined && opt.value !== null) {
+                  applyAguiPreset(Number(opt.value));
+                }
+              }}
+            />
+            <Button variant="secondary" size="sm" icon="plus" onClick={addRule}>
+              Добавить событие
+            </Button>
+          </div>
         </div>
         {rules.length === 0 && (
           <div style={{ fontSize: '12px', color: 'var(--text-weak)', opacity: 0.7 }}>
             Например: Event type = CUSTOM, Name = graph, Render = chart — чтобы рисовать графики из AG-UI событий.
+            Или выберите пресет «AG-UI» справа.
           </div>
         )}
         {rules.map(renderRuleCard)}

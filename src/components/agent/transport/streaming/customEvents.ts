@@ -17,6 +17,8 @@ export interface CustomEventResult {
   error?: string;
   /** Значения для session context (render: 'context'). */
   contextUpdate?: Record<string, any>;
+  /** true — текст накопить в ответе, но не эмитить как чанк (rule.silent). */
+  silent?: boolean;
 }
 
 /**
@@ -74,7 +76,7 @@ export function applyCustomEventHandler(event: any, rule: StreamEventHandler): C
       if (text === undefined) {
         return null;
       }
-      return { text, intoReasoning: rule.intoReasoning, paragraph: rule.paragraph !== false };
+      return { text, intoReasoning: rule.intoReasoning, paragraph: rule.paragraph !== false, silent: rule.silent };
     }
 
     case 'code': {
@@ -83,7 +85,7 @@ export function applyCustomEventHandler(event: any, rule: StreamEventHandler): C
         return null;
       }
       const language = rule.language ?? 'json';
-      return { text: '```' + language + '\n' + text + '\n```', paragraph: true };
+      return { text: '```' + language + '\n' + text + '\n```', paragraph: true, silent: rule.silent };
     }
 
     case 'chart': {

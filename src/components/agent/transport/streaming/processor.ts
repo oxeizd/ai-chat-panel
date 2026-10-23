@@ -4,7 +4,7 @@ import { applySaveToContext } from 'components/agent/utils/utils';
 import { syncIncomingHistory } from 'components/agent/core/historyManager';
 import { createInitialReasoningState, processReasoningChunk, finalizeReasoning } from '../reasoning/processor';
 import { ReasoningState } from '../reasoning/types';
-import { matchCustomEventHandler, applyCustomEventHandler } from './customEvents';
+import { matchCustomEventHandler, applyCustomEventHandler, normalizeChartData } from './customEvents';
 
 export interface StreamProcessingState {
   fullReply: string;
@@ -38,6 +38,15 @@ export function createInitialStreamState(): StreamProcessingState {
 }
 
 /**
+ * Добавляет график в состояние потока. Каждый корректно распознанный график
+ * показывается ровно один раз (см. processCustomEvent: событие матчится одним
+ * правилом либо fallback'ом, но не обоими сразу).
+ */
+export function addChartToState(state: StreamProcessingState, chart: ChartData): void {
+  state.charts.push(chart);
+}
+
+/**
  * Добавляет дельту текста в ответ с учётом границ AG-UI-сообщений:
  * при смене messageId между кусками вставляется пустая строка,
  * чтобы «...помочь?» и «Генерирую...» не склеивались.
@@ -47,7 +56,13 @@ export function appendTextDelta(
   state: StreamProcessingState,
   delta: string,
   eventBus: EventBus,
-  opts?: { paragraphBetweenMessages?: boolean; messageId?: string; boundaryMessageId?: string }
+  opts?: {
+    paragraphBetweenMessages?: boolean;
+    messageId?: string;
+    boundaryMessageId?: string;
+    /** true — накопить текст в fullReply, но не эмитить 'chunk' (rule.silent). */
+    silent?: boolean;
+  }
 ): StreamProcessingState {
   let prefix = '';
 
@@ -87,7 +102,9 @@ export function appendTextDelta(
   if (opts?.messageId !== undefined) {
     state.currentMessageId = opts.messageId;
   }
-  eventBus.emit('chunk', text);
+  if (!opts?.silent) {
+    eventBus.emit('chunk', text);
+  }
 
   return state;
 }
@@ -107,6 +124,21 @@ export function processCustomEvent(
 
   const rule = matchCustomEventHandler(parsedChunk, rules);
   if (!rule) {
+    // Fallback для AG-UI: CUSTOM-событие без name, но с данными графика прямо в событии
+    // (например, {type:"CUSTOM", chart:{...}} — форма из спецификации AG-UI без поля value).
+    // Матчится ТОЛЬКО объект chart на верхнем уровне: если у пользователя настроено
+    // правило под этот же тип события, fallback отключается (см. ниже), чтобы
+    // одно событие не породило два графика (костыль-дубль).
+    if (parsedChunk && parsedChunk.type === 'CUSTOM' && !rules?.length) {
+      const chartSrc = parsedChunk.chart;
+      if (chartSrc && typeof chartSrc === 'object') {
+        const fallbackChart = normalizeChartData(chartSrc);
+        if (fallbackChart) {
+          addChartToState(state, fallbackChart);
+          eventBus.emit('chart', fallbackChart);
+        }
+      }
+    }
     return state;
   }
 
@@ -121,7 +153,7 @@ export function processCustomEvent(
   }
 
   if (result.chart) {
-    state.charts.push(result.chart);
+    addChartToState(state, result.chart);
     eventBus.emit('chart', result.chart);
     return state;
   }
@@ -144,11 +176,23 @@ export function processCustomEvent(
     }
 
     const paragraphPrefix = result.paragraph && state.hasText ? '\n\n' : '';
-    return appendTextDelta(state, paragraphPrefix + result.text, eventBus, { paragraphBetweenMessages: false });
+    return appendTextDelta(state, paragraphPrefix + result.text, eventBus, {
+      paragraphBetweenMessages: false,
+      silent: result.silent,
+    });
   }
 
   return state;
 }
+
+/**
+ * Защита от дублирования графиков удалена намеренно.
+ * Один график = одно событие CUSTOM: матчинг правил даёт максимум одно правило,
+ * fallback включается только когда правил нет вообще. Дедуп по JSON-содержимому
+ * маскировал баги (склейка live+stepResults) и молча глотал легитимные одинаковые
+ * графики — см. agent.ts (chartsEmittedDuringStream) как единственную защиту
+ * от двойного прохода live/пост-workflow.
+ */
 
 export function processStreamChunk(
   parsedChunk: any,

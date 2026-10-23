@@ -99,9 +99,7 @@ export const useMessagesState = () => {
   const addAssistantChart = useCallback((assistantId: string, chart: ChartData) => {
     setMessages((prev) =>
       prev.map((msg) =>
-        msg.id === assistantId && msg.sender === 'ai'
-          ? { ...msg, charts: [...(msg.charts ?? []), chart] }
-          : msg
+        msg.id === assistantId && msg.sender === 'ai' ? { ...msg, charts: [...(msg.charts ?? []), chart] } : msg
       )
     );
   }, []);
