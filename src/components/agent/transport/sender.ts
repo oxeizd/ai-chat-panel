@@ -98,6 +98,8 @@ export async function sendOperation(
         isStreaming: true,
         fileAttachment,
         interactive,
+        charts: streamResult.charts,
+        error: streamResult.error,
       };
     }
     return streamResult;

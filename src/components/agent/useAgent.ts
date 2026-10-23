@@ -129,6 +129,13 @@ export const useAgent = (config: AgentConfig | null) => {
     [agent]
   );
 
+  const onChart = useCallback(
+    (handler: (chart: any) => void) => {
+      return agent?.on('chart', handler) ?? (() => {});
+    },
+    [agent]
+  );
+
   const getContextValue = useCallback(
     (key: string) => {
       return agent?.getContextValue(key);
@@ -164,6 +171,7 @@ export const useAgent = (config: AgentConfig | null) => {
     setContext,
     onFileAttachment,
     onInteractive,
+    onChart,
     runOperation,
     markSessionStarted,
   };

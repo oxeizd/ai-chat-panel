@@ -38,6 +38,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     setAssistantThinkingDone,
     setAssistantFinal,
     setAssistantInteractive,
+    addAssistantChart,
     removeAssistant,
     addErrorAsAi,
     markUserError,
@@ -146,6 +147,9 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
             onInteractive: (payload: any) => {
               setAssistantInteractive(assistantId, payload);
             },
+            onChart: (chart: any) => {
+              addAssistantChart(assistantId, chart);
+            },
           },
           options?.extraContext
         );
@@ -207,6 +211,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
       send,
       setAssistantFinal,
       setAssistantInteractive,
+      addAssistantChart,
       setAssistantThinkingDone,
       setError,
       setReply,
