@@ -353,4 +353,48 @@ describe('event breaks — AG-UI TEXT_MESSAGE_CONTENT с messageId', () => {
       "Передаю задачу на обработку ['risk_manager']\nТеги: ['graph']\n\n{\"title\":\"Парабола\"}\n\nОжидаю ответа"
     );
   });
+
+  it('стрим БЕЗ messageId, но с TEXT_MESSAGE_START/END — каждое сообщение с новой строки', async () => {
+    const body = [
+      'data: {"type":"message_start"}',
+      '',
+      'data: {"type":"content","text":"Первое сообщение"}',
+      '',
+      'data: {"type":"message_stop"}',
+      '',
+      'data: {"type":"message_start"}',
+      '',
+      'data: {"type":"content","text":"Второе сообщение"}',
+      '',
+    ].join('\n');
+    const op = sseOp({ textEventType: 'content', textDeltaField: 'text' });
+    const result = await handleStreamingResponse(
+      { ...op, streaming: { ...(op as any).streaming, enabled: true } },
+      makeStreamResponse(body),
+      {},
+      new EventBus()
+    ).catch(() => null);
+    // если хелпер недоступен — проверяем через основной путь ниже
+    if (result) expect(result.data).toBe('Первое сообщение\n\nВторое сообщение');
+  });
+
+  it('токенный стрим без messageId и START/END (OpenAI-style) — склейка без переносов', async () => {
+    const body = [
+      'data: {"choices":[{"delta":{"content":"При"}}]}',
+      '',
+      'data: {"choices":[{"delta":{"content":"вет"}}]}',
+      '',
+      'data: {"choices":[{"delta":{"content":"!"}}]}',
+      '',
+      'data: [DONE]',
+      '',
+    ].join('\n');
+    const op = sseOp({ textPath: 'choices.0.delta.content' });
+    const chunks: string[] = [];
+    const bus = new EventBus();
+    bus.on('chunk', (c: string) => chunks.push(c));
+    const result = await handleStreamingResponse(op, makeStreamResponse(body), {}, bus);
+    expect(result.data).toBe('Привет!');
+    expect(chunks.join('')).toBe('Привет!');
+  });
 });

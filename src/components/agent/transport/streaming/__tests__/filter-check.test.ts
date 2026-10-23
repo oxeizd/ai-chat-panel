@@ -46,8 +46,26 @@ describe('фильтрация TEXT_MESSAGE_CONTENT (AG-UI style stream)', () =>
     );
 
     expect(res.ok).toBe(true);
-    // eventBreaks по умолчанию включен: сообщения без messageId считаются разными -> перенос между ними
-    expect(res.data).toBe('Привет\n\n мир');
-    expect(chunks).toEqual(['Привет', '\n\n мир']);
+    // eventBreaks по умолчанию включен, но без messageId дельты одного типа склеиваются без переноса
+    expect(res.data).toBe('Привет мир');
+    expect(chunks).toEqual(['Привет', ' мир']);
+  });
+
+  it('стримы без messageId (OpenAI-style) склеиваются в один текст без переносов', async () => {
+    const body = [
+      'data: {"choices":[{"delta":{"content":"Привет"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":", мир!"}}]}\n\n',
+      'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n',
+      'data: [DONE]\n\n',
+    ].join('');
+
+    const res = await handleStreamingResponse(
+      sseOp({ textPath: 'choices.0.delta.content' }),
+      makeStreamResponse(body),
+      {},
+      new EventBus()
+    );
+
+    expect(res.data).toBe('Привет, мир!');
   });
 });

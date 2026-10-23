@@ -93,10 +93,55 @@ async function handleSSEStream(
   // Для markdown: каждое входящее текстовое сообщение начинаем с новой строки (event breaks).
   const messageDelimiter = eventBreaksDelimiter(streaming.eventBreaks);
   let emittedAnyText = false;
-  // Идентификатор текущего текстового сообщения: дельты одного messageId склеиваются без переноса,
-  // новый блок начинается при появлении нового messageId (или другого типа события).
+  // Универсальная логика границ сообщений (не зависит от конкретного формата стрима):
+  // - если событие содержит messageId (AG-UI и подобные) — дельты одного messageId склеиваются,
+  //   новый блок начинается при смене messageId или типа события;
+  // - если messageId нет, но есть TEXT_MESSAGE_START/END (или RUN_STARTED/FINISHED) — границы задают они;
+  // - если нет ни того, ни другого (OpenAI-style токенный стрим) — считаем это одним потоком текста
+  //   и переносы между дельтами не вставляем (иначе текст рвался бы на куски).
   let currentTextMessageId: string | undefined;
   let lastTextEventType: string | undefined;
+  // Флаг наличия в стриме явных границ сообщений (TEXT_MESSAGE_START/END).
+  // Нужен, чтобы отличить «несколько сообщений без messageId» (нужен перенос)
+  // от токенного стрима вроде OpenAI (одна строка текста, переносы не нужны).
+  let sawStartEndEvents = false;
+  // Тип последнего обработанного события (для RUN_* границ в стримах без messageId).
+  let prevEventType: unknown;
+
+  const isTextBoundaryEvent = (t: unknown): boolean =>
+    typeof t === 'string' && (/^TEXT_MESSAGE_(START|END)$/.test(t) || /(^|_)(start|end|stop)(_|$)/i.test(t));
+
+  const isRunBoundaryEvent = (t: unknown): boolean =>
+    typeof t === 'string' && /^RUN_(STARTED|FINISHED|ERROR)$/.test(t);
+
+  // Возвращает префикс-перенос перед текстовой дельтой (если включены event breaks).
+  const shouldBreakBefore = (parsedEvent: any): string => {
+    if (!messageDelimiter || !emittedAnyText) return '';
+    const msgId = typeof parsedEvent.messageId === 'string' ? parsedEvent.messageId : undefined;
+    let isNewBlock = false;
+    if (msgId !== undefined) {
+      // Стрим с идентификаторами сообщений (AG-UI и т.п.): новый блок при смене messageId или типа события.
+      isNewBlock = (!!msgId && currentTextMessageId !== msgId) || lastTextEventType !== parsedEvent.type;
+    } else if (sawStartEndEvents) {
+      // Сообщения разделены TEXT_MESSAGE_START/END — после границы каждое новое сообщение с новой строки.
+      isNewBlock = currentTextMessageId === undefined || lastTextEventType !== parsedEvent.type;
+    } else if (isRunBoundaryEvent(prevEventType)) {
+      // Граница уровня запуска (RUN_STARTED/FINISHED) — новое сообщение.
+      isNewBlock = true;
+    }
+    // Иначе: токенный стрим без messageId и START/END (OpenAI-style) — один поток, без переносов.
+    if (isNewBlock) return messageDelimiter;
+    return '';
+  };
+
+  const emitTextDelta = (textDelta: string, parsedEvent: any) => {
+    const prefix = shouldBreakBefore(parsedEvent);
+    currentTextMessageId = typeof parsedEvent.messageId === 'string' ? parsedEvent.messageId : undefined;
+    lastTextEventType = parsedEvent.type;
+    emittedAnyText = true;
+    state.fullReply += prefix + textDelta;
+    eventBus.emit('chunk', prefix + textDelta);
+  };
 
   try {
     while (true) {
@@ -142,24 +187,14 @@ async function handleSSEStream(
           if (state.reasoningState.active) {
             state.reasoningState = finalizeReasoning(state.reasoningState, eventBus);
           }
-          // Каждое новое текстовое СООБЩЕНИЕ — с новой строки (для markdown-разметки), кроме первого.
-          // Дельты одного сообщения (один messageId в AG-UI) склеиваются без переноса;
-          // новый блок начинается при смене messageId или типа события.
-          const msgId = typeof parsedEvent.messageId === 'string' ? parsedEvent.messageId : undefined;
-          const isNewTextMessage =
-            !emittedAnyText || currentTextMessageId !== msgId || lastTextEventType !== parsedEvent.type;
-          currentTextMessageId = msgId;
-          lastTextEventType = parsedEvent.type;
-          const prefix = emittedAnyText && isNewTextMessage ? messageDelimiter : '';
-          emittedAnyText = true;
-          state.fullReply += prefix + textDelta;
-          eventBus.emit('chunk', prefix + textDelta);
-        } else {
-          // Не наше текстовое событие — сбрасываем текущее сообщение,
-          // чтобы следующее текстовое началось с новой строки.
+          emitTextDelta(textDelta, parsedEvent);
+        } else if (isTextBoundaryEvent(parsedEvent.type)) {
+          // TEXT_MESSAGE_START/END: следующее текстовое событие — новый блок.
+          sawStartEndEvents = true;
           currentTextMessageId = undefined;
           lastTextEventType = undefined;
         }
+        prevEventType = parsedEvent.type;
 
         state = processStreamChunk(parsedEvent, op, context, state, eventBus, {
           onTrace,
@@ -190,19 +225,13 @@ async function handleSSEStream(
         }
 
         if (typeof textDelta === 'string' && textDelta) {
-          const msgId = typeof parsedEvent.messageId === 'string' ? parsedEvent.messageId : undefined;
-          const isNewTextMessage =
-            !emittedAnyText || currentTextMessageId !== msgId || lastTextEventType !== parsedEvent.type;
-          currentTextMessageId = msgId;
-          lastTextEventType = parsedEvent.type;
-          const prefix = emittedAnyText && isNewTextMessage ? messageDelimiter : '';
-          emittedAnyText = true;
-          state.fullReply += prefix + textDelta;
-          eventBus.emit('chunk', prefix + textDelta);
-        } else {
+          emitTextDelta(textDelta, parsedEvent);
+        } else if (isTextBoundaryEvent(parsedEvent.type)) {
+          sawStartEndEvents = true;
           currentTextMessageId = undefined;
           lastTextEventType = undefined;
         }
+        prevEventType = parsedEvent.type;
 
         state = processStreamChunk(parsedEvent, op, context, state, eventBus, {
           onTrace,
