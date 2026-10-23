@@ -46,7 +46,8 @@ describe('фильтрация TEXT_MESSAGE_CONTENT (AG-UI style stream)', () =>
     );
 
     expect(res.ok).toBe(true);
-    expect(res.data).toBe('Привет мир');
-    expect(chunks).toEqual(['Привет', ' мир']);
+    // eventBreaks по умолчанию включен: сообщения без messageId считаются разными -> перенос между ними
+    expect(res.data).toBe('Привет\n\n мир');
+    expect(chunks).toEqual(['Привет', '\n\n мир']);
   });
 });

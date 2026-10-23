@@ -93,6 +93,9 @@ async function handleSSEStream(
   // Для markdown: каждое входящее текстовое сообщение начинаем с новой строки (event breaks).
   const messageDelimiter = eventBreaksDelimiter(streaming.eventBreaks);
   let emittedAnyText = false;
+  // Идентификатор текущего текстового сообщения: дельты одного messageId склеиваются без переноса,
+  // новый блок начинается при появлении нового messageId (или другого типа события).
+  let currentTextMessageId: string | undefined;
   let lastTextEventType: string | undefined;
 
   try {
@@ -140,14 +143,22 @@ async function handleSSEStream(
             state.reasoningState = finalizeReasoning(state.reasoningState, eventBus);
           }
           // Каждое новое текстовое СООБЩЕНИЕ — с новой строки (для markdown-разметки), кроме первого.
-          // В event-mode (TEXT_MESSAGE_CONTENT + delta) дельты одного сообщения склеиваются без переноса:
-          // новый блок начинается только когда тип события сменился (или это первое текстовое сообщение).
-          const isNewTextMessage = !emittedAnyText || lastTextEventType !== parsedEvent.type;
+          // Дельты одного сообщения (один messageId в AG-UI) склеиваются без переноса;
+          // новый блок начинается при смене messageId или типа события.
+          const msgId = typeof parsedEvent.messageId === 'string' ? parsedEvent.messageId : undefined;
+          const isNewTextMessage =
+            !emittedAnyText || currentTextMessageId !== msgId || lastTextEventType !== parsedEvent.type;
+          currentTextMessageId = msgId;
           lastTextEventType = parsedEvent.type;
-          const prefix = isNewTextMessage && emittedAnyText ? messageDelimiter : '';
+          const prefix = emittedAnyText && isNewTextMessage ? messageDelimiter : '';
           emittedAnyText = true;
           state.fullReply += prefix + textDelta;
           eventBus.emit('chunk', prefix + textDelta);
+        } else {
+          // Не наше текстовое событие — сбрасываем текущее сообщение,
+          // чтобы следующее текстовое началось с новой строки.
+          currentTextMessageId = undefined;
+          lastTextEventType = undefined;
         }
 
         state = processStreamChunk(parsedEvent, op, context, state, eventBus, {
@@ -179,12 +190,18 @@ async function handleSSEStream(
         }
 
         if (typeof textDelta === 'string' && textDelta) {
-          const isNewTextMessage = !emittedAnyText || lastTextEventType !== parsedEvent.type;
+          const msgId = typeof parsedEvent.messageId === 'string' ? parsedEvent.messageId : undefined;
+          const isNewTextMessage =
+            !emittedAnyText || currentTextMessageId !== msgId || lastTextEventType !== parsedEvent.type;
+          currentTextMessageId = msgId;
           lastTextEventType = parsedEvent.type;
-          const prefix = isNewTextMessage && emittedAnyText ? messageDelimiter : '';
+          const prefix = emittedAnyText && isNewTextMessage ? messageDelimiter : '';
           emittedAnyText = true;
           state.fullReply += prefix + textDelta;
           eventBus.emit('chunk', prefix + textDelta);
+        } else {
+          currentTextMessageId = undefined;
+          lastTextEventType = undefined;
         }
 
         state = processStreamChunk(parsedEvent, op, context, state, eventBus, {

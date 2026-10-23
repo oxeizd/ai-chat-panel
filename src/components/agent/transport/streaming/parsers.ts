@@ -16,21 +16,16 @@ export class SSEParser {
   private buffer = '';
   private dataLines: string[] = [];
   private readonly dataField: string;
-  private readonly stripLeadingSpace: boolean;
 
   constructor(options?: { dataPrefix?: string }) {
     const prefix = options?.dataPrefix ?? 'data: ';
     if (prefix.trimEnd() === '') {
       // Поток без префикса вообще: каждая линия трактуется как data.
       this.dataField = '';
-      this.stripLeadingSpace = false;
     } else {
       // Имя поля берём ДО двоеточия: 'data: ' -> 'data', 'data_stream:' -> 'data_stream'.
       const colonIdx = prefix.indexOf(':');
       this.dataField = colonIdx === -1 ? prefix.trimEnd() : prefix.slice(0, colonIdx);
-      // Ровно один ведущий пробел после значения поля удаляется всегда (спецификация WHATWG SSE),
-      // независимо от того, указан ли пробел в настройке префикса.
-      this.stripLeadingSpace = true;
     }
   }
 
@@ -45,7 +40,13 @@ export class SSEParser {
 
     const colonIdx = line.indexOf(':');
     let field: string, value: string;
+    if (this.dataField === '') {
+      // Поток без префикса: вся линия целиком является данными (JSON может содержать двоеточия).
+      this.dataLines.push(line);
+      return false;
+    }
     if (colonIdx === -1) {
+      // Линия без двоеточия — поле без значения (спецификация WHATWG SSE).
       field = line;
       value = '';
     } else {
@@ -68,9 +69,9 @@ export class SSEParser {
         currentMessage.retry = parseInt(value, 10);
         break;
       default:
-        // Линия с неизвестным полем (или без поля при пустом префиксе) считается data.
-        if (this.dataField === '' || field === this.dataField) {
-          this.dataLines.push(colonIdx === -1 ? line : value);
+        // data-поле (по умолчанию 'data') либо любое неизвестное поле при нестандартном префиксе.
+        if (field === this.dataField || !['event', 'id', 'retry'].includes(field)) {
+          this.dataLines.push(value);
         }
     }
     return false;

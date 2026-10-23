@@ -300,3 +300,57 @@ describe('handleStreamingResponse — NDJSON (jsonl)', () => {
     expect(fullStream.isStreaming).toBe(true);
   });
 });
+
+describe('event breaks — AG-UI TEXT_MESSAGE_CONTENT с messageId', () => {
+  const aguiSse = [
+    'data: {"type":"RUN_STARTED","threadId":"t1","runId":"r1"}',
+    '',
+    'data: {"type":"STEP_STARTED","stepName":"risk_manager"}',
+    '',
+    'data: {"type":"TEXT_MESSAGE_START","messageId":"msg-1","role":"assistant"}',
+    '',
+    'data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"msg-1","delta":"Передаю задачу на обработку [\'risk_manager\']"}',
+    '',
+    'data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"msg-1","delta":"\\nТеги: [\'graph\']"}',
+    '',
+    'data: {"type":"TEXT_MESSAGE_END","messageId":"msg-1"}',
+    '',
+    'data: {"type":"TEXT_MESSAGE_START","messageId":"msg-2","role":"assistant"}',
+    '',
+    "data: {\"type\":\"TEXT_MESSAGE_CONTENT\",\"messageId\":\"msg-2\",\"delta\":\"{\\\"title\\\":\\\"Парабола\\\"}\"}",
+    '',
+    'data: {"type":"TEXT_MESSAGE_END","messageId":"msg-2"}',
+    '',
+    'data: {"type":"TEXT_MESSAGE_START","messageId":"msg-3","role":"assistant"}',
+    '',
+    'data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"msg-3","delta":"Ожидаю ответа"}',
+    '',
+    'data: {"type":"RUN_FINISHED","threadId":"t1","runId":"r1"}',
+    '',
+  ].join('\n');
+
+  it('каждое новое текстовое сообщение (по messageId) начинается с новой строки, дельты одного сообщения склеиваются', async () => {
+    const op = sseOp({ textEventType: 'TEXT_MESSAGE_CONTENT', textDeltaField: 'delta' });
+    const result = await handleStreamingResponse(op, makeStreamResponse(aguiSse), {}, new EventBus());
+    expect(result.ok).toBe(true);
+    expect(result.data).toBe(
+      "Передаю задачу на обработку ['risk_manager']\nТеги: ['graph']\n\n{\"title\":\"Парабола\"}\n\nОжидаю ответа"
+    );
+  });
+
+  it('eventBreaks: false — склейка без переносов между сообщениями', async () => {
+    const op = sseOp({ textEventType: 'TEXT_MESSAGE_CONTENT', textDeltaField: 'delta', eventBreaks: false });
+    const result = await handleStreamingResponse(op, makeStreamResponse(aguiSse), {}, new EventBus());
+    expect(result.data).toBe(
+      "Передаю задачу на обработку ['risk_manager']\nТеги: ['graph']{\"title\":\"Парабола\"}Ожидаю ответа"
+    );
+  });
+
+  it('текст не теряется при мелких чанках (переносы сохраняются)', async () => {
+    const op = sseOp({ textEventType: 'TEXT_MESSAGE_CONTENT', textDeltaField: 'delta' });
+    const result = await handleStreamingResponse(op, makeStreamResponse(aguiSse, 7), {}, new EventBus());
+    expect(result.data).toBe(
+      "Передаю задачу на обработку ['risk_manager']\nТеги: ['graph']\n\n{\"title\":\"Парабола\"}\n\nОжидаю ответа"
+    );
+  });
+});
