@@ -32,7 +32,7 @@ describe('SSEParser', () => {
     const parser = new SSEParser();
     const messages = parser.feed('data:  two-spaces-preserved\n\n');
     // "data:  x" -> value " x" (ровно один пробел удалён, второй остаётся)
-    expect(messages[0].data).toBe(' x');
+    expect(messages[0].data).toBe(' two-spaces-preserved');
   });
 
   it('обрабатывает CRLF', () => {

@@ -309,6 +309,7 @@ export const useChatMessages = (currentAgent: AgentConfig | null, user: GrafanaU
     traces,
     getTrace,
     threadId,
+    setThreadId,
     setContext,
     markStarted,
     runOperation,

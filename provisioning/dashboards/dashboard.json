@@ -4,20 +4,22 @@
   "metadata": {
     "name": "gkvxx4",
     "namespace": "default",
-    "uid": "da6fe7f4-656f-42cf-b860-7844a56720e1",
-    "resourceVersion": "1792670601921013",
-    "generation": 1,
-    "creationTimestamp": "2026-10-22T12:03:21Z",
+    "uid": "aebfed0b-a0fb-4e88-ba24-335851482e77",
+    "resourceVersion": "1792676496057017",
+    "generation": 2,
+    "creationTimestamp": "2026-10-22T13:27:24Z",
     "labels": {
-      "grafana.app/deprecatedInternalID": "1051561524797440"
+      "grafana.app/deprecatedInternalID": "1072709959602176"
     },
     "annotations": {
       "grafana.app/createdBy": "access-policy:service",
       "grafana.app/managedBy": "classic-file-provisioning",
       "grafana.app/managerId": "AI Chat",
-      "grafana.app/sourceChecksum": "546e837cc96b16686c365f753ddebcbf",
+      "grafana.app/sourceChecksum": "8a0ab28506574db4bacad9f58ba37dfe",
       "grafana.app/sourcePath": "/etc/grafana/provisioning/dashboards/dashboard.json",
-      "grafana.app/sourceTimestamp": "1792670590000",
+      "grafana.app/sourceTimestamp": "1792676460000",
+      "grafana.app/updatedBy": "access-policy:service",
+      "grafana.app/updatedTimestamp": "2026-10-22T13:41:36Z",
       "grafana.app/folder": ""
     }
   },
@@ -132,11 +134,10 @@
                         "polling": {
                           "enabled": false
                         },
-                        "replyField": "",
+                        "replyField": "messages",
                         "saveToContext": [],
                         "streaming": {
-                          "enabled": true,
-                          "parseStrategy": "agui"
+                          "enabled": false
                         }
                       }
                     ],
@@ -180,7 +181,7 @@
                 "testMessageButton": true
               }
             },
-            "version": "1.1.5"
+            "version": "1.1.6"
           }
         }
       },
@@ -288,7 +289,7 @@
                 "testMessageButton": false
               }
             },
-            "version": "1.1.5"
+            "version": "1.1.6"
           }
         }
       },
@@ -380,8 +381,7 @@
                         "replyField": "",
                         "saveToContext": [],
                         "streaming": {
-                          "enabled": true,
-                          "parseStrategy": "agui"
+                          "enabled": false
                         }
                       }
                     ],
@@ -425,7 +425,7 @@
                 "testMessageButton": true
               }
             },
-            "version": "1.1.5"
+            "version": "1.1.6"
           }
         }
       }

@@ -62,6 +62,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     retryMessage,
     getTrace,
     threadId,
+    setThreadId,
     setContext,
     markStarted,
     runOperation,
@@ -241,6 +242,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       setContext,
       markStarted,
       runOperation,
+      setThreadId,
     }),
     [
       setMessages,
@@ -282,6 +284,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       setContext,
       markStarted,
       runOperation,
+      setThreadId,
     ]
   );
 

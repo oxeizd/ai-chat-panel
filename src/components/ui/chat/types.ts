@@ -59,6 +59,7 @@ export interface ChatActions {
   setContext: (partial: Record<string, any>) => void;
   markStarted: () => void;
   runOperation: (operation: string, additionalContext?: Record<string, any>) => Promise<any>;
+  setThreadId: (id: string | null) => void;
 }
 
 export interface ChatConfig extends ChatState, ChatActions {}

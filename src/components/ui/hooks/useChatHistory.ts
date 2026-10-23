@@ -50,7 +50,7 @@ const subscribe = (listener: () => void) => {
 const getSnapshot = () => state;
 
 export const useChatHistory = () => {
-  const { setMessages, setInputValue, setContext, markStarted, runOperation, openChat, selectedAgent } =
+  const { setMessages, setInputValue, setContext, setThreadId, markStarted, runOperation, openChat, selectedAgent } =
     useChatActions();
 
   // Подписка на общий стор — при любом setState все компоненты, вызвавшие
@@ -166,13 +166,14 @@ export const useChatHistory = () => {
           __history: historyForContext,
           [threadIdContextKey]: threadIdToLoad,
         });
+        setThreadId(threadIdToLoad);
 
         markStarted();
       } catch (error) {
         console.error('Failed to load thread:', error);
       }
     },
-    [selectedAgent, runOperation, setMessages, setInputValue, setContext, markStarted]
+    [selectedAgent, runOperation, setMessages, setInputValue, setContext, setThreadId, markStarted]
   );
 
   const deleteThread = useCallback(
