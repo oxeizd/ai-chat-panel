@@ -82,6 +82,52 @@ describe('SSEParser', () => {
     const parser = new SSEParser();
     expect(parser.flush()).toHaveLength(0);
   });
+
+  // ---------------- dataPrefix (delimiter удалён: стандартный SSE, сообщения режутся пустой линией) ----------------
+
+  it('кастомный dataPrefix: читает data_stream: вместо data:', () => {
+    const parser = new SSEParser({ dataPrefix: 'data_stream: ' });
+    const messages = parser.feed('data_stream: hello\n\n');
+    expect(messages).toHaveLength(1);
+    expect(messages[0].data).toBe('hello');
+  });
+
+  it('dataPrefix без завершающего пробела тоже работает ("data_stream:")', () => {
+    const parser = new SSEParser({ dataPrefix: 'data_stream:' });
+    const messages = parser.feed('data_stream: value\n\n');
+    expect(messages[0].data).toBe('value');
+  });
+
+  it('dataPrefix: стандартные event/id/retry линии не попадают в data', () => {
+    const parser = new SSEParser({ dataPrefix: 'data_stream:' });
+    const messages = parser.feed('event: msg\nid: 7\ndata_stream: payload\n\n');
+    expect(messages[0]).toEqual({ data: 'payload', event: 'msg', id: '7', retry: undefined });
+  });
+
+  it('dataPrefix="": поток вообще без префикса — каждая линия является data', () => {
+    const parser = new SSEParser({ dataPrefix: '' });
+    const messages = parser.feed('{"a":1}\n{"b":2}\n\n');
+    expect(messages.map((m) => m.data)).toEqual(['{"a":1}\n{"b":2}']);
+  });
+
+  it('CRLF-поток разбирается корректно (сообщения режутся пустой линией)', () => {
+    const parser = new SSEParser();
+    const messages = parser.feed('data: one\r\n\r\ndata: two\r\n\r\n');
+    expect(messages.map((m) => m.data)).toEqual(['one', 'two']);
+  });
+
+  it('поток без завершающей пустой линии: хвост добирается в flush', () => {
+    const parser = new SSEParser();
+    expect(parser.feed('data: a\n\ndata: tail')).toHaveLength(1);
+    expect(parser.flush().map((m) => m.data)).toEqual(['tail']);
+  });
+
+  it('дефолт сохранён: без опций парсер ведёт себя как раньше (data: + \\n\\n)', () => {
+    const parser = new SSEParser();
+    const messages = parser.feed('data: default\n\n');
+    expect(messages).toHaveLength(1);
+    expect(messages[0].data).toBe('default');
+  });
 });
 
 describe('NdjsonParser', () => {

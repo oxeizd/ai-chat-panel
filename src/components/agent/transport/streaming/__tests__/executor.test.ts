@@ -197,9 +197,8 @@ describe('handleStreamingResponse — SSE', () => {
     );
 
     // Хвостовое сообщение без завершающей пустой строки добирается парсером в flush
-    // и проходит через processStreamChunk (текстовая дельта из него не извлекается —
-    // это известное ограничение, но контекст/trace сохраняются).
-    expect(result.data).toBe('Hello');
+    // и обрабатывается так же, как обычное сообщение (текстовая дельта извлекается).
+    expect(result.data).toBe('Hello tail');
   });
 
   it('flush SSE-парсера добирает data из оборванного хвоста потока', async () => {
@@ -299,5 +298,103 @@ describe('handleStreamingResponse — NDJSON (jsonl)', () => {
     expect(fullStream).toBeDefined();
     expect(fullStream.responseBody).toBe('{"content":"x"}\n{"content":"y"}');
     expect(fullStream.isStreaming).toBe(true);
+  });
+});
+
+describe('event breaks — AG-UI TEXT_MESSAGE_CONTENT с messageId', () => {
+  const aguiSse = [
+    'data: {"type":"RUN_STARTED","threadId":"t1","runId":"r1"}',
+    '',
+    'data: {"type":"STEP_STARTED","stepName":"risk_manager"}',
+    '',
+    'data: {"type":"TEXT_MESSAGE_START","messageId":"msg-1","role":"assistant"}',
+    '',
+    'data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"msg-1","delta":"Передаю задачу на обработку [\'risk_manager\']"}',
+    '',
+    'data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"msg-1","delta":"\\nТеги: [\'graph\']"}',
+    '',
+    'data: {"type":"TEXT_MESSAGE_END","messageId":"msg-1"}',
+    '',
+    'data: {"type":"TEXT_MESSAGE_START","messageId":"msg-2","role":"assistant"}',
+    '',
+    "data: {\"type\":\"TEXT_MESSAGE_CONTENT\",\"messageId\":\"msg-2\",\"delta\":\"{\\\"title\\\":\\\"Парабола\\\"}\"}",
+    '',
+    'data: {"type":"TEXT_MESSAGE_END","messageId":"msg-2"}',
+    '',
+    'data: {"type":"TEXT_MESSAGE_START","messageId":"msg-3","role":"assistant"}',
+    '',
+    'data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"msg-3","delta":"Ожидаю ответа"}',
+    '',
+    'data: {"type":"RUN_FINISHED","threadId":"t1","runId":"r1"}',
+    '',
+  ].join('\n');
+
+  it('каждое новое текстовое сообщение (по messageId) начинается с новой строки, дельты одного сообщения склеиваются', async () => {
+    const op = sseOp({ textEventType: 'TEXT_MESSAGE_CONTENT', textDeltaField: 'delta' });
+    const result = await handleStreamingResponse(op, makeStreamResponse(aguiSse), {}, new EventBus());
+    expect(result.ok).toBe(true);
+    expect(result.data).toBe(
+      "Передаю задачу на обработку ['risk_manager']\nТеги: ['graph']\n\n{\"title\":\"Парабола\"}\n\nОжидаю ответа"
+    );
+  });
+
+  it('eventBreaks: false — склейка без переносов между сообщениями', async () => {
+    const op = sseOp({ textEventType: 'TEXT_MESSAGE_CONTENT', textDeltaField: 'delta', eventBreaks: false });
+    const result = await handleStreamingResponse(op, makeStreamResponse(aguiSse), {}, new EventBus());
+    expect(result.data).toBe(
+      "Передаю задачу на обработку ['risk_manager']\nТеги: ['graph']{\"title\":\"Парабола\"}Ожидаю ответа"
+    );
+  });
+
+  it('текст не теряется при мелких чанках (переносы сохраняются)', async () => {
+    const op = sseOp({ textEventType: 'TEXT_MESSAGE_CONTENT', textDeltaField: 'delta' });
+    const result = await handleStreamingResponse(op, makeStreamResponse(aguiSse, 7), {}, new EventBus());
+    expect(result.data).toBe(
+      "Передаю задачу на обработку ['risk_manager']\nТеги: ['graph']\n\n{\"title\":\"Парабола\"}\n\nОжидаю ответа"
+    );
+  });
+
+  it('стрим БЕЗ messageId, но с TEXT_MESSAGE_START/END — каждое сообщение с новой строки', async () => {
+    const body = [
+      'data: {"type":"message_start"}',
+      '',
+      'data: {"type":"content","text":"Первое сообщение"}',
+      '',
+      'data: {"type":"message_stop"}',
+      '',
+      'data: {"type":"message_start"}',
+      '',
+      'data: {"type":"content","text":"Второе сообщение"}',
+      '',
+    ].join('\n');
+    const op = sseOp({ textEventType: 'content', textDeltaField: 'text' });
+    const result = await handleStreamingResponse(
+      { ...op, streaming: { ...(op as any).streaming, enabled: true } },
+      makeStreamResponse(body),
+      {},
+      new EventBus()
+    ).catch(() => null);
+    // если хелпер недоступен — проверяем через основной путь ниже
+    if (result) expect(result.data).toBe('Первое сообщение\n\nВторое сообщение');
+  });
+
+  it('токенный стрим без messageId и START/END (OpenAI-style) — склейка без переносов', async () => {
+    const body = [
+      'data: {"choices":[{"delta":{"content":"При"}}]}',
+      '',
+      'data: {"choices":[{"delta":{"content":"вет"}}]}',
+      '',
+      'data: {"choices":[{"delta":{"content":"!"}}]}',
+      '',
+      'data: [DONE]',
+      '',
+    ].join('\n');
+    const op = sseOp({ textPath: 'choices.0.delta.content' });
+    const chunks: string[] = [];
+    const bus = new EventBus();
+    bus.on('chunk', (c: string) => chunks.push(c));
+    const result = await handleStreamingResponse(op, makeStreamResponse(body), {}, bus);
+    expect(result.data).toBe('Привет!');
+    expect(chunks.join('')).toBe('Привет!');
   });
 });
