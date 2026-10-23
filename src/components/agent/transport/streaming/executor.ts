@@ -12,14 +12,11 @@ function isStreamingEnabled(
 }
 
 /**
- * Разделитель для вставляемого переноса строки между текстовыми сообщениями.
- * undefined -> '\n\n' (дефолт), '' -> без переноса; literal "\n" нормализуется в перевод строки.
+ * Перенос строки между текстовыми сообщениями (event breaks).
+ * undefined/true -> '\n\n' (каждое событие с новой строки, markdown-абзац), false -> '' (без переноса).
  */
-function normalizeOutgoingDelimiter(delimiter: string | undefined): string {
-  if (delimiter === undefined || delimiter === null) {
-    return '\n\n';
-  }
-  return delimiter.replace(/\\r/g, '\r').replace(/\\n/g, '\n');
+function eventBreaksDelimiter(eventBreaks: boolean | undefined): string {
+  return eventBreaks === false ? '' : '\n\n';
 }
 
 export async function handleStreamingResponse(
@@ -89,12 +86,12 @@ async function handleSSEStream(
   const textPath = streaming.textPath;
   const textEventType = streaming.textEventType;
   const textDeltaField = streaming.textDeltaField;
-  // delimiter: undefined -> '\n\n' (дефолт), '' -> сообщений разделять нечем (каждая data-линия — событие).
-  const parser = new SSEParser({ delimiter: streaming.delimiter, dataPrefix: streaming.dataPrefix });
+  // Стандартный SSE: сообщения разделяются пустой линией; настраивается только префикс данных.
+  const parser = new SSEParser({ dataPrefix: streaming.dataPrefix });
 
   let rawMessages: string[] | undefined = onTrace ? [] : undefined;
-  // Для markdown: каждое входящее текстовое сообщение начинаем с новой строки.
-  const messageDelimiter = normalizeOutgoingDelimiter(streaming.delimiter);
+  // Для markdown: каждое входящее текстовое сообщение начинаем с новой строки (event breaks).
+  const messageDelimiter = eventBreaksDelimiter(streaming.eventBreaks);
   let emittedAnyText = false;
   let lastTextEventType: string | undefined;
 
@@ -244,9 +241,10 @@ async function handleNdjsonStream(
   }
 
   const textPath = streaming.textPath;
-  // delimiter: undefined -> '' в jsonl (каждая линия — отдельный объект, но склейка по умолчанию без переносов),
-  // явный delimiter добавляет перенос перед каждой дельтой (кроме первой) для markdown-разметки.
-  const messageDelimiter = streaming.delimiter === undefined ? '' : normalizeOutgoingDelimiter(streaming.delimiter);
+  // event breaks: по умолчанию каждое текстовое сообщение с новой строки; false — склейка без переносов.
+  // В jsonl дельты одного сообщения (например choices[0].delta.content) обычно идут непрерывным потоком,
+  // поэтому дефолт для jsonl — без переносов; перенос добавляется только при явном eventBreaks === true.
+  const messageDelimiter = streaming.eventBreaks === true ? '\n\n' : '';
   let emittedAnyText = false;
   let rawMessages: string[] | undefined = onTrace ? [] : undefined;
 

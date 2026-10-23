@@ -6,31 +6,19 @@ export interface SSEMessage {
 }
 
 /**
- * Нормализует пользовательский разделитель сообщений: literal "\n" / "\r" -> переводы строк.
- */
-function normalizeDelimiter(delimiter: string): string {
-  return delimiter.replace(/\\r/g, '\r').replace(/\\n/g, '\n');
-}
-
-/**
- *  SSE Parser
+ *  SSE Parser (стандартный WHATWG SSE)
  *
- *  Поддерживает настройки:
- *  - delimiter — разделитель между SSE-сообщениями (по умолчанию '\n\n'); пустая строка = не требуется.
+ *  Сообщения всегда разделяются пустой линией ('\n\n'), линии — '\n' (CRLF/CR нормализуются).
+ *  Поддерживаемые настройки:
  *  - dataPrefix — префикс данных (по умолчанию 'data: '); например 'data_stream:' для нестандартных серверов.
  */
 export class SSEParser {
   private buffer = '';
   private dataLines: string[] = [];
-  private readonly delimiter: string;
   private readonly dataField: string;
   private readonly stripLeadingSpace: boolean;
 
-  constructor(options?: { delimiter?: string; dataPrefix?: string }) {
-    const rawDelimiter = options?.delimiter;
-    // undefined = дефолт '\n\n'; '' = сообщений разделять нечем (каждое data-событие само по себе).
-    this.delimiter = rawDelimiter === undefined || rawDelimiter === null ? '\n\n' : normalizeDelimiter(rawDelimiter);
-
+  constructor(options?: { dataPrefix?: string }) {
     const prefix = options?.dataPrefix ?? 'data: ';
     if (prefix.trimEnd() === '') {
       // Поток без префикса вообще: каждая линия трактуется как data.
@@ -63,8 +51,8 @@ export class SSEParser {
     } else {
       field = line.slice(0, colonIdx);
       value = line.slice(colonIdx + 1);
-      // По спецификации WHATWG SSE удаляется ровно один ведущий пробел.
-      if (value.startsWith(' ') && this.stripLeadingSpace) {
+      // Ровно один ведущий пробел после значения поля удаляется всегда (спецификация WHATWG SSE).
+      if (value.startsWith(' ')) {
         value = value.slice(1);
       }
     }
@@ -89,91 +77,41 @@ export class SSEParser {
   }
 
   feed(chunk: string): SSEMessage[] {
-    this.buffer += chunk;
+    // Нормализуем CRLF/CR -> LF, затем режем на линии; неполная последняя линия остаётся в буфере.
+    this.buffer += chunk.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     const messages: SSEMessage[] = [];
     let currentMessage: Partial<SSEMessage> = {};
 
-    if (this.delimiter === '') {
-      // Без разделителя: каждая data-линия — самостоятельное сообщение.
-      const lines = this.buffer.split(/\r?\n/);
-      this.buffer = lines.pop() || '';
-      for (const line of lines) {
-        const isTerminator = this.processLine(line, currentMessage);
-        if (this.dataLines.length > 0) {
+    const lines = this.buffer.split('\n');
+    this.buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      const isTerminator = this.processLine(line, currentMessage);
+      // Сообщение выдаётся только на пустой линии (терминаторе) — так multiple data-линии
+      // одного события склеиваются через '\n' (WHATWG SSE).
+      if (isTerminator) {
+        if (this.dataLines.length > 0 || Object.keys(currentMessage).length > 0) {
           messages.push({
             data: this.dataLines.join('\n'),
             event: currentMessage.event,
             id: currentMessage.id,
             retry: currentMessage.retry,
           });
-          currentMessage = {};
-          this.dataLines = [];
-        } else if (isTerminator) {
-          currentMessage = {};
         }
-      }
-      return messages;
-    }
-
-    // Режем буфер по настроенному разделителю; последняя (неполная) часть остаётся в буфере.
-    // CRLF-нормализация: если разделитель содержит '\n', приводим \r\n -> \n, чтобы найти его корректно.
-    let delimiter = this.delimiter;
-    let buffer = this.buffer;
-    if (delimiter.includes('\n')) {
-      buffer = buffer.replace(/\r\n/g, '\n');
-      delimiter = delimiter.replace(/\r\n/g, '\n');
-    } else if (delimiter.includes('\r')) {
-      buffer = buffer.replace(/\n\r/g, '\r');
-    }
-    this.buffer = buffer;
-
-    let idx: number;
-    while ((idx = this.buffer.indexOf(delimiter)) !== -1) {
-      const block = this.buffer.slice(0, idx);
-      this.buffer = this.buffer.slice(idx + delimiter.length);
-      for (const line of block.split(/\r?\n/)) {
-        this.processLine(line, currentMessage);
-      }
-      if (Object.keys(currentMessage).length > 0 || this.dataLines.length > 0) {
-        messages.push({
-          data: this.dataLines.join('\n'),
-          event: currentMessage.event,
-          id: currentMessage.id,
-          retry: currentMessage.retry,
-        });
-      }
-      currentMessage = {};
-      this.dataLines = [];
-
-      // Стандартный SSE-дефолт '\n\n': дополнительно чистим пустые линии, чтобы не плодить
-      // фантомные сообщения из повторяющихся переводов строк ('\n\n\n\n' и т.п.).
-      if (this.delimiter === '\n\n') {
-        while (this.buffer.startsWith('\n')) {
-          this.buffer = this.buffer.slice(1);
-        }
+        currentMessage = {};
+        this.dataLines = [];
       }
     }
     return messages;
   }
 
   flush(): SSEMessage[] {
-    // Добираем остаток буфера (поток мог оборваться без завершающего разделителя).
+    // Добираем остаток буфера (поток мог оборваться без завершающей пустой линии).
     const remaining = this.buffer;
     this.buffer = '';
     const currentMessage: Partial<SSEMessage> = {};
     if (remaining !== '') {
-      const lines = remaining.split(/\r?\n/);
-      if (this.delimiter !== '') {
-        for (const line of lines) {
-          this.processLine(line, currentMessage);
-        }
-      } else if (this.dataLines.length > 0) {
-        // При delimiter='' незавершённая линия дописывается к последнему сообщению.
-        this.processLine(remaining, currentMessage);
-      } else {
-        for (const line of lines) {
-          this.processLine(line, currentMessage);
-        }
+      for (const line of remaining.split('\n')) {
+        this.processLine(line, currentMessage);
       }
     }
 

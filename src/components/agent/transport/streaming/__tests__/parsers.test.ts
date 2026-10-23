@@ -83,38 +83,7 @@ describe('SSEParser', () => {
     expect(parser.flush()).toHaveLength(0);
   });
 
-  // ---------------- delimiter / dataPrefix ----------------
-
-  it('кастомный delimiter: сообщения режутся по заданной строке-разделителю', () => {
-    const parser = new SSEParser({ delimiter: '###' });
-    const messages = parser.feed('data: {"a":1}###data: {"b":2}###');
-    expect(messages.map((m) => m.data)).toEqual(['{"a":1}', '{"b":2}']);
-  });
-
-  it('delimiter поддерживает literal "\\n" (вводится пользователем как текст)', () => {
-    const parser = new SSEParser({ delimiter: '\\n' });
-    const messages = parser.feed('data: one\ndata: two\n');
-    expect(messages.map((m) => m.data)).toEqual(['one', 'two']);
-  });
-
-  it('delimiter="" (none): каждое data-событие выдаётся сразу, без пустой строки', () => {
-    const parser = new SSEParser({ delimiter: '' });
-    const messages = parser.feed('data: {"type":"TEXT_MESSAGE_CONTENT"}\ndata: {"type":"RUN_FINISHED"}\n');
-    expect(messages.map((m) => m.data)).toEqual(['{"type":"TEXT_MESSAGE_CONTENT"}', '{"type":"RUN_FINISHED"}']);
-  });
-
-  it('delimiter="" корректно буферит неполную линию между чанками', () => {
-    const parser = new SSEParser({ delimiter: '' });
-    expect(parser.feed('data: {"a":')).toHaveLength(0);
-    const messages = parser.feed('1}\n');
-    expect(messages.map((m) => m.data)).toEqual(['{"a":1}']);
-  });
-
-  it('незакрытый кастомный delimiter оставляет данные в буфере до flush', () => {
-    const parser = new SSEParser({ delimiter: '---' });
-    expect(parser.feed('data: tail')).toHaveLength(0);
-    expect(parser.flush().map((m) => m.data)).toEqual(['tail']);
-  });
+  // ---------------- dataPrefix (delimiter удалён: стандартный SSE, сообщения режутся пустой линией) ----------------
 
   it('кастомный dataPrefix: читает data_stream: вместо data:', () => {
     const parser = new SSEParser({ dataPrefix: 'data_stream: ' });
@@ -136,9 +105,21 @@ describe('SSEParser', () => {
   });
 
   it('dataPrefix="": поток вообще без префикса — каждая линия является data', () => {
-    const parser = new SSEParser({ dataPrefix: '', delimiter: '' });
-    const messages = parser.feed('{"a":1}\n{"b":2}\n');
-    expect(messages.map((m) => m.data)).toEqual(['{"a":1}', '{"b":2}']);
+    const parser = new SSEParser({ dataPrefix: '' });
+    const messages = parser.feed('{"a":1}\n{"b":2}\n\n');
+    expect(messages.map((m) => m.data)).toEqual(['{"a":1}\n{"b":2}']);
+  });
+
+  it('CRLF-поток разбирается корректно (сообщения режутся пустой линией)', () => {
+    const parser = new SSEParser();
+    const messages = parser.feed('data: one\r\n\r\ndata: two\r\n\r\n');
+    expect(messages.map((m) => m.data)).toEqual(['one', 'two']);
+  });
+
+  it('поток без завершающей пустой линии: хвост добирается в flush', () => {
+    const parser = new SSEParser();
+    expect(parser.feed('data: a\n\ndata: tail')).toHaveLength(1);
+    expect(parser.flush().map((m) => m.data)).toEqual(['tail']);
   });
 
   it('дефолт сохранён: без опций парсер ведёт себя как раньше (data: + \\n\\n)', () => {
