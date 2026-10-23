@@ -111,6 +111,10 @@ export type StreamingConfig =
       textPath?: string;
       textEventType?: string;
       textDeltaField?: string;
+      /** Разделитель между SSE-сообщениями (по умолчанию '\n\n'). */
+      delimiter?: string;
+      /** Префикс данных в SSE (по умолчанию 'data: '). */
+      dataPrefix?: string;
     };
 
 export type ChatHistoryConfig =

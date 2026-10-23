@@ -11,6 +11,17 @@ function isStreamingEnabled(
   return streaming !== null && typeof streaming === 'object' && streaming.enabled === true;
 }
 
+/**
+ * Разделитель для вставляемого переноса строки между текстовыми сообщениями.
+ * undefined -> '\n\n' (дефолт), '' -> без переноса; literal "\n" нормализуется в перевод строки.
+ */
+function normalizeOutgoingDelimiter(delimiter: string | undefined): string {
+  if (delimiter === undefined || delimiter === null) {
+    return '\n\n';
+  }
+  return delimiter.replace(/\\r/g, '\r').replace(/\\n/g, '\n');
+}
+
 export async function handleStreamingResponse(
   op: EndpointConfig,
   response: HttpResponse,
@@ -68,7 +79,6 @@ async function handleSSEStream(
   let state = createInitialStreamState();
 
   const streaming = op.streaming;
-  const parser = new SSEParser();
   const decoder = new TextDecoder();
   const reader = res.body.getReader();
 
@@ -79,8 +89,14 @@ async function handleSSEStream(
   const textPath = streaming.textPath;
   const textEventType = streaming.textEventType;
   const textDeltaField = streaming.textDeltaField;
+  // delimiter: undefined -> '\n\n' (дефолт), '' -> сообщений разделять нечем (каждая data-линия — событие).
+  const parser = new SSEParser({ delimiter: streaming.delimiter, dataPrefix: streaming.dataPrefix });
 
   let rawMessages: string[] | undefined = onTrace ? [] : undefined;
+  // Для markdown: каждое входящее текстовое сообщение начинаем с новой строки.
+  const messageDelimiter = normalizeOutgoingDelimiter(streaming.delimiter);
+  let emittedAnyText = false;
+  let lastTextEventType: string | undefined;
 
   try {
     while (true) {
@@ -126,8 +142,15 @@ async function handleSSEStream(
           if (state.reasoningState.active) {
             state.reasoningState = finalizeReasoning(state.reasoningState, eventBus);
           }
-          state.fullReply += textDelta;
-          eventBus.emit('chunk', textDelta);
+          // Каждое новое текстовое СООБЩЕНИЕ — с новой строки (для markdown-разметки), кроме первого.
+          // В event-mode (TEXT_MESSAGE_CONTENT + delta) дельты одного сообщения склеиваются без переноса:
+          // новый блок начинается только когда тип события сменился (или это первое текстовое сообщение).
+          const isNewTextMessage = !emittedAnyText || lastTextEventType !== parsedEvent.type;
+          lastTextEventType = parsedEvent.type;
+          const prefix = isNewTextMessage && emittedAnyText ? messageDelimiter : '';
+          emittedAnyText = true;
+          state.fullReply += prefix + textDelta;
+          eventBus.emit('chunk', prefix + textDelta);
         }
 
         state = processStreamChunk(parsedEvent, op, context, state, eventBus, {
@@ -144,6 +167,29 @@ async function handleSSEStream(
       }
       try {
         const parsedEvent = JSON.parse(msg.data);
+
+        let textDelta: string | null = null;
+        if (textEventType) {
+          if (parsedEvent.type === textEventType) {
+            if (textDeltaField) {
+              textDelta = parsedEvent[textDeltaField];
+            } else if (textPath) {
+              textDelta = dotGet(parsedEvent, textPath);
+            }
+          }
+        } else if (textPath) {
+          textDelta = dotGet(parsedEvent, textPath);
+        }
+
+        if (typeof textDelta === 'string' && textDelta) {
+          const isNewTextMessage = !emittedAnyText || lastTextEventType !== parsedEvent.type;
+          lastTextEventType = parsedEvent.type;
+          const prefix = isNewTextMessage && emittedAnyText ? messageDelimiter : '';
+          emittedAnyText = true;
+          state.fullReply += prefix + textDelta;
+          eventBus.emit('chunk', prefix + textDelta);
+        }
+
         state = processStreamChunk(parsedEvent, op, context, state, eventBus, {
           onTrace,
           eventType: parsedEvent.type,
@@ -198,6 +244,10 @@ async function handleNdjsonStream(
   }
 
   const textPath = streaming.textPath;
+  // delimiter: undefined -> '' в jsonl (каждая линия — отдельный объект, но склейка по умолчанию без переносов),
+  // явный delimiter добавляет перенос перед каждой дельтой (кроме первой) для markdown-разметки.
+  const messageDelimiter = streaming.delimiter === undefined ? '' : normalizeOutgoingDelimiter(streaming.delimiter);
+  let emittedAnyText = false;
   let rawMessages: string[] | undefined = onTrace ? [] : undefined;
 
   try {
@@ -223,8 +273,11 @@ async function handleNdjsonStream(
           if (state.reasoningState.active) {
             state.reasoningState = finalizeReasoning(state.reasoningState, eventBus);
           }
-          state.fullReply += textDelta;
-          eventBus.emit('chunk', textDelta);
+          // Каждое новое текстовое сообщение — с новой строки (для markdown-разметки).
+          const prefix = emittedAnyText ? messageDelimiter : '';
+          emittedAnyText = true;
+          state.fullReply += prefix + textDelta;
+          eventBus.emit('chunk', prefix + textDelta);
         }
 
         state = processStreamChunk(obj, op, context, state, eventBus, {

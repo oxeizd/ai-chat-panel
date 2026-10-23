@@ -129,6 +129,20 @@ export const StreamingSection: React.FC<StreamingSectionProps> = ({ endpoint, on
             </Field>
           </>
         )}
+        <Field label="Delimiter" description="Разделитель SSE-сообщений (empty = none). Supports literal \n, e.g. \n\n">
+          <Input
+            value={config.delimiter ?? ''}
+            placeholder=""
+            onChange={(e) => handleFieldChange('delimiter', e.currentTarget.value || undefined)}
+          />
+        </Field>
+        <Field label="Data prefix" description="Префикс данных в SSE (по умолчанию 'data: ')">
+          <Input
+            value={config.dataPrefix ?? 'data: '}
+            placeholder="data: "
+            onChange={(e) => handleFieldChange('dataPrefix', e.currentTarget.value || undefined)}
+          />
+        </Field>
       </>
     );
   };
