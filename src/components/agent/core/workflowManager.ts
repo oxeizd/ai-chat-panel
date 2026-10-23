@@ -24,6 +24,7 @@ export async function executeWorkflow(
     streaming?: boolean;
     fileAttachment?: any;
     interactive?: InteractivePayload;
+    charts?: any[];
   }> = [];
 
   const ops: string[] = [];
@@ -86,6 +87,7 @@ export async function executeWorkflow(
         streaming: result.isStreaming ?? false,
         fileAttachment: result.fileAttachment,
         interactive: result.interactive,
+        charts: result.charts,
       });
     }
 

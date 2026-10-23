@@ -80,6 +80,23 @@ export function validateEndpointConfig(input: unknown): ValidationResult<Endpoin
     if (s.enabled && typeof s.parseStrategy !== 'string') {
       return { ok: false, error: 'streaming.parseStrategy required when enabled' };
     }
+    if (s.enabled && s.customEvents !== undefined) {
+      if (!Array.isArray(s.customEvents)) {
+        return { ok: false, error: 'streaming.customEvents must be an array' };
+      }
+      const allowedRenders = ['text', 'chart', 'code', 'context', 'error', 'ignore'];
+      for (const rule of s.customEvents) {
+        if (!isObject(rule) || typeof rule.eventType !== 'string' || !rule.eventType) {
+          return { ok: false, error: 'streaming.customEvents[].eventType required string' };
+        }
+        if (typeof rule.render !== 'string' || !allowedRenders.includes(rule.render)) {
+          return { ok: false, error: `streaming.customEvents[].render must be one of: ${allowedRenders.join(', ')}` };
+        }
+        if (rule.render === 'context' && typeof rule.contextKey !== 'string') {
+          return { ok: false, error: 'streaming.customEvents[].contextKey required for render "context"' };
+        }
+      }
+    }
   }
 
   if ('historyConfig' in cfg && cfg.historyConfig !== undefined) {

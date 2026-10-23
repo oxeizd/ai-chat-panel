@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import 'katex/dist/katex.min.css';
 import { MessageListStyles } from './MessageList';
 import { REMARK_PLUGINS, REHYPE_PLUGINS } from '../utils/markdown/plugins';
+import { ChartComponent } from '../utils/markdown/chartComponent/ChartComponent';
 import { downloadFile } from 'components/agent/utils/download';
 import { preprocessMarkdown } from './hooks/utils/preprocess';
 
@@ -25,6 +26,7 @@ interface ChatMessageProps {
     };
     thinking?: string;
     isThinking?: boolean;
+    charts?: any[];
   };
   styles: MessageListStyles;
   debug: boolean;
@@ -134,6 +136,15 @@ export const ChatMessage = React.memo(
                   {content}
                 </ReactMarkdown>
               </div>
+
+              {/* Графики из событий потока (streaming.customEvents, render:'chart') */}
+              {message.charts && message.charts.length > 0 && (
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {message.charts.map((chart, idx) => (
+                    <ChartComponent key={idx} config={chart} />
+                  ))}
+                </div>
+              )}
 
               {message.fileAttachment && (
                 <div style={{ marginTop: 8 }}>

@@ -18,6 +18,7 @@ interface SendCallbacks {
   onStep?: (step: TraceStep) => void;
   onFileAttachment?: (file: any) => void;
   onInteractive?: (payload: any) => void;
+  onChart?: (chart: any) => void;
 }
 
 export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderOptions) => {
@@ -33,6 +34,7 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
     onContextUpdate,
     onFileAttachment,
     onInteractive,
+    onChart,
     getContextValue,
     setContext,
     runOperation,
@@ -60,6 +62,14 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
       },
       onFileAttachment,
       onInteractive,
+      // Единственный источник подписки на 'chart' — useAgentEvents.
+      // Не дублируем через отдельный useEffect (иначе график попадёт в UI дважды).
+      onChart: (handler) => {
+        return onChart((chart) => {
+          handler(chart);
+          callbacksRef.current.onChart?.(chart);
+        });
+      },
     },
     callbacksRef: callbacksRef as any,
   });
@@ -75,6 +85,18 @@ export const useMessageSender = ({ agent: agentConfig, user }: UseMessageSenderO
 
     return unsubscribe;
   }, [onFileAttachment]);
+
+  useEffect(() => {
+    if (!onInteractive) {
+      return;
+    }
+
+    const unsubscribe = onInteractive((payload) => {
+      callbacksRef.current.onInteractive?.(payload);
+    });
+
+    return unsubscribe;
+  }, [onInteractive]);
 
   const send = useCallback(
     async (text: string, callbacks?: SendCallbacks, extraContext?: Record<string, any>): Promise<string | null> => {

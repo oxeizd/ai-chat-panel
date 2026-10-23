@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { InteractivePayload, Message } from 'types';
+import { InteractivePayload, Message, ChartData } from 'types';
 import { generateMessageId } from './utils/idGenerators';
 
 export const useMessagesState = () => {
@@ -95,6 +95,15 @@ export const useMessagesState = () => {
     );
   }, []);
 
+  /** Добавляет график (из CUSTOM-события потока) к сообщению ассистента. */
+  const addAssistantChart = useCallback((assistantId: string, chart: ChartData) => {
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === assistantId && msg.sender === 'ai' ? { ...msg, charts: [...(msg.charts ?? []), chart] } : msg
+      )
+    );
+  }, []);
+
   const removeAssistant = useCallback((assistantId: string) => {
     setMessages((prev) => prev.filter((msg) => msg.id !== assistantId));
   }, []);
@@ -135,6 +144,7 @@ export const useMessagesState = () => {
     setAssistantThinkingDone,
     setAssistantFinal,
     setAssistantInteractive,
+    addAssistantChart,
     removeAssistant,
     addErrorAsAi,
     markUserError,

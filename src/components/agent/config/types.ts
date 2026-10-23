@@ -1,3 +1,7 @@
+import type { ChartData } from 'components/ui/utils/markdown/chartComponent/types';
+
+export type { ChartData };
+
 export interface AgentConfig {
   name: string;
   url: string;
@@ -103,6 +107,56 @@ export type PollingConfig =
       retryStatusCodes?: number[];
     };
 
+/**
+ * Правило обработки произвольного события потока (например, AG-UI CUSTOM).
+ * Событие матчится по значению поля `eventTypeField` (default: `type`) == `eventType`
+ * (опционально — дополнительно по имени: поле `nameField` == `eventName`).
+ * Дальше поведение зависит от `render`:
+ *  - 'text'  — извлечь текст (dot-path `valuePath`, default `value`) и дописать в ответ
+ *              как отдельный абзац (или как reasoning, если `intoReasoning: true`);
+ *  - 'chart' — извлечь объект графика (`valuePath` или весь event при `wholeEvent: true`)
+ *              и отрендерить его чарт-виджетом внутри сообщения;
+ *  - 'code'  — извлечь значение и показать как fenced code блок (язык = `language`);
+ *  - 'context' — сохранить извлечённое значение в session context под ключом `contextKey`;
+ *  - 'error' — остановить обработку и показать ошибку (например, для RUN_ERROR);
+ *  - 'ignore' — ничего не делать.
+ */
+export interface StreamEventHandler {
+  /** Значение поля типа события, которое ловим (например, "CUSTOM", "graph", "REASONING_MESSAGE_CONTENT"). */
+  eventType: string;
+  /** Как рендерить событие. */
+  render: 'text' | 'chart' | 'code' | 'context' | 'error' | 'ignore';
+  /** Dot-path к данным внутри события (например, "value", "chart", "delta"). По умолчанию "value" для CUSTOM-подобных событий. */
+  valuePath?: string;
+  /** Поле, содержащее тип события. По умолчанию "type". */
+  eventTypeField?: string;
+  /**
+   * Дополнительно матчить значение поля `nameField` (default "name") == `eventName`.
+   * Нужно, чтобы разделить AG-UI CUSTOM-события: {type:"CUSTOM", name:"graph"} vs {type:"CUSTOM", name:"dataset"}.
+   */
+  eventName?: string;
+  /** Поле с именем события внутри payload. По умолчанию "name". */
+  nameField?: string;
+  /** Язык для render:'code' (по умолчанию json). */
+  language?: string;
+  /** Ключ контекста для render:'context'. */
+  contextKey?: string;
+  /** Для render:'text': дописывать с новой строки как отдельный абзац (по умолчанию true). */
+  paragraph?: boolean;
+  /** Для render:'text': направлять текст в reasoning (спойлер «Думает…»), а не в основной ответ. */
+  intoReasoning?: boolean;
+  /** Для render:'chart': брать данные всего события целиком, без valuePath. */
+  wholeEvent?: boolean;
+  /** Для render:'error': текст ошибки, если в событии нет поля message. */
+  errorMessage?: string;
+  /**
+   * Для render:'text' | 'code': не эмитить текст как чанк основного ответа.
+   * Полезно, когда тот же payload уже рендерится отдельным виджетом
+   * (например, сервер шлёт и ```chart-блок в тексте, и CUSTOM-событие с графиком).
+   */
+  silent?: boolean;
+}
+
 export type StreamingConfig =
   | { enabled: false }
   | {
@@ -111,6 +165,14 @@ export type StreamingConfig =
       textPath?: string;
       textEventType?: string;
       textDeltaField?: string;
+      /** Правила для дополнительных событий потока (CUSTOM и т.п.). */
+      customEvents?: StreamEventHandler[];
+      /**
+       * AG-UI-совместимый режим: вставлять пустую строку между текстовыми сообщениями
+       * (после TEXT_MESSAGE_END / смены messageId), чтобы куски ответа не склеивались
+       * («...Чем могу помочь?Генерирую данные...»). По умолчанию включено.
+       */
+      paragraphBetweenMessages?: boolean;
     };
 
 export type ChatHistoryConfig =
@@ -170,6 +232,12 @@ export interface Message {
   isThinking?: boolean;
   /** Карточка с вариантами/полями, пришедшая вместе с этим ответом ассистента. */
   interactive?: InteractivePayload;
+  /**
+   * Графики, пришедшие из событий потока (например, AG-UI CUSTOM),
+   * размеченных в настройках стриминга как render:'chart'.
+   * Рендерятся виджетом под текстом сообщения.
+   */
+  charts?: ChartData[];
 }
 
 export interface TraceStep {
@@ -201,6 +269,8 @@ export interface SendResult {
   lastEvent?: any;
   fileAttachment?: any;
   interactive?: InteractivePayload;
+  /** Графики из событий потока (render:'chart' в streaming.customEvents). */
+  charts?: ChartData[];
 }
 
 export interface RequestConfig {
@@ -228,4 +298,5 @@ export type AgentEvent =
   | { type: 'reasoning:end'; payload: string }
   | { type: 'contextUpdate'; payload: Record<string, any> }
   | { type: 'fileAttachment'; payload: any }
-  | { type: 'interactive'; payload: InteractivePayload };
+  | { type: 'interactive'; payload: InteractivePayload }
+  | { type: 'chart'; payload: ChartData };

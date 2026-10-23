@@ -36,15 +36,43 @@ export async function parseHttpResponse(res: HttpResponse, replyField?: string):
   return { body: parsedBody, reply };
 }
 
+/**
+ * Разбивает dot-path на сегменты, поддерживая и точечную нотацию,
+ * и скобочную для чисел и строк: `choices[0].delta.content`,
+ * `custom.charts["parabola"].data`.
+ */
+function splitPath(path: string): string[] {
+  const parts: string[] = [];
+  const re = /\.\.?|\[[^\]]*\]|[^.[\]]+/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(path)) !== null) {
+    const token = m[0];
+    if (token === '.' || token === '') {
+      continue;
+    }
+    if (token.startsWith('[') && token.endsWith(']')) {
+      let key = token.slice(1, -1).trim();
+      if (
+        (key.startsWith('"') && key.endsWith('"') && key.length >= 2) ||
+        (key.startsWith("'") && key.endsWith("'") && key.length >= 2)
+      ) {
+        key = key.slice(1, -1);
+      }
+      parts.push(key);
+    } else {
+      parts.push(token);
+    }
+  }
+  return parts;
+}
+
 export function dotGet(obj: any, path?: string) {
   if (!path || obj == null) {
     return undefined;
   }
 
-  const normalized = path.replace(/\[(\d+)\]/g, '.$1');
-  const parts = normalized.split('.');
   let cur = obj;
-  for (const p of parts) {
+  for (const p of splitPath(path)) {
     if (cur == null) {
       return undefined;
     }
